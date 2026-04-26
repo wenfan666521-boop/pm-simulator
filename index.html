@@ -496,6 +496,7 @@ function addBubble(list, who, text, char) {
   } else {
     wrapper.innerHTML = `<div><div class="msg-bubble">${text}</div><div class="msg-time">${getTimeStr()}</div></div><div class="msg-avatar" style="margin-left:8px;margin-right:0;flex-shrink:0">${char.emoji}</div></div>`;
   }
+  list.appendChild(wrapper);
 }
 
 function makeChoice(dlg, choice) {
