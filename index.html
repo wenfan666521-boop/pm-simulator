@@ -506,7 +506,7 @@ function makeChoice(dlg, choice) {
   // 应用效果
   (choice.effects || []).forEach(eff => {
     if (eff[0] === 'trust') state.trust[eff[1]] = (state.trust[eff[1]] || 50) + eff[2];
-    else if (eff[0] === 'progress') state.progress = (state.progress || 0) + (eff[2] || 0);
+    else if (eff[0] === 'progress') state.progress = (state.progress || 0) + (eff[1] || 0);
     else if (eff[0] === 'line') state.line = eff[1];
     else if (eff[0] === 'flag') state.flags[eff[1]] = eff[2];
   });
