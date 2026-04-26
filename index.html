@@ -76,8 +76,8 @@
 <div class="wx-overlay" id="wxOverlay">
   <div class="icon">🔗</div>
   <h2>请在浏览器中打开</h2>
-  <p>当前页面在微信内无法完美运行，<br>点击下方按钮用浏览器打开体验</p>
-  <button class="btn-open" id="wxOpenBtn">去浏览器打开</button>
+  <p>当前页面在微信内无法完美运行，<br>用浏览器打开体验更佳哦</p>
+  <button class="btn-open" id="wxOpenBtn">在微信中打开</button>
   <p class="hint">· 点击右上角「…」→「在浏览器中打开」<br>· 或复制链接到浏览器访问</p>
 </div>
 
@@ -104,23 +104,9 @@
   var overlay = document.getElementById('wxOverlay');
   if (isWx) {
     overlay.classList.remove('hidden');
-    // "去浏览器打开"按钮：尝试复制链接或跳转
     document.getElementById('wxOpenBtn').onclick = function(){
-      var url = window.location.href;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(function(){
-          overlay.innerHTML = '<div class="icon">✅</div><h2>链接已复制</h2><p>请关闭本页面，打开系统浏览器<br>粘贴链接后访问</p><p class="hint">提示：Safari / Chrome 均可</p>';
-        }).catch(function(){
-          fallbackCopy(url);
-        });
-      } else {
-        fallbackCopy(url);
-      }
+      overlay.innerHTML = '<div class="icon">ℹ️</div><h2>请在浏览器中打开</h2><p>点击右上角「…」→「在浏览器中打开」<br>或复制链接到系统浏览器访问</p><button class="btn-open" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);cursor:pointer;padding:12px 36px;border-radius:24px;font-size:16px;font-weight:600;margin-top:20px;" onclick="location.reload()">返回</button>';
     };
-    function fallbackCopy(url) {
-      // 如果无法用clipboard API，直接尝试打开
-      window.location.href = url;
-    }
   } else {
     overlay.classList.add('hidden');
   }
