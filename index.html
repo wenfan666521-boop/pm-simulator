@@ -494,7 +494,7 @@ function addBubble(list, who, text, char) {
   if (who === 'them') {
     wrapper.innerHTML = `<div class="msg-avatar" style="background:${char.color}22">${char.emoji}</div><div><div class="msg-bubble">${text}</div><div class="msg-time">${getTimeStr()}</div></div>`;
   } else {
-    wrapper.innerHTML = `<div><div class="msg-bubble">${text}</div><div class="msg-time">${getTimeStr()}</div></div><div class="msg-avatar" style="margin-left:8px;margin-right:0;flex-shrink:0">${char.emoji}</div></div>`;
+    wrapper.innerHTML = `<div><div class="msg-bubble">${text}</div><div class="msg-time">${getTimeStr()}</div></div>`;
   }
   list.appendChild(wrapper);
 }
