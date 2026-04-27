@@ -619,9 +619,8 @@
     // 构建开发者模式部分
     let devSectionHTML = '';
     if (devModeUnlocked) {
-      var remaining = DEV_DAILY_LIMIT - devDailyUsage;
       devSectionHTML = '<div style="margin-top:15px;padding-top:15px;border-top:1px dashed rgba(255,255,255,0.2);">' +
-        '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px;">🔧 开发者模式 · 今日剩余 ' + remaining + ' 次</div>' +
+        '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px;">🔧 开发者模式 · 无限兑换</div>' +
         '<input type="text" id="devCodeInput" placeholder="输入测试口令" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:#fff;margin-bottom:8px;box-sizing:border-box;">' +
         '<button id="confirmDevBtn" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(100,100,100,0.5);color:#fff;cursor:pointer;font-size:12px;">兑换 (+' + DEV_REWARD_AMOUNT + '礼物)</button>' +
         '</div>';
