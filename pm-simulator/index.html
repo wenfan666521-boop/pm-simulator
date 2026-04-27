@@ -412,6 +412,7 @@ function renderMessages() {
         btn.onclick = () => makeChoice(nextDlg, ch);
         choiceArea.appendChild(btn);
       });
+      enableBackBtn(true); // 选项出现，解锁返回
       scrollBottom(list);
       return;
     }
