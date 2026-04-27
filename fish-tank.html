@@ -660,7 +660,9 @@
   
   // 确认收取礼物
   function confirmReceive() {
+    console.log('confirmReceive called');
     const code = document.getElementById('receiveCodeInput').value;
+    console.log('code:', code);
     
     if (!code) {
       alert('请输入礼物代码');
@@ -668,6 +670,7 @@
     }
     
     const giftData = parseGiftCode(code);
+    console.log('giftData:', giftData);
     
     if (!giftData) {
       alert('无效的礼物代码');
