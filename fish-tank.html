@@ -268,14 +268,35 @@
       name: '第一条生命',
       description: '从水下第一颗生命萌芽开始...噢抱歉拿错剧本了',
       unlockHint: '添加第一条鱼',
-      check: () => fishes.length >= 1
+      check: () => stats.addFishClicks >= 1
     },
     {
       id: 'grow_up',
       name: '快快长大',
-      description: '陪伴它长大当然是一件很幸福的事，毕竟你只需要点点屏幕...',
-      unlockHint: '第一次投喂',
-      check: () => fishes.some(f => f.feedCount >= 1)
+      description: '喂鱼，长大，再喂鱼再长大...世界上没有比这更简单的事了',
+      unlockHint: '第一次喂鱼长大',
+      check: () => stats.successfulFeeds >= 1
+    },
+    {
+      id: 'pet_fish',
+      name: '摸鱼',
+      description: '没有什么比摸鱼更赚钱的事情了，摸得越多，赚得越多...',
+      unlockHint: '第一次摸鱼',
+      check: () => stats.petFishClicks >= 1
+    },
+    {
+      id: 'feed_fish',
+      name: '喂鱼',
+      description: '热知识：给鱼投喂太多饲料是有害的。但别担心，对赛博鱼无害',
+      unlockHint: '投喂6次鱼',
+      check: () => stats.feedFishClicks >= 6
+    },
+    {
+      id: 'plant_use',
+      name: '水草利用',
+      description: '路边采摘的蘑菇不要吃，路边采摘的水草可以给鱼吃...',
+      unlockHint: '第一次收集水草',
+      check: () => stats.plantsCollected >= 1
     }
   ];
   
