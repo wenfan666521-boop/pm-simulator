@@ -129,6 +129,23 @@
     giftsReceived: 0       // 收礼次数
   };
   
+  // 礼物系统全局变量
+  const INITIAL_GIFT_COUNT = 5; // 初始礼物数
+  let giftCount = INITIAL_GIFT_COUNT; // 当前剩余礼物数
+  let totalGiftsSent = 0; // 历史送礼总数
+  let usedCodes = []; // 已使用的礼物码列表
+  let userId = ''; // 用户唯一ID（设备指纹）
+  
+  // 生成用户唯一ID
+  function generateUserId() {
+    const stored = localStorage.getItem('fishTankUserId');
+    if (stored) return stored;
+    const newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('fishTankUserId', newId);
+    return newId;
+  }
+  userId = generateUserId();
+  
   // 物品到emoji的本地映射（备用方案）
   const itemToEmojiMap = {
     '金鱼': '🐠', '小鱼': '🐟', '鲨鱼': '🦈', '章鱼': '🐙', '乌贼': '🦑',
@@ -463,6 +480,14 @@
     document.body.appendChild(overlay);
   }
   
+  // 更新礼物数显示
+  function updateGiftCountDisplay() {
+    const countDisplay = document.getElementById('giftCountDisplay');
+    if (countDisplay) {
+      countDisplay.textContent = `剩余礼物：${giftCount} 个`;
+    }
+  }
+  
   // 显示送礼面板
   function showGiftPanel() {
     const overlay = document.createElement('div');
@@ -474,6 +499,7 @@
     giftPanel.innerHTML = `
       <span class="gift-close" onclick="closeGiftPanel()">✕</span>
       <h3>🎁 送给好友</h3>
+      <div id="giftCountDisplay" style="text-align:center;margin-bottom:15px;padding:8px;background:rgba(255,255,255,0.1);border-radius:10px;font-size:12px;color:rgba(255,255,255,0.8);">剩余礼物：${giftCount} 个</div>
       <div class="gift-section">
         <input type="text" id="giftSenderName" placeholder="你的名字">
         <textarea id="giftBlessing" placeholder="输入祝福语"></textarea>
@@ -573,6 +599,25 @@
       return;
     }
     
+    // 检查是否是自己的礼物
+    if (giftData.senderId === userId) {
+      alert('不能兑换自己的礼物哦~');
+      return;
+    }
+    
+    // 生成码的hash用于标识
+    const codeHash = btoa(code);
+    
+    // 检查是否已使用过
+    if (usedCodes.includes(codeHash)) {
+      alert('这个礼物已经被兑换过了~');
+      return;
+    }
+    
+    // 标记为已使用
+    usedCodes.push(codeHash);
+    saveFishToStorage();
+    
     // 显示礼物预览
     const resultDiv = document.getElementById('receiveResult');
     resultDiv.style.display = 'block';
@@ -635,6 +680,12 @@
   function confirmGift() {
     const senderName = document.getElementById('giftSenderName').value;
     const blessing = document.getElementById('giftBlessing').value;
+    
+    // 检查礼物数量
+    if (giftCount <= 0) {
+      alert('礼物数不足，请先解锁成就获得更多礼物！');
+      return;
+    }
     
     if (!blessing) {
       alert('请输入祝福语');
@@ -706,13 +757,21 @@
     // 使用确认时选择的emoji
     const emoji = currentGiftEmoji || fishTypes[Math.floor(Math.random() * fishTypes.length)];
     
-    // 构建礼物数据
+    // 构建礼物数据（包含senderId用于校验）
     const giftData = {
       emoji: emoji,
       sender: senderName || '神秘好友',
+      senderId: userId, // 添加发送者ID
       blessing: blessing || '祝你养鱼开心！',
       timestamp: Date.now()
     };
+    
+    // 扣除礼物数
+    giftCount--;
+    totalGiftsSent++;
+    
+    // 更新礼物数显示
+    updateGiftCountDisplay();
     
     // 编码为 base64（UTF-8安全）
     const giftCode = btoa(encodeURIComponent(JSON.stringify(giftData)));
@@ -995,6 +1054,8 @@
     ACHIEVEMENTS.forEach(achievement => {
       if (!achievements.includes(achievement.id) && achievement.check()) {
         achievements.push(achievement.id);
+        // 解锁成就获得一个礼物
+        giftCount++;
         showAchievementPopup(achievement);
         saveFishToStorage();
       }
@@ -1012,8 +1073,9 @@
       <div style="font-size:48px;margin-bottom:15px;">🏆</div>
       <div style="font-size:14px;opacity:0.8;margin-bottom:10px;">成就解锁</div>
       <div style="font-size:22px;font-weight:700;margin-bottom:10px;">${achievement.name}</div>
-      <div style="font-size:14px;opacity:0.9;line-height:1.5;">${achievement.description}</div>
-      <button onclick="this.parentNode.parentNode.remove()" style="margin-top:20px;padding:10px 30px;border:none;border-radius:25px;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-size:14px;">确定</button>
+      <div style="font-size:14px;opacity:0.9;line-height:1.5;margin-bottom:10px;">${achievement.description}</div>
+      <div style="font-size:12px;color:#F7DC6F;margin-bottom:15px;">🎁 获得一个礼物！</div>
+      <button onclick="this.parentNode.parentNode.remove()" style="margin-top:10px;padding:10px 30px;border:none;border-radius:25px;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-size:14px;">确定</button>
     `;
     
     overlay.appendChild(popup);
@@ -1287,7 +1349,21 @@
   function saveFishToStorage() {
     const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0 }));
     const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
-    const data = { fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats };
+    const data = {
+      fishes: fishData,
+      plants: plantData,
+      lastAddFishTime,
+      lastFeedFishTime,
+      achievements,
+      nextPlantGenerateTime,
+      stats,
+      giftData: {
+        giftCount: giftCount,
+        totalGiftsSent: totalGiftsSent,
+        usedCodes: usedCodes,
+        userId: userId
+      }
+    };
     localStorage.setItem('fishTankData', JSON.stringify(data));
   }
   
@@ -1302,6 +1378,13 @@
       achievements = data.achievements || [];
       nextPlantGenerateTime = data.nextPlantGenerateTime || 0;
       stats = data.stats || { addFishClicks: 0, feedFishClicks: 0, successfulFeeds: 0, plantsCollected: 0, cleanCount: 0, petFishClicks: 0 };
+      
+      // 加载礼物数据
+      if (data.giftData) {
+        giftCount = data.giftData.giftCount ?? INITIAL_GIFT_COUNT;
+        totalGiftsSent = data.giftData.totalGiftsSent || 0;
+        usedCodes = data.giftData.usedCodes || [];
+      }
       
       // 加载水草
       const plantData = data.plants || [];
