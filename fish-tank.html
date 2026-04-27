@@ -393,11 +393,21 @@
     overlay.id = 'celebrationOverlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;';
     
-    // 顶部文字
-    const topText = document.createElement('div');
-    topText.style.cssText = 'position:absolute;top:80px;left:50%;transform:translateX(-50%);color:#F7DC6F;font-size:18px;font-weight:bold;text-shadow:0 2px 10px rgba(0,0,0,0.5);white-space:nowrap;animation:fadeInDown 0.8s ease-out;';
-    topText.textContent = '✨ 你的祝福获得了海神的馈赠，快送去给朋友吧~ ✨';
-    overlay.appendChild(topText);
+    // 顶部文字（两行）
+    const topTextContainer = document.createElement('div');
+    topTextContainer.style.cssText = 'position:absolute;top:60px;left:50%;transform:translateX(-50%);text-align:center;animation:fadeInDown 0.8s ease-out;';
+    
+    const topLine = document.createElement('div');
+    topLine.style.cssText = 'color:#F7DC6F;font-size:22px;font-weight:bold;text-shadow:0 2px 10px rgba(0,0,0,0.5);margin-bottom:8px;';
+    topLine.textContent = '✨ 你的祝福获得了海神的馈赠 ✨';
+    
+    const bottomLine = document.createElement('div');
+    bottomLine.style.cssText = 'color:rgba(220,220,220,0.9);font-size:14px;font-style:italic;text-shadow:0 1px 5px rgba(0,0,0,0.5);';
+    bottomLine.textContent = '快送去给朋友吧~';
+    
+    topTextContainer.appendChild(topLine);
+    topTextContainer.appendChild(bottomLine);
+    overlay.appendChild(topTextContainer);
     
     // 创建粒子容器
     const particleContainer = document.createElement('div');
