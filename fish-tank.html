@@ -678,8 +678,8 @@
       return;
     }
     
-    // 检查是否是自己的礼物
-    if (giftData.senderId === userId) {
+    // 检查是否是自己的礼物（开发者模式下跳过此检查）
+    if (giftData.senderId === userId && !devModeUnlocked) {
       alert('不能兑换自己的礼物哦~');
       return;
     }
