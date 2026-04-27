@@ -769,7 +769,12 @@
   // 确认礼物（AI优先流程）
   function confirmGift() {
     const senderName = document.getElementById('giftSenderName').value;
-    const blessing = document.getElementById('giftBlessing').value;
+    const blessing = document.getElementById('giftBlessing').value.trim();
+    
+    if (blessing.length > 50) {
+      alert('祝福语不能超过50字');
+      return;
+    }
     
     // 检查礼物数量
     if (giftCount <= 0) {
