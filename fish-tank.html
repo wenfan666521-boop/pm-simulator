@@ -608,58 +608,54 @@
   
   // 显示收礼面板
   function showReceivePanel() {
+    // 简单的弹窗创建
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
-    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-    
-    const receivePanel = document.createElement('div');
-    receivePanel.className = 'gift-panel';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
     
     // 检查是否需要重置每日次数
     checkDevDailyReset();
     
+    // 构建开发者模式部分
     let devSectionHTML = '';
     if (devModeUnlocked) {
-      devSectionHTML = `
-        <div style="margin-top:15px;padding-top:15px;border-top:1px dashed rgba(255,255,255,0.2);">
-          <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px;">🔧 开发者模式 · 今日剩余 ${DEV_DAILY_LIMIT - devDailyUsage} 次</div>
-          <input type="text" id="devCodeInput" placeholder="输入测试口令" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:#fff;margin-bottom:8px;box-sizing:border-box;">
-          <button id="confirmDevBtn" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(100,100,100,0.5);color:#fff;cursor:pointer;font-size:12px;">兑换 (+${DEV_REWARD_AMOUNT}礼物)</button>
-        </div>
-      `;
+      var remaining = DEV_DAILY_LIMIT - devDailyUsage;
+      devSectionHTML = '<div style="margin-top:15px;padding-top:15px;border-top:1px dashed rgba(255,255,255,0.2);">' +
+        '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px;">🔧 开发者模式 · 今日剩余 ' + remaining + ' 次</div>' +
+        '<input type="text" id="devCodeInput" placeholder="输入测试口令" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:#fff;margin-bottom:8px;box-sizing:border-box;">' +
+        '<button id="confirmDevBtn" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(100,100,100,0.5);color:#fff;cursor:pointer;font-size:12px;">兑换 (+' + DEV_REWARD_AMOUNT + '礼物)</button>' +
+        '</div>';
     }
     
-    receivePanel.innerHTML = `
-      <span class="gift-close" onclick="this.parentNode.parentNode.remove()">✕</span>
-      <h3>📬 收取礼物</h3>
-      <div class="gift-section">
-        <input type="text" id="receiveCodeInput" placeholder="粘贴礼物代码">
-        <button id="confirmReceiveBtn">确认收取</button>
-      </div>
-      <div id="receiveResult" class="gift-section" style="display:none;">
-        <h4>🎁 礼物预览</h4>
-        <div style="text-align:center;margin:20px 0;">
-          <div style="font-size:48px;margin-bottom:10px;">🎁</div>
-          <div style="font-size:14px;">礼物：预览</div>
-          <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福语</div>
-          <div style="font-size:11px;opacity:0.6;">送礼人</div>
-        </div>
-        <button id="addToTankBtn">放入鱼缸</button>
-      </div>
-      ${devSectionHTML}
-    `;
+    // 构建面板HTML
+    var panelHTML = '<span class="gift-close" onclick="this.parentNode.parentNode.remove()">✕</span>' +
+      '<h3>📬 收取礼物</h3>' +
+      '<div class="gift-section">' +
+      '<input type="text" id="receiveCodeInput" placeholder="粘贴礼物代码">' +
+      '<button id="confirmReceiveBtn">确认收取</button>' +
+      '</div>' +
+      '<div id="receiveResult" class="gift-section" style="display:none;">' +
+      '<h4>🎁 礼物预览</h4>' +
+      '<div style="text-align:center;margin:20px 0;">' +
+      '<div style="font-size:48px;margin-bottom:10px;">🎁</div>' +
+      '<div style="font-size:14px;">礼物：预览</div>' +
+      '<div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福语</div>' +
+      '<div style="font-size:11px;opacity:0.6;">送礼人</div>' +
+      '</div>' +
+      '<button id="addToTankBtn">放入鱼缸</button>' +
+      '</div>' +
+      devSectionHTML;
+    
+    overlay.innerHTML = '<div class="gift-panel" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:380px;max-width:90%;box-shadow:0 15px 50px rgba(0,0,0,0.5);">' + panelHTML + '</div>';
+    
+    document.body.appendChild(overlay);
     
     // 绑定按钮事件
-    receivePanel.querySelector('#confirmReceiveBtn').onclick = confirmReceive;
-    receivePanel.querySelector('#addToTankBtn').onclick = addReceivedFish;
-    
-    // 绑定开发者按钮事件
+    document.getElementById('confirmReceiveBtn').onclick = confirmReceive;
+    document.getElementById('addToTankBtn').onclick = addReceivedFish;
     if (devModeUnlocked) {
-      receivePanel.querySelector('#confirmDevBtn').onclick = confirmDevCode;
+      document.getElementById('confirmDevBtn').onclick = confirmDevCode;
     }
-    
-    overlay.appendChild(receivePanel);
-    document.body.appendChild(overlay);
   }
   
   // 确认收取礼物
