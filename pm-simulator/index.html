@@ -74,7 +74,7 @@
   <div class="wechat-nav" id="listNav"><span class="back hidden">‹</span><span class="title">微信</span><span class="actions">➕</span></div>
   <div id="conversation-list" class="scene"></div>
   <div id="chat-room" class="scene hidden">
-    <div class="chat-room-nav" id="chatNav">
+    <div class="chat-room-nav hidden" id="chatNav">
       <span class="back" id="chatBackBtn" onclick="backToList()">‹</span>
       <div class="avatar" id="chatAvatar">👤</div>
       <span class="name" id="chatName">联系人</span>
@@ -591,6 +591,6 @@ function hideFloatingHomeBtn(){
   document.getElementById('floatingToast').classList.add('hidden');
 }
 </script>
-<div class="floating-home-btn hidden" id="floatingHomeBtn" onclick="backToHome()">🏠</div><div class="floating-toast hidden" id="floatingToast">点击返回主页</div>
+<div class="floating-home-btn hidden" id="floatingHomeBtn" onclick="parent.backToHome()">🏠</div><div class="floating-toast hidden" id="floatingToast">点击返回主页</div>
 </body>
 </html>
