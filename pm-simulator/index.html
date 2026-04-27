@@ -70,7 +70,7 @@
   <div id="conversation-list" class="scene"></div>
   <div id="chat-room" class="scene hidden">
     <div class="chat-room-nav" id="chatNav">
-      <span class="back" id="chatBackBtn" onclick="backToList()">‹</span>
+      <span class="back" id="chatBackBtn" onclick="backToHome()">‹</span>
       <div class="avatar" id="chatAvatar">👤</div>
       <span class="name" id="chatName">联系人</span>
     </div>
@@ -334,6 +334,7 @@ function openChar(charKey) {
 }
 
 function backToList() {
+  parent.backToHome();
   document.getElementById('conversation-list').classList.remove('hidden');
   document.getElementById('chat-room').classList.add('hidden');
   document.getElementById('listNav').classList.remove('hidden');
