@@ -61,6 +61,10 @@
     0%, 100% { opacity: 0.3; transform: scale(0.8); }
     50% { opacity: 1; transform: scale(1.2); }
   }
+  @keyframes fadeInDown {
+    0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
   @keyframes confetti-fall {
     0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
     100% { transform: translateY(400px) rotate(720deg); opacity: 0; }
@@ -388,6 +392,12 @@
     const overlay = document.createElement('div');
     overlay.id = 'celebrationOverlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;';
+    
+    // 顶部文字
+    const topText = document.createElement('div');
+    topText.style.cssText = 'position:absolute;top:80px;left:50%;transform:translateX(-50%);color:#F7DC6F;font-size:18px;font-weight:bold;text-shadow:0 2px 10px rgba(0,0,0,0.5);white-space:nowrap;animation:fadeInDown 0.8s ease-out;';
+    topText.textContent = '✨ 你的祝福获得了海神的馈赠，快送去给朋友吧~ ✨';
+    overlay.appendChild(topText);
     
     // 创建粒子容器
     const particleContainer = document.createElement('div');
