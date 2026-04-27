@@ -682,15 +682,17 @@
     // 生成码的hash用于标识（需要先编码防止非Latin1字符）
     const codeHash = btoa(encodeURIComponent(code.trim()));
     
-    // 检查是否已使用过
-    if (usedCodes.includes(codeHash)) {
+    // 检查是否已使用过（开发者模式下跳过此检查）
+    if (usedCodes.includes(codeHash) && !devModeUnlocked) {
       alert('这个礼物已经被兑换过了~');
       return;
     }
     
-    // 标记为已使用
-    usedCodes.push(codeHash);
-    saveFishToStorage();
+    // 标记为已使用（开发者模式下跳过）
+    if (!devModeUnlocked) {
+      usedCodes.push(codeHash);
+      saveFishToStorage();
+    }
     
     // 显示礼物预览
     const resultDiv = document.getElementById('receiveResult');
