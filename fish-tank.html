@@ -379,18 +379,6 @@
     stats.giftsSent++;
     saveFishToStorage();
   }
-    
-    // 复制到剪贴板
-    navigator.clipboard.writeText(giftCode).then(() => {
-      console.log('礼物代码已复制到剪贴板：', giftCode);
-    }).catch(() => {
-      console.log('无法复制到剪贴板，请手动复制：', giftCode);
-    });
-    
-    // 更新统计
-    stats.giftsSent++;
-    saveFishToStorage();
-  }
   
   // 接收礼物
   function receiveGift() {
