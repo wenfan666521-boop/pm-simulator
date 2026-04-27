@@ -78,7 +78,7 @@
 <body>
 <div class="app-container">
   <div class="tank-header">
-    <h1 class="tank-title">🐠 我的鱼缸</h1>
+    <h1 class="tank-title" onclick="handleTitleClick()" id="tankTitle">🐠 我的鱼缸 <span id="devHint" style="font-size:12px;opacity:0;"></span></h1>
     <div style="display:flex;gap:10px;">
       <button class="tank-btn" onclick="toggleFullscreen()" id="toggleBtn" style="padding:8px 15px;font-size:12px;">🖥️ 全屏</button>
       <button class="tank-btn" onclick="showAchievements()" style="padding:8px 15px;font-size:12px;">🏆 成就</button>
@@ -136,6 +136,16 @@
   let usedCodes = []; // 已使用的礼物码列表
   let userId = ''; // 用户唯一ID（设备指纹）
   
+  // 开发者模式
+  const DEV_MODE_PASSWORD = 'fish666'; // 测试口令
+  const DEV_DAILY_LIMIT = 3; // 每日测试口令使用次数
+  const DEV_REWARD_AMOUNT = 3; // 每次奖励礼物数
+  let devModeUnlocked = false; // 开发者模式是否解锁
+  let devClickCount = 0; // 连续点击次数
+  let devLastClickTime = 0; // 上次点击时间
+  let devDailyUsage = 0; // 今日已使用次数
+  let devLastUsageDate = ''; // 上次使用日期
+  
   // 生成用户唯一ID
   function generateUserId() {
     const stored = localStorage.getItem('fishTankUserId');
@@ -145,6 +155,54 @@
     return newId;
   }
   userId = generateUserId();
+  
+  // 处理标题点击（开发者模式解锁）
+  function handleTitleClick() {
+    const now = Date.now();
+    const hint = document.getElementById('devHint');
+    
+    // 如果超过3秒不清零，重新计数
+    if (now - devLastClickTime > 3000) {
+      devClickCount = 0;
+    }
+    
+    devLastClickTime = now;
+    devClickCount++;
+    
+    if (devModeUnlocked) return; // 已经解锁
+    
+    if (devClickCount === 5) {
+      hint.textContent = '（还差2次...）';
+      hint.style.opacity = '0.6';
+    } else if (devClickCount === 6) {
+      hint.textContent = '（再1次！）';
+      hint.style.opacity = '0.8';
+    } else if (devClickCount >= 7) {
+      devModeUnlocked = true;
+      hint.textContent = '✨';
+      hint.style.opacity = '1';
+      showDevModeUnlockedToast();
+      saveFishToStorage();
+    }
+  }
+  
+  // 显示开发者模式解锁提示
+  function showDevModeUnlockedToast() {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;';
+    toast.innerHTML = '🔧 开发者模式已解锁！<br><span style="font-size:12px;opacity:0.7;">收礼面板中可输入测试口令</span>';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+  }
+  
+  // 检查并重置每日使用次数
+  function checkDevDailyReset() {
+    const today = new Date().toDateString();
+    if (devLastUsageDate !== today) {
+      devDailyUsage = 0;
+      devLastUsageDate = today;
+    }
+  }
   
   // 物品到emoji的本地映射（备用方案）
   const itemToEmojiMap = {
@@ -556,6 +614,21 @@
     
     const receivePanel = document.createElement('div');
     receivePanel.className = 'gift-panel';
+    
+    // 检查是否需要重置每日次数
+    checkDevDailyReset();
+    
+    let devSectionHTML = '';
+    if (devModeUnlocked) {
+      devSectionHTML = `
+        <div style="margin-top:15px;padding-top:15px;border-top:1px dashed rgba(255,255,255,0.2);">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px;">🔧 开发者模式 · 今日剩余 ${DEV_DAILY_LIMIT - devDailyUsage} 次</div>
+          <input type="text" id="devCodeInput" placeholder="输入测试口令" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:#fff;margin-bottom:8px;box-sizing:border-box;">
+          <button id="confirmDevBtn" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(100,100,100,0.5);color:#fff;cursor:pointer;font-size:12px;">兑换 (+${DEV_REWARD_AMOUNT}礼物)</button>
+        </div>
+      `;
+    }
+    
     receivePanel.innerHTML = `
       <span class="gift-close" onclick="this.parentNode.parentNode.remove()">✕</span>
       <h3>📬 收取礼物</h3>
@@ -573,11 +646,17 @@
         </div>
         <button id="addToTankBtn">放入鱼缸</button>
       </div>
+      ${devSectionHTML}
     `;
     
     // 绑定按钮事件
     receivePanel.querySelector('#confirmReceiveBtn').onclick = confirmReceive;
     receivePanel.querySelector('#addToTankBtn').onclick = addReceivedFish;
+    
+    // 绑定开发者按钮事件
+    if (devModeUnlocked) {
+      receivePanel.querySelector('#confirmDevBtn').onclick = confirmDevCode;
+    }
     
     overlay.appendChild(receivePanel);
     document.body.appendChild(overlay);
@@ -631,6 +710,38 @@
     
     // 保存当前礼物数据
     currentReceivedGift = giftData;
+  }
+  
+  // 确认测试口令
+  function confirmDevCode() {
+    const code = document.getElementById('devCodeInput').value;
+    
+    if (!code) {
+      alert('请输入测试口令');
+      return;
+    }
+    
+    // 检查每日次数
+    checkDevDailyReset();
+    if (devDailyUsage >= DEV_DAILY_LIMIT) {
+      alert('今日测试口令次数已用完，请明天再来！');
+      return;
+    }
+    
+    // 验证口令
+    if (code === DEV_MODE_PASSWORD) {
+      devDailyUsage++;
+      giftCount += DEV_REWARD_AMOUNT;
+      saveFishToStorage();
+      
+      alert(`🎁 测试口令兑换成功！获得 ${DEV_REWARD_AMOUNT} 个礼物！\n剩余礼物：${giftCount} 个`);
+      
+      // 关闭当前面板
+      const overlay = document.querySelector('.gift-panel').parentNode;
+      if (overlay) overlay.remove();
+    } else {
+      alert('无效的测试口令');
+    }
   }
   
   // 将收到的礼物鱼放入鱼缸
@@ -1361,7 +1472,10 @@
         giftCount: giftCount,
         totalGiftsSent: totalGiftsSent,
         usedCodes: usedCodes,
-        userId: userId
+        userId: userId,
+        devModeUnlocked: devModeUnlocked,
+        devDailyUsage: devDailyUsage,
+        devLastUsageDate: devLastUsageDate
       }
     };
     localStorage.setItem('fishTankData', JSON.stringify(data));
@@ -1384,6 +1498,9 @@
         giftCount = data.giftData.giftCount ?? INITIAL_GIFT_COUNT;
         totalGiftsSent = data.giftData.totalGiftsSent || 0;
         usedCodes = data.giftData.usedCodes || [];
+        devModeUnlocked = data.giftData.devModeUnlocked || false;
+        devDailyUsage = data.giftData.devDailyUsage || 0;
+        devLastUsageDate = data.giftData.devLastUsageDate || '';
       }
       
       // 加载水草
