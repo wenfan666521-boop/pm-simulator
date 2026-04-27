@@ -255,6 +255,9 @@
     }
   }
   
+  // 全局变量保存当前送礼面板
+  let currentGiftPanel = null;
+  
   // 显示送礼面板
   function showGiftPanel() {
     const overlay = document.createElement('div');
@@ -264,23 +267,37 @@
     const giftPanel = document.createElement('div');
     giftPanel.className = 'gift-panel';
     giftPanel.innerHTML = `
-      <span class="gift-close" onclick="this.parentNode.parentNode.remove()">✕</span>
+      <span class="gift-close" onclick="closeGiftPanel()">✕</span>
       <h3>🎁 送给好友</h3>
       <div class="gift-section">
         <input type="text" id="giftItemName" placeholder="输入礼物名称">
         <input type="text" id="giftSenderName" placeholder="你的名字">
         <textarea id="giftBlessing" placeholder="祝福语"></textarea>
-        <button onclick="sendGift()">生成礼物代码</button>
+        <button id="sendGiftBtn">生成礼物代码</button>
       </div>
       <div class="gift-section">
         <h4>📬 领取礼物</h4>
         <input type="text" id="giftCodeInput" placeholder="粘贴礼物代码">
-        <button onclick="receiveGift()">领取礼物</button>
+        <button id="receiveGiftBtn">领取礼物</button>
       </div>
     `;
     
+    // 保存当前面板引用
+    currentGiftPanel = giftPanel;
+    
+    // 绑定按钮事件
+    giftPanel.querySelector('#sendGiftBtn').onclick = sendGift;
+    giftPanel.querySelector('#receiveGiftBtn').onclick = receiveGift;
+    
     overlay.appendChild(giftPanel);
     document.body.appendChild(overlay);
+  }
+  
+  function closeGiftPanel() {
+    if (currentGiftPanel && currentGiftPanel.parentNode) {
+      currentGiftPanel.parentNode.remove();
+    }
+    currentGiftPanel = null;
   }
   
   // 发送礼物
@@ -302,7 +319,8 @@
     codeDisplay.innerHTML = `<code>${giftCode}</code>`;
     
     // 替换原有的代码显示区域
-    const panel = document.querySelector('.gift-panel');
+    const panel = currentGiftPanel;
+    if (!panel) return;
     const existingDisplay = panel.querySelector('.gift-code-display');
     if (existingDisplay) {
       existingDisplay.remove();
