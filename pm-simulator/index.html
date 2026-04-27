@@ -318,6 +318,14 @@ function renderConversations() {
   });
 }
 
+function backToList() {
+  document.getElementById('conversation-list').classList.remove('hidden');
+  document.getElementById('chat-room').classList.add('hidden');
+  document.getElementById('listNav').classList.remove('hidden');
+  state.currentChar = null;
+  state.choiceLock = false;
+  renderConversations();
+}
 function openChar(charKey) {
   state.currentChar = charKey;
   const c = CHARACTERS[charKey];
@@ -531,7 +539,7 @@ function showEnding() {
 
 function resetGame() {
   initState();
-  parent.backToHome();
+  backToList();
 }
 
 function scrollBottom(el) {
