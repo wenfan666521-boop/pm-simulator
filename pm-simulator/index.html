@@ -59,7 +59,12 @@
     .typing-dot{width:7px;height:7px;border-radius:50%;background:#8e8e93;animation:typingBounce 1.2s infinite ease-in-out}
     .typing-dot:nth-child(2){animation-delay:.2s}
     .typing-dot:nth-child(3){animation-delay:.4s}
-    @keyframes typingBounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+    
+.floating-home-btn{position:fixed;bottom:120px;right:20px;width:44px;height:44px;background:rgba(0,0,0,.6);backdrop-filter:blur(20px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;cursor:pointer;z-index:999;box-shadow:0 2px 12px rgba(0,0,0,.3);transition:transform .15s}
+.floating-home-btn:active{transform:scale(.95)}
+.floating-home-btn.hidden{display:none}
+.floating-toast{position:fixed;bottom:175px;right:20px;background:rgba(0,0,0,.75);color:#fff;font-size:12px;padding:6px 12px;border-radius:8px;z-index:999;pointer-events:none;white-space:nowrap}
+@keyframes typingBounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
 
   </style>
 </head>
@@ -70,7 +75,7 @@
   <div id="conversation-list" class="scene"></div>
   <div id="chat-room" class="scene hidden">
     <div class="chat-room-nav" id="chatNav">
-      <span class="back" id="chatBackBtn" onclick="backToHome()">‹</span>
+      <span class="back" id="chatBackBtn" onclick="backToList()">‹</span>
       <div class="avatar" id="chatAvatar">👤</div>
       <span class="name" id="chatName">联系人</span>
     </div>
@@ -331,10 +336,11 @@ function openChar(charKey) {
   document.getElementById('chatName').textContent = c.name;
 
   renderMessages();
+  showFloatingHomeBtn();
 }
 
 function backToList() {
-  parent.backToHome();
+  
   document.getElementById('conversation-list').classList.remove('hidden');
   document.getElementById('chat-room').classList.add('hidden');
   document.getElementById('listNav').classList.remove('hidden');
@@ -342,6 +348,7 @@ function backToList() {
   state.currentChar = null;
   state.choiceLock = false;
   renderConversations();
+  hideFloatingHomeBtn();
 }
 
 function enableBackBtn(ok) {
@@ -571,6 +578,19 @@ function getTimeStr() {
 }
 
 renderConversations();
+
+function showFloatingHomeBtn(){
+  const btn = document.getElementById('floatingHomeBtn');
+  const toast = document.getElementById('floatingToast');
+  btn.classList.remove('hidden');
+  btn.onmouseenter = function(){toast.classList.remove('hidden')};
+  btn.onmouseleave = function(){toast.classList.add('hidden')};
+}
+function hideFloatingHomeBtn(){
+  document.getElementById('floatingHomeBtn').classList.add('hidden');
+  document.getElementById('floatingToast').classList.add('hidden');
+}
 </script>
+<div class="floating-home-btn hidden" id="floatingHomeBtn" onclick="backToHome()">🏠</div><div class="floating-toast hidden" id="floatingToast">点击返回主页</div>
 </body>
 </html>
