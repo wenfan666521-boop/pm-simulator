@@ -369,7 +369,6 @@ function renderMessages() {
   }
 
   // 进入对话后锁定返回按钮（直到选项出现）
-  enableBackBtn(false);
 
   // 3. 从 dlgProgress 恢复播放进度
   if (!state.dlgProgress[nextDlg.id]) state.dlgProgress[nextDlg.id] = 0;
@@ -387,7 +386,6 @@ function renderMessages() {
     if (msgIdx >= nextDlg.msgs.length) {
       choiceArea.innerHTML = '';
       state.choiceLock = true;
-      enableBackBtn(true); // 选项出现，解锁返回
       nextDlg.choices.forEach(ch => {
         const btn = document.createElement('button');
         btn.className = 'choice-btn';
