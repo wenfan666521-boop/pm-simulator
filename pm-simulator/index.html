@@ -363,7 +363,7 @@ function renderMessages() {
 
   // 2. 找下一个未完成的对话轮次
   const nextDlg = findNextDialogue(charKey);
-  if (!nextDlg || state.done['final']) {
+  if (!nextDlg) {
     choiceArea.innerHTML = '<div style="text-align:center;color:#8e8e93;font-size:13px;padding:8px;">— 暂无新消息 —</div>';
     scrollBottom(list);
     return;
@@ -376,7 +376,10 @@ function renderMessages() {
       scrollBottom(list);
       return;
     }
-  }
+  } else if (!nextDlg) {
+    choiceArea.innerHTML = '<div style="text-align:center;color:#8e8e93;font-size:13px;padding:8px;">— 暂无新消息 —</div>';
+    scrollBottom(list);
+    return;
 
   enableBackBtn(false); // 进入对话后锁定返回按钮（直到选项出现）
 
