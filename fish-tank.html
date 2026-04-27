@@ -51,7 +51,6 @@
     <h1 class="tank-title">🐠 我的鱼缸</h1>
     <div style="display:flex;gap:10px;">
       <button class="tank-btn" onclick="toggleFullscreen()" id="toggleBtn" style="padding:8px 15px;font-size:12px;">🖥️ 全屏</button>
-      <button class="tank-btn" onclick="showGiftPanel()" style="padding:8px 15px;font-size:12px;">🎁 送礼</button>
       <button class="tank-btn" onclick="showAchievements()" style="padding:8px 15px;font-size:12px;">🏆 成就</button>
     </div>
   </div>
@@ -66,6 +65,11 @@
     <button class="tank-btn" id="addFishBtn" onclick="addRandomFish()">➕ 添加鱼</button>
     <button class="tank-btn" id="feedFishBtn" onclick="feedFish()">🍽️ 喂鱼</button>
     <button class="tank-btn" onclick="cleanTank()">🧹 清理</button>
+  </div>
+  
+  <div class="tank-controls" style="background:rgba(0,0,0,0.4);">
+    <button class="tank-btn" onclick="showGiftPanel()">🎁 送礼</button>
+    <button class="tank-btn" onclick="showReceivePanel()">📬 收礼</button>
   </div>
 </div>
 
@@ -302,6 +306,102 @@
       currentGiftPanel.parentNode.remove();
     }
     currentGiftPanel = null;
+  }
+  
+  let currentReceivedGift = null; // 当前收到的礼物数据
+  
+  // 显示收礼面板
+  function showReceivePanel() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    
+    const receivePanel = document.createElement('div');
+    receivePanel.className = 'gift-panel';
+    receivePanel.innerHTML = `
+      <span class="gift-close" onclick="this.parentNode.parentNode.remove()">✕</span>
+      <h3>📬 收取礼物</h3>
+      <div class="gift-section">
+        <input type="text" id="receiveCodeInput" placeholder="粘贴礼物代码">
+        <button id="confirmReceiveBtn">确认收取</button>
+      </div>
+      <div id="receiveResult" class="gift-section" style="display:none;">
+        <h4>🎁 礼物预览</h4>
+        <div style="text-align:center;margin:20px 0;">
+          <div style="font-size:48px;margin-bottom:10px;">🎁</div>
+          <div style="font-size:14px;">礼物：预览</div>
+          <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福语</div>
+          <div style="font-size:11px;opacity:0.6;">送礼人</div>
+        </div>
+        <button id="addToTankBtn">放入鱼缸</button>
+      </div>
+    `;
+    
+    // 绑定按钮事件
+    receivePanel.querySelector('#confirmReceiveBtn').onclick = confirmReceive;
+    receivePanel.querySelector('#addToTankBtn').onclick = addReceivedFish;
+    
+    overlay.appendChild(receivePanel);
+    document.body.appendChild(overlay);
+  }
+  
+  // 确认收取礼物
+  function confirmReceive() {
+    const code = document.getElementById('receiveCodeInput').value;
+    
+    if (!code) {
+      alert('请输入礼物代码');
+      return;
+    }
+    
+    const giftData = parseGiftCode(code);
+    
+    if (!giftData) {
+      alert('无效的礼物代码');
+      return;
+    }
+    
+    // 显示礼物预览
+    const resultDiv = document.getElementById('receiveResult');
+    resultDiv.style.display = 'block';
+    
+    resultDiv.querySelector('div').innerHTML = `
+      <div style="font-size:48px;margin-bottom:10px;">${giftData.emoji}</div>
+      <div style="font-size:14px;">礼物：${giftData.emoji}</div>
+      <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${giftData.blessing}</div>
+      <div style="font-size:11px;opacity:0.6;">—— ${giftData.sender}</div>
+    `;
+    
+    // 保存当前礼物数据
+    currentReceivedGift = giftData;
+  }
+  
+  // 将收到的礼物鱼放入鱼缸
+  function addReceivedFish() {
+    if (!currentReceivedGift) return;
+    
+    const tank = document.getElementById('tankWater');
+    const fish = document.createElement('div');
+    fish.className = 'fish';
+    fish.textContent = currentReceivedGift.emoji;
+    fish.style.left = Math.random() * (tank.offsetWidth - 40) + 'px';
+    fish.style.top = Math.random() * (tank.offsetHeight - 40) + 'px';
+    fish.id = 'fish-' + fishIdCounter++;
+    fish.onclick = () => petFish(fish.id);
+    tank.appendChild(fish);
+    
+    // 更新统计
+    stats.giftsReceived++;
+    saveFishToStorage();
+    
+    // 关闭弹窗
+    const overlay = document.querySelector('.gift-panel').parentNode;
+    if (overlay) overlay.remove();
+    
+    // 显示祝福弹窗
+    showBlessingPopup(currentReceivedGift.sender, currentReceivedGift.blessing);
+    
+    currentReceivedGift = null;
   }
   
   // 确认礼物
