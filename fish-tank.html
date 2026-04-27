@@ -426,6 +426,7 @@
   }
   
   // 确认礼物
+  // 确认礼物（新的AI优先流程）
   function confirmGift() {
     const senderName = document.getElementById('giftSenderName').value;
     const blessing = document.getElementById('giftBlessing').value;
@@ -435,23 +436,115 @@
       return;
     }
     
-    // 随机选择一个emoji
-    const randomEmoji = fishTypes[Math.floor(Math.random() * fishTypes.length)];
-    currentGiftEmoji = randomEmoji;
-    
-    // 显示确认界面
+    // 显示加载状态
     const resultDiv = document.getElementById('giftResult');
-    resultDiv.style.display = 'block';
+    const loadingDiv = document.getElementById('giftLoading');
+    const celebrationDiv = document.getElementById('giftCelebration');
     
-    // 更新显示内容
-    resultDiv.querySelector('div').innerHTML = `
-      <div style="font-size:48px;margin-bottom:10px;">${randomEmoji}</div>
-      <div style="font-size:14px;">礼物：${randomEmoji}</div>
-      <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${blessing}</div>
-    `;
+    resultDiv.style.display = 'none';
+    loadingDiv.style.display = 'block';
+    celebrationDiv.style.display = 'none';
     
-    // 显示生成代码按钮
-    document.getElementById('generateCodeBtn').style.display = 'block';
+    // 更新加载进度
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += 10;
+      document.getElementById('loadingProgress').style.width = `${progress}%`;
+      if (progress >= 100) clearInterval(progressInterval);
+    }, 80);
+    
+    // AI优先：先调用AI语义理解
+    getAIEmoji(blessing).then(aiEmoji => {
+      clearInterval(progressInterval);
+      
+      if (aiEmoji) {
+        // AI成功：显示庆祝动画
+        currentGiftEmoji = aiEmoji;
+        showCelebrationAnimation(aiEmoji);
+        
+        // 3秒后显示结果
+        setTimeout(() => {
+          loadingDiv.style.display = 'none';
+          celebrationDiv.style.display = 'none';
+          resultDiv.style.display = 'block';
+          
+          resultDiv.querySelector('div').innerHTML = `
+            <div style="font-size:48px;margin-bottom:10px;">${aiEmoji}</div>
+            <div style="font-size:14px;">礼物：${aiEmoji}</div>
+            <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${blessing}</div>
+          `;
+          
+          // 显示生成代码按钮
+          document.getElementById('generateCodeBtn').style.display = 'block';
+        }, 3000);
+      } else {
+        // AI失败：尝试本地关键词匹配
+        const localEmoji = getEmojiByBlessing(blessing);
+        
+        if (localEmoji) {
+          // 本地匹配成功：普通预览
+          currentGiftEmoji = localEmoji;
+          loadingDiv.style.display = 'none';
+          resultDiv.style.display = 'block';
+          
+          resultDiv.querySelector('div').innerHTML = `
+            <div style="font-size:48px;margin-bottom:10px;">${localEmoji}</div>
+            <div style="font-size:14px;">礼物：${localEmoji}</div>
+            <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${blessing}</div>
+          `;
+          
+          // 显示生成代码按钮
+          document.getElementById('generateCodeBtn').style.display = 'block';
+        } else {
+          // 本地匹配也失败：随机选择
+          const randomEmoji = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+          currentGiftEmoji = randomEmoji;
+          loadingDiv.style.display = 'none';
+          resultDiv.style.display = 'block';
+          
+          resultDiv.querySelector('div').innerHTML = `
+            <div style="font-size:48px;margin-bottom:10px;">${randomEmoji}</div>
+            <div style="font-size:14px;">礼物：${randomEmoji}</div>
+            <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${blessing}</div>
+          `;
+          
+          // 显示生成代码按钮
+          document.getElementById('generateCodeBtn').style.display = 'block';
+        }
+      }
+    }).catch(error => {
+      // AI调用错误：静默降级到本地匹配
+      clearInterval(progressInterval);
+      
+      const localEmoji = getEmojiByBlessing(blessing);
+      
+      if (localEmoji) {
+        currentGiftEmoji = localEmoji;
+        loadingDiv.style.display = 'none';
+        resultDiv.style.display = 'block';
+        
+        resultDiv.querySelector('div').innerHTML = `
+          <div style="font-size:48px;margin-bottom:10px;">${localEmoji}</div>
+          <div style="font-size:14px;">礼物：${localEmoji}</div>
+          <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${blessing}</div>
+        `;
+        
+        document.getElementById('generateCodeBtn').style.display = 'block';
+      } else {
+        const randomEmoji = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+        currentGiftEmoji = randomEmoji;
+        loadingDiv.style.display = 'none';
+        resultDiv.style.display = 'block';
+        
+        resultDiv.querySelector('div').innerHTML = `
+          <div style="font-size:48px;margin-bottom:10px;">${randomEmoji}</div>
+          <div style="font-size:14px;">礼物：${randomEmoji}</div>
+          <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${blessing}</div>
+        `;
+        
+        document.getElementById('generateCodeBtn').style.display = 'block';
+      }
+    });
   }
   
   // 生成礼物代码
