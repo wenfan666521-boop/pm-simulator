@@ -31,6 +31,18 @@
     .tank-btn:hover { background: rgba(255,255,255,.3); transform: scale(1.05); }
     
     .fish-counter { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.5); padding: 5px 10px; border-radius: 15px; color: #fff; font-size: 12px; }
+
+  /* 送礼系统样式 */
+  .gift-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; border-radius: 20px; color: #fff; width: 400px; z-index: 1001; box-shadow: 0 15px 50px rgba(0,0,0,0.5); }
+  .gift-panel h3 { text-align: center; margin-bottom: 20px; font-size: 20px; }
+  .gift-section { margin-bottom: 20px; }
+  .gift-section input, .gift-section textarea { width: 100%; padding: 10px; border: none; border-radius: 10px; background: rgba(255,255,255,0.1); color: #fff; margin-bottom: 10px; }
+  .gift-section textarea { height: 80px; resize: none; }
+  .gift-section button { width: 100%; padding: 12px; border: none; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; cursor: pointer; font-size: 14px; }
+  .gift-section button:hover { transform: scale(1.02); }
+  .gift-code-display { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-top: 15px; word-break: break-all; text-align: center; font-family: monospace; }
+  .gift-code-display code { color: #4ade80; }
+  .gift-close { position: absolute; top: 10px; right: 10px; cursor: pointer; font-size: 20px; }
   </style>
 </head>
 <body>
@@ -39,6 +51,7 @@
     <h1 class="tank-title">🐠 我的鱼缸</h1>
     <div style="display:flex;gap:10px;">
       <button class="tank-btn" onclick="toggleFullscreen()" id="toggleBtn" style="padding:8px 15px;font-size:12px;">🖥️ 全屏</button>
+      <button class="tank-btn" onclick="showGiftPanel()" style="padding:8px 15px;font-size:12px;">🎁 送礼</button>
       <button class="tank-btn" onclick="showAchievements()" style="padding:8px 15px;font-size:12px;">🏆 成就</button>
     </div>
   </div>
@@ -77,7 +90,27 @@
     successfulFeeds: 0,     // 成功喂鱼次数（鱼实际变大）
     plantsCollected: 0,     // 收集水草次数
     cleanCount: 0,          // 清理次数
-    petFishClicks: 0        // 点击鱼的次数（摸鱼）
+    petFishClicks: 0,      // 点击鱼的次数（摸鱼）
+    giftsSent: 0,           // 送礼次数
+    giftsReceived: 0       // 收礼次数
+  };
+  
+  // 物品到emoji的本地映射（备用方案）
+  const itemToEmojiMap = {
+    '金鱼': '🐠', '小鱼': '🐟', '鲨鱼': '🦈', '章鱼': '🐙', '乌贼': '🦑',
+    '螃蟹': '🦀', '虾': '🦐', '贝壳': '🐚', '海马': '🐴', '海豚': '🐬',
+    '鲸鱼': '🐳', '水母': '🪼', '乌龟': '🐢', '珊瑚': '🪸', '海星': '⭐',
+    '海胆': '🦔', '龙虾': '🦞', '河豚': '🐡', '飞鱼': '🐠', '热带鱼': '🐠',
+    '神仙鱼': '🐠', '斗鱼': '🐟', '锦鲤': '🐟', '魟鱼': '🦈', '鲨鱼': '🦈',
+    '青蛙': '🐸', '鸭子': '🦆', '天鹅': '🦢', '鲸鲨': '🦈', '海豹': '🦭',
+    '海狮': '🦭', '海象': '🦣', '三文鱼': '🐟', '金枪鱼': '🐟', '鳗鱼': '🐟',
+    '海龟': '🐢', '蜥蜴': '🦎', '蛇': '🐍', '恐龙': '🦕', '龙': '🐉',
+    '独角兽': '🦄', '凤凰': '🦅', '鹰': '🦅', '鹦鹉': '🦜', '猫': '🐱',
+    '狗': '🐶', '兔子': '🐰', '熊猫': '🐼', '狐狸': '🦊', '熊': '🐻',
+    '老虎': '🐯', '狮子': '🦁', '豹': '🐆', '马': '🐴', '鹿': '🦌',
+    '牛': '🐮', '猪': '🐷', '羊': '🐑', '鸡': '🐔', '鹰': '🦅',
+    '孔雀': '🦚', '火烈鸟': '🦩', '鸽子': '🐦', '猫头鹰': '🦉', '蝴蝶': '🦋',
+    '蜜蜂': '🐝', '瓢虫': '🐞', '蚂蚁': '🐜', '蜗牛': '🐌', '毛毛虫': '🐛'
   };
   
   // 检测是否在iframe中
@@ -178,6 +211,187 @@
     
     plants = plants.filter(p => p.id !== plantId);
     saveFishToStorage();
+  }
+  
+  // ========== 送礼系统 ==========
+  
+  // 生成礼物代码
+  function generateGiftCode(itemName, senderName, blessing) {
+    // 语义识别 - 尝试多种匹配方式
+    const emoji = recognizeItem(itemName);
+    
+    // 构建礼物数据
+    const giftData = {
+      emoji: emoji,
+      sender: senderName || '神秘好友',
+      blessing: blessing || '祝你养鱼开心！',
+      timestamp: Date.now()
+    };
+    
+    // 编码为 base64
+    return btoa(JSON.stringify(giftData));
+  }
+  
+  // 语义识别物品
+  function recognizeItem(itemName) {
+    // 本地映射表优先匹配
+    for (const [key, emoji] of Object.entries(itemToEmojiMap)) {
+      if (itemName.includes(key) || key.includes(itemName)) {
+        return emoji;
+      }
+    }
+    
+    // 没有匹配到则返回默认礼物
+    return '🎁';
+  }
+  
+  // 解析礼物代码
+  function parseGiftCode(code) {
+    try {
+      const decoded = atob(code);
+      return JSON.parse(decoded);
+    } catch {
+      return null;
+    }
+  }
+  
+  // 显示送礼面板
+  function showGiftPanel() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    
+    const giftPanel = document.createElement('div');
+    giftPanel.className = 'gift-panel';
+    giftPanel.innerHTML = `
+      <span class="gift-close" onclick="this.parentNode.parentNode.remove()">✕</span>
+      <h3>🎁 送给好友</h3>
+      <div class="gift-section">
+        <input type="text" id="giftItemName" placeholder="输入礼物名称">
+        <input type="text" id="giftSenderName" placeholder="你的名字">
+        <textarea id="giftBlessing" placeholder="祝福语"></textarea>
+        <button onclick="sendGift()">生成礼物代码</button>
+      </div>
+      <div class="gift-section">
+        <h4>📬 领取礼物</h4>
+        <input type="text" id="giftCodeInput" placeholder="粘贴礼物代码">
+        <button onclick="receiveGift()">领取礼物</button>
+      </div>
+    `;
+    
+    overlay.appendChild(giftPanel);
+    document.body.appendChild(overlay);
+  }
+  
+  // 发送礼物
+  function sendGift() {
+    const itemName = document.getElementById('giftItemName').value;
+    const senderName = document.getElementById('giftSenderName').value;
+    const blessing = document.getElementById('giftBlessing').value;
+    
+    if (!itemName) {
+      alert('请输入礼物名称');
+      return;
+    }
+    
+    const giftCode = generateGiftCode(itemName, senderName, blessing);
+    
+    // 显示生成的代码
+    const codeDisplay = document.createElement('div');
+    codeDisplay.className = 'gift-code-display';
+    codeDisplay.innerHTML = `<code>${giftCode}</code>`;
+    
+    // 替换原有的代码显示区域
+    const existingDisplay = giftPanel.querySelector('.gift-code-display');
+    if (existingDisplay) {
+      existingDisplay.remove();
+    }
+    giftPanel.querySelector('.gift-section').appendChild(codeDisplay);
+    
+    // 复制到剪贴板
+    navigator.clipboard.writeText(giftCode).then(() => {
+      console.log('礼物代码已复制到剪贴板：', giftCode);
+    }).catch(() => {
+      console.log('无法复制到剪贴板，请手动复制：', giftCode);
+    });
+    
+    // 更新统计
+    stats.giftsSent++;
+    saveFishToStorage();
+  }
+  
+  // 接收礼物
+  function receiveGift() {
+    const code = document.getElementById('giftCodeInput').value;
+    
+    if (!code) {
+      alert('请输入礼物代码');
+      return;
+    }
+    
+    const giftData = parseGiftCode(code);
+    
+    if (giftData) {
+      // 显示礼物确认弹窗
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+      overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+      
+      const popup = document.createElement('div');
+      popup.style.cssText = 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:20px;color:#fff;width:340px;text-align:center;';
+      popup.innerHTML = `
+        <div style="font-size:48px;margin-bottom:15px;">🎁</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:10px;">收到礼物！</div>
+        <div style="font-size:14px;margin-bottom:15px;">${giftData.sender} 送你 ${giftData.emoji}</div>
+        <div style="font-size:12px;opacity:0.9;line-height:1.5;margin-bottom:20px;">祝福：${giftData.blessing}</div>
+        <button onclick="this.parentNode.parentNode.remove();addGiftFish('${giftData.emoji}', '${giftData.sender}', '${giftData.blessing}')" style="padding:12px 30px;border:none;border-radius:25px;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-size:14px;">放入鱼缸</button>
+      `;
+      
+      overlay.appendChild(popup);
+      document.body.appendChild(overlay);
+    } else {
+      alert('无效的礼物代码');
+    }
+  }
+  
+  // 添加礼物鱼到鱼缸
+  function addGiftFish(emoji, sender, blessing) {
+    const tank = document.getElementById('tankWater');
+    const fish = document.createElement('div');
+    fish.className = 'fish';
+    fish.textContent = emoji;
+    fish.style.left = Math.random() * (tank.offsetWidth - 40) + 'px';
+    fish.style.top = Math.random() * (tank.offsetHeight - 40) + 'px';
+    fish.id = 'fish-' + fishIdCounter++;
+    fish.onclick = () => petFish(fish.id);
+    tank.appendChild(fish);
+    
+    // 更新统计
+    stats.giftsReceived++;
+    saveFishToStorage();
+    
+    // 显示祝福弹窗
+    showBlessingPopup(sender, blessing);
+  }
+  
+  // 显示祝福弹窗
+  function showBlessingPopup(sender, blessing) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    
+    const popup = document.createElement('div');
+    popup.style.cssText = 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:20px;color:#fff;width:340px;text-align:center;';
+    popup.innerHTML = `
+      <div style="font-size:48px;margin-bottom:15px;">🎉</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:10px;">收到祝福！</div>
+      <div style="font-size:14px;margin-bottom:15px;">${sender} 的祝福</div>
+      <div style="font-size:12px;opacity:0.9;line-height:1.5;margin-bottom:20px;">${blessing}</div>
+      <button onclick="this.parentNode.parentNode.remove()" style="padding:12px 30px;border:none;border-radius:25px;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-size:14px;">谢谢</button>
+    `;
+    
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
   }
   
   // 显示成就列表弹窗
