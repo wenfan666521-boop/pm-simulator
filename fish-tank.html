@@ -140,11 +140,11 @@
   const DEV_MODE_PASSWORD = 'fish666'; // 测试口令
   const DEV_DAILY_LIMIT = 3; // 每日测试口令使用次数
   const DEV_REWARD_AMOUNT = 3; // 每次奖励礼物数
-  let devModeUnlocked = false; // 开发者模式是否解锁
   let devClickCount = 0; // 连续点击次数
   let devLastClickTime = 0; // 上次点击时间
   let devDailyUsage = 0; // 今日已使用次数
   let devLastUsageDate = ''; // 上次使用日期
+  let devModeUnlocked = false; // 开发者模式是否解锁（刷新重置）
   
   // 生成用户唯一ID
   function generateUserId() {
@@ -1473,7 +1473,6 @@
         totalGiftsSent: totalGiftsSent,
         usedCodes: usedCodes,
         userId: userId,
-        devModeUnlocked: devModeUnlocked,
         devDailyUsage: devDailyUsage,
         devLastUsageDate: devLastUsageDate
       }
@@ -1498,7 +1497,6 @@
         giftCount = data.giftData.giftCount ?? INITIAL_GIFT_COUNT;
         totalGiftsSent = data.giftData.totalGiftsSent || 0;
         usedCodes = data.giftData.usedCodes || [];
-        devModeUnlocked = data.giftData.devModeUnlocked || false;
         devDailyUsage = data.giftData.devDailyUsage || 0;
         devLastUsageDate = data.giftData.devLastUsageDate || '';
       }
