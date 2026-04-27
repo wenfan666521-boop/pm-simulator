@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>养鱼小部件</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f0f0f0; }
+    
+    .phone { width: 390px; height: 844px; background: #000; border-radius: 44px; box-shadow: 0 0 60px rgba(255,255,255,.08), 0 0 0 8px #2c2c2e; overflow: hidden; position: relative; }
+    .status-bar { height: 48px; background: transparent; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 12px; font-weight: 600; color: #fff; flex-shrink: 0; position: relative; z-index: 10; }
+    .status-bar .time { font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+    
+    .tank-container { padding: 20px; height: calc(100% - 48px); display: flex; flex-direction: column; }
+    .tank-header { text-align: center; margin-bottom: 15px; }
+    .tank-title { font-size: 24px; font-weight: 700; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.5); }
+    
+    .fish-tank { flex: 1; background: linear-gradient(180deg, #001f3f 0%, #003366 50%, #002244 100%); border-radius: 20px; position: relative; overflow: hidden; box-shadow: inset 0 0 30px rgba(0,0,0,.5); }
+    
+    .tank-water { position: relative; width: 100%; height: 100%; }
+    
+    .fish { position: absolute; font-size: 24px; z-index: 10; }
+    .fish.bubble { font-size: 16px; color: rgba(255,255,255,.7); animation: float-up 3s ease-in-out infinite; }
+    
+    @keyframes swim {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(20px, -10px) rotate(5deg); }
+      50% { transform: translate(-15px, 5px) rotate(-3deg); }
+      75% { transform: translate(10px, -5px) rotate(2deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+    
+    @keyframes float-up {
+      0% { transform: translateY(0) translateX(0); opacity: 0.7; }
+      50% { transform: translateY(-30px) translateX(10px); opacity: 0.9; }
+      100% { transform: translateY(-60px) translateX(-5px); opacity: 0; }
+    }
+    
+    .tank-controls { display: flex; justify-content: center; gap: 15px; padding: 15px 0; }
+    .tank-btn { padding: 10px 20px; background: rgba(255,255,255,.2); border: none; border-radius: 25px; color: #fff; font-size: 14px; cursor: pointer; backdrop-filter: blur(10px); transition: all 0.3s; }
+    .tank-btn:hover { background: rgba(255,255,255,.3); transform: scale(1.05); }
+    
+    .fish-counter { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.5); padding: 5px 10px; border-radius: 15px; color: #fff; font-size: 12px; }
+  </style>
+</head>
+<body>
+<div class="phone">
+  <div class="status-bar">
+    <span class="time" id="statusTime">09:00</span>
+    <span>🔋 100% &nbsp;📶</span>
+  </div>
+  
+  <div class="tank-container">
+    <div class="tank-header">
+      <h1 class="tank-title">🐠 我的鱼缸</h1>
+    </div>
+    
+    <div class="fish-tank" id="fishTank">
+      <div class="tank-water" id="tankWater">
+        <div class="fish-counter">鱼的数量: <span id="fishCount">0</span></div>
+      </div>
+    </div>
+    
+    <div class="tank-controls">
+      <button class="tank-btn" onclick="addRandomFish()">➕ 添加鱼</button>
+      <button class="tank-btn" onclick="feedFish()">🍽️ 喂鱼</button>
+      <button class="tank-btn" onclick="cleanTank()">🧹 清理</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const fishTypes = ['🐠', '🐟', '🦈', '🐙', '🦑', '🦀', '🦐', '🐚'];
+  let fishes = [];
+  let bubbles = [];
+  let fishIdCounter = 0;
+  
+  // 初始化
+  function init() {
+    loadFishFromStorage();
+    setInterval(generateBubble, 2000);
+    setInterval(updateFishPositions, 100); // 每100ms更新，让游动更流畅
+  }
+  
+  // 添加随机鱼
+  function addRandomFish() {
+    const tank = document.getElementById('tankWater');
+    const fish = document.createElement('div');
+    const fishType = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+    const x = Math.random() * (tank.offsetWidth - 40);
+    const y = Math.random() * (tank.offsetHeight - 40);
+    
+    fish.className = 'fish';
+    fish.textContent = fishType;
+    fish.style.left = x + 'px';
+    fish.style.top = y + 'px';
+    fish.style.animation = 'swim 3s ease-in-out infinite';
+    fish.id = 'fish-' + fishIdCounter++;
+    
+    tank.appendChild(fish);
+    fishes.push({ id: fish.id, type: fishType, x, y, dx: (Math.random() - 0.5) * 8, dy: (Math.random() - 0.5) * 8 });
+    
+    updateFishCount();
+    saveFishToStorage();
+  }
+  
+  // 生成水泡
+  function generateBubble() {
+    const tank = document.getElementById('tankWater');
+    const bubble = document.createElement('div');
+    const x = Math.random() * (tank.offsetWidth - 20);
+    
+    bubble.className = 'fish bubble';
+    bubble.textContent = '●';
+    bubble.style.left = x + 'px';
+    bubble.style.bottom = '0px';
+    
+    tank.appendChild(bubble);
+    bubbles.push(bubble);
+    
+    // 3秒后移除水泡
+    setTimeout(() => {
+      if (bubble.parentNode) {
+        bubble.parentNode.removeChild(bubble);
+        bubbles = bubbles.filter(b => b !== bubble);
+      }
+    }, 3000);
+  }
+  
+  // 更新鱼的位置 - 更加自由随意的游动
+  function updateFishPositions() {
+    const tank = document.getElementById('tankWater');
+    const tankWidth = tank.offsetWidth;
+    const tankHeight = tank.offsetHeight;
+    
+    fishes.forEach(fish => {
+      const fishEl = document.getElementById(fish.id);
+      if (!fishEl) return;
+      
+      // 每100ms随机改变方向和速度，让游动更自然
+      if (Math.random() < 0.2) {
+        fish.dx += (Math.random() - 0.5) * 3; // 随机加速度
+        fish.dy += (Math.random() - 0.5) * 3;
+        
+        // 限制最大速度
+        const maxSpeed = 15;
+        fish.dx = Math.max(-maxSpeed, Math.min(maxSpeed, fish.dx));
+        fish.dy = Math.max(-maxSpeed, Math.min(maxSpeed, fish.dy));
+      }
+      
+      // 更新位置
+      fish.x += fish.dx * 0.1; // 乘以0.1因为每100ms更新一次
+      fish.y += fish.dy * 0.1;
+      
+      // 边界检测 - 碰到边界时随机反弹
+      if (fish.x <= 0) {
+        fish.x = 0;
+        fish.dx = Math.random() * 8 + 5; // 向右游动
+        fish.dy = (Math.random() - 0.5) * 10; // 随机上下
+      } else if (fish.x >= tankWidth - 40) {
+        fish.x = tankWidth - 40;
+        fish.dx = -(Math.random() * 8 + 5); // 向左游动
+        fish.dy = (Math.random() - 0.5) * 10;
+      }
+      
+      if (fish.y <= 0) {
+        fish.y = 0;
+        fish.dy = Math.random() * 8 + 5; // 向下游动
+        fish.dx = (Math.random() - 0.5) * 10;
+      } else if (fish.y >= tankHeight - 40) {
+        fish.y = tankHeight - 40;
+        fish.dy = -(Math.random() * 8 + 5); // 向上游动
+        fish.dx = (Math.random() - 0.5) * 10;
+      }
+      
+      fishEl.style.left = fish.x + 'px';
+      fishEl.style.top = fish.y + 'px';
+    });
+  }
+  
+  // 喂鱼
+  function feedFish() {
+    const tank = document.getElementById('tankWater');
+    const food = document.createElement('div');
+    food.className = 'fish';
+    food.textContent = '🍎';
+    food.style.left = '50%';
+    food.style.top = '50%';
+    food.style.fontSize = '20px';
+    food.style.animation = 'swim 2s ease-in-out';
+    
+    tank.appendChild(food);
+    
+    setTimeout(() => {
+      if (food.parentNode) {
+        food.parentNode.removeChild(food);
+      }
+    }, 2000);
+  }
+  
+  // 清理鱼缸
+  function cleanTank() {
+    const tank = document.getElementById('tankWater');
+    fishes.forEach(fish => {
+      const fishEl = document.getElementById(fish.id);
+      if (fishEl) {
+        fishEl.style.opacity = '0';
+        setTimeout(() => {
+          if (fishEl.parentNode) {
+            fishEl.parentNode.removeChild(fishEl);
+          }
+        }, 300);
+      }
+    });
+    fishes = [];
+    updateFishCount();
+    saveFishToStorage();
+  }
+  
+  // 更新鱼的数量
+  function updateFishCount() {
+    document.getElementById('fishCount').textContent = fishes.length;
+  }
+  
+  // 保存鱼到localStorage
+  function saveFishToStorage() {
+    const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy }));
+    localStorage.setItem('fishTankData', JSON.stringify(fishData));
+  }
+  
+  // 从localStorage加载鱼
+  function loadFishFromStorage() {
+    const savedData = localStorage.getItem('fishTankData');
+    if (savedData) {
+      const fishData = JSON.parse(savedData);
+      const tank = document.getElementById('tankWater');
+      
+      fishData.forEach(f => {
+        const fish = document.createElement('div');
+        fish.className = 'fish';
+        fish.textContent = f.type;
+        fish.style.left = f.x + 'px';
+        fish.style.top = f.y + 'px';
+        fish.style.animation = 'swim 3s ease-in-out infinite';
+        fish.id = 'fish-' + fishIdCounter++;
+        
+        tank.appendChild(fish);
+        fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy });
+      });
+      
+      updateFishCount();
+    }
+  }
+  
+  // 更新时间
+  function updateTime() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('statusTime').textContent = `${h}:${m}`;
+  }
+  
+  init();
+  updateTime();
+  setInterval(updateTime, 1000);
+</script>
+</body>
+</html>
