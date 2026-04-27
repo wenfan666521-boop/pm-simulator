@@ -252,7 +252,10 @@
   // 解析礼物代码
   function parseGiftCode(code) {
     try {
-      const decoded = decodeURIComponent(atob(code));
+      // 去掉前缀文案，提取代码
+      const lines = code.split('\n');
+      const giftCode = lines[lines.length - 1].trim();
+      const decoded = decodeURIComponent(atob(giftCode));
       return JSON.parse(decoded);
     } catch {
       return null;
@@ -476,7 +479,8 @@
     copyBtn.style.cssText = 'width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;margin-top:10px;';
     copyBtn.textContent = '复制代码';
     copyBtn.onclick = () => {
-      navigator.clipboard.writeText(giftCode).then(() => {
+      const copyText = '送你一个礼物，粘贴口令代码去领取吧~\n' + giftCode;
+      navigator.clipboard.writeText(copyText).then(() => {
         copyBtn.textContent = '已复制！';
       }).catch(() => {
         alert('复制失败，请手动复制');
@@ -490,8 +494,9 @@
     }
     codeDisplay.appendChild(copyBtn);
     
-    // 自动复制到剪贴板
-    navigator.clipboard.writeText(giftCode).then(() => {
+    // 自动复制到剪贴板（带前缀文案）
+    const copyText = '送你一个礼物，粘贴口令代码去领取吧~\n' + giftCode;
+    navigator.clipboard.writeText(copyText).then(() => {
       // 复制成功，更新按钮提示
       copyBtn.textContent = '去发送给朋友领取礼物和祝福吧！';
       copyBtn.style.background = 'linear-gradient(135deg, #34c759 0%, #28a745 100%)';
