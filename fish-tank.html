@@ -100,7 +100,7 @@
 </div>
 
 <script>
-  const fishTypes = ['🐠', '🐟', '🦈', '🐙', '🦑', '🦀', '🦐', '🐚'];
+  const fishTypes = ['🐠', '🐟', '🦈', '🐙', '🦑', '🦀', '🦐', '🐚', '🐺', '🎩'];
   const plantTypes = ['🍀', '🌱', '🌿', '🪸'];
   let fishes = [];
   let bubbles = [];
@@ -1126,9 +1126,53 @@
   }
   
   // 成就系统定义
+  // 隐藏成就（不显示在成就列表，解锁时直接弹出）
+  const SECRET_ACHIEVEMENTS = [
+    {
+      id: 'fate_beacon',
+      name: '命运道标上的光芒',
+      description: '起码一事是真，前同事99（...',
+      check: () => {
+        const wolfCount = fishes.filter(f => f.type === '🐺').length;
+        const hatCount = fishes.filter(f => f.type === '🎩').length;
+        return wolfCount >= 2 && hatCount >= 2;
+      }
+    }
+  ];
+  
+  // 检查并解锁隐藏成就
+  function checkSecretAchievements() {
+    SECRET_ACHIEVEMENTS.forEach(achievement => {
+      if (!achievements.includes(achievement.id) && achievement.check()) {
+        achievements.push(achievement.id);
+        showSecretAchievementPopup(achievement);
+        saveFishToStorage();
+      }
+    });
+  }
+  
+  // 显示隐藏成就弹窗（特殊样式）
+  function showSecretAchievementPopup(achievement) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:2000;display:flex;align-items:center;justify-content:center;';
+    
+    const popup = document.createElement('div');
+    popup.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#0a0a1a 100%);padding:40px 50px;border-radius:24px;text-align:center;color:#fff;max-width:320px;box-shadow:0 0 60px rgba(255,215,0,0.3),0 10px 40px rgba(0,0,0,0.5);border:1px solid rgba(255,215,0,0.2);';
+    popup.innerHTML = `
+      <div style="font-size:14px;opacity:0.6;margin-bottom:8px;color:#F7DC6F;">✧ 隐藏成就解锁 ✧</div>
+      <div style="font-size:32px;margin-bottom:12px;">✨</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:8px;color:#F7DC6F;">${achievement.name}</div>
+      <div style="font-size:14px;opacity:0.85;line-height:1.6;margin-bottom:15px;font-style:italic;">"${achievement.description}"</div>
+      <button onclick="this.parentNode.parentNode.remove()" style="margin-top:10px;padding:10px 30px;border:none;border-radius:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">知晓</button>
+    `;
+    
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+  }
+  
+  // 成就系统定义
   const ACHIEVEMENTS = [
     {
-      id: 'first_life',
       name: '第一条生命',
       description: '从水下第一颗生命萌芽开始...噢抱歉拿错剧本了',
       unlockHint: '添加第一条鱼',
@@ -1164,6 +1208,36 @@
     }
   ];
   
+  // 检查并解锁隐藏成就
+  function checkSecretAchievements() {
+    SECRET_ACHIEVEMENTS.forEach(achievement => {
+      if (!achievements.includes(achievement.id) && achievement.check()) {
+        achievements.push(achievement.id);
+        showSecretAchievementPopup(achievement);
+        saveFishToStorage();
+      }
+    });
+  }
+  
+  // 显示隐藏成就弹窗（特殊样式）
+  function showSecretAchievementPopup(achievement) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:2000;display:flex;align-items:center;justify-content:center;';
+    
+    const popup = document.createElement('div');
+    popup.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#0a0a1a 100%);padding:40px 50px;border-radius:24px;text-align:center;color:#fff;max-width:320px;box-shadow:0 0 60px rgba(255,215,0,0.3),0 10px 40px rgba(0,0,0,0.5);border:1px solid rgba(255,215,0,0.2);';
+    popup.innerHTML = `
+      <div style="font-size:14px;opacity:0.6;margin-bottom:8px;color:#F7DC6F;">✧ 隐藏成就解锁 ✧</div>
+      <div style="font-size:32px;margin-bottom:12px;">✨</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:8px;color:#F7DC6F;">${achievement.name}</div>
+      <div style="font-size:14px;opacity:0.85;line-height:1.6;margin-bottom:15px;font-style:italic;">"${achievement.description}"</div>
+      <button onclick="this.parentNode.parentNode.remove()" style="margin-top:10px;padding:10px 30px;border:none;border-radius:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">知晓</button>
+    `;
+    
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+  }
+
   // 检查并解锁成就
   function checkAchievements() {
     ACHIEVEMENTS.forEach(achievement => {
@@ -1175,6 +1249,8 @@
         saveFishToStorage();
       }
     });
+    // 检查隐藏成就
+    checkSecretAchievements();
   }
   
   // 显示成就弹窗
