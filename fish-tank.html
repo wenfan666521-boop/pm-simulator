@@ -309,6 +309,7 @@
   }
   
   let currentReceivedGift = null; // 当前收到的礼物数据
+  let currentGiftEmoji = null; // 当前选择的礼物emoji
   
   // 显示收礼面板
   function showReceivePanel() {
@@ -381,14 +382,27 @@
     if (!currentReceivedGift) return;
     
     const tank = document.getElementById('tankWater');
+    const x = Math.random() * (tank.offsetWidth - 40);
+    const y = Math.random() * (tank.offsetHeight - 40);
     const fish = document.createElement('div');
     fish.className = 'fish';
     fish.textContent = currentReceivedGift.emoji;
-    fish.style.left = Math.random() * (tank.offsetWidth - 40) + 'px';
-    fish.style.top = Math.random() * (tank.offsetHeight - 40) + 'px';
+    fish.style.left = x + 'px';
+    fish.style.top = y + 'px';
     fish.id = 'fish-' + fishIdCounter++;
     fish.onclick = () => petFish(fish.id);
     tank.appendChild(fish);
+    
+    // 注册到鱼群数组（驱动游动）
+    fishes.push({
+      id: fish.id,
+      type: currentReceivedGift.emoji,
+      x: x,
+      y: y,
+      dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
+      dy: (Math.random() - 0.5) * 3,
+      feedCount: 0
+    });
     
     // 更新统计
     stats.giftsReceived++;
@@ -416,6 +430,7 @@
     
     // 随机选择一个emoji
     const randomEmoji = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+    currentGiftEmoji = randomEmoji;
     
     // 显示确认界面
     const resultDiv = document.getElementById('giftResult');
@@ -424,7 +439,7 @@
     // 更新显示内容
     resultDiv.querySelector('div').innerHTML = `
       <div style="font-size:48px;margin-bottom:10px;">${randomEmoji}</div>
-      <div style="font-size:14px;">礼物：随机鱼</div>
+      <div style="font-size:14px;">礼物：${randomEmoji}</div>
       <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${blessing}</div>
     `;
     
@@ -437,12 +452,12 @@
     const senderName = document.getElementById('giftSenderName').value;
     const blessing = document.getElementById('giftBlessing').value;
     
-    // 随机选择一个emoji
-    const randomEmoji = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+    // 使用确认时选择的emoji
+    const emoji = currentGiftEmoji || fishTypes[Math.floor(Math.random() * fishTypes.length)];
     
     // 构建礼物数据
     const giftData = {
-      emoji: randomEmoji,
+      emoji: emoji,
       sender: senderName || '神秘好友',
       blessing: blessing || '祝你养鱼开心！',
       timestamp: Date.now()
@@ -527,14 +542,27 @@
   // 添加礼物鱼到鱼缸
   function addGiftFish(emoji, sender, blessing) {
     const tank = document.getElementById('tankWater');
+    const x = Math.random() * (tank.offsetWidth - 40);
+    const y = Math.random() * (tank.offsetHeight - 40);
     const fish = document.createElement('div');
     fish.className = 'fish';
     fish.textContent = emoji;
-    fish.style.left = Math.random() * (tank.offsetWidth - 40) + 'px';
-    fish.style.top = Math.random() * (tank.offsetHeight - 40) + 'px';
+    fish.style.left = x + 'px';
+    fish.style.top = y + 'px';
     fish.id = 'fish-' + fishIdCounter++;
     fish.onclick = () => petFish(fish.id);
     tank.appendChild(fish);
+    
+    // 注册到鱼群数组（驱动游动）
+    fishes.push({
+      id: fish.id,
+      type: emoji,
+      x: x,
+      y: y,
+      dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
+      dy: (Math.random() - 0.5) * 3,
+      feedCount: 0
+    });
     
     // 更新统计
     stats.giftsReceived++;
