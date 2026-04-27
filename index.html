@@ -112,6 +112,12 @@
 
   function openApp(app) {
     if (!app.link) return;
+    // 摸鱼模拟器跳转到新页面
+    if (app.name === '摸鱼模拟器') {
+      window.open(app.link, '_blank');
+      return;
+    }
+    // 其他应用在iframe中打开
     document.getElementById('framePage').src = app.link;
     document.getElementById('pageHome').classList.remove('active');
     document.getElementById('pageFrame').classList.add('active');
