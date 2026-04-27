@@ -63,7 +63,7 @@
 .floating-home-btn{position:fixed;bottom:120px;right:20px;width:44px;height:44px;background:rgba(0,0,0,.6);backdrop-filter:blur(20px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;cursor:pointer;z-index:999;box-shadow:0 2px 12px rgba(0,0,0,.3);transition:transform .15s}
 .floating-home-btn:active{transform:scale(.95)}
 .floating-home-btn.hidden{display:none}
-.floating-toast{position:fixed;bottom:175px;right:20px;background:rgba(0,0,0,.75);color:#fff;font-size:12px;padding:6px 12px;border-radius:8px;z-index:999;pointer-events:none;white-space:nowrap}
+
 @keyframes typingBounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
 
   </style>
@@ -546,6 +546,6 @@ function getTimeStr() {
 renderConversations();
 
 </script>
-<div class="floating-home-btn hidden" id="floatingHomeBtn" onclick="parent.backToHome()">🏠</div><div class="floating-toast hidden" id="floatingToast">点击返回主页</div>
+<div class="floating-home-btn hidden" id="floatingHomeBtn" onclick="parent.backToHome()">🏠</div>
 </body>
 </html>
