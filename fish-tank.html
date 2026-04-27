@@ -79,10 +79,7 @@
 <div class="app-container">
   <div class="tank-header">
     <h1 class="tank-title" onclick="handleTitleClick()" id="tankTitle">🐠 我的鱼缸 <span id="devHint" style="font-size:12px;opacity:0;"></span></h1>
-    <div style="display:flex;gap:10px;">
-      <button class="tank-btn" onclick="toggleFullscreen()" id="toggleBtn" style="padding:8px 15px;font-size:12px;">🖥️ 全屏</button>
-      <button class="tank-btn" onclick="showAchievements()" style="padding:8px 15px;font-size:12px;">🏆 成就</button>
-    </div>
+    <button class="tank-btn" onclick="showMenu()" style="padding:8px 15px;font-size:12px;">☰ 菜单</button>
   </div>
   
   <div class="fish-tank" id="fishTank">
@@ -1001,6 +998,25 @@
     `;
     
     overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+  }
+  
+  // 显示菜单
+  function showMenu() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    
+    overlay.innerHTML = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">' +
+      '<div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">☰ 菜单</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' +
+      '<button onclick="toggleFullscreen();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖥️ 全屏模式</button>' +
+      '<button onclick="showAchievements();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🏆 成就列表</button>' +
+      '<button onclick="cleanTank();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧹 清理鱼缸</button>' +
+      '</div>' +
+      '<button onclick="this.parentNode.remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
+      '</div>';
+    
     document.body.appendChild(overlay);
   }
   
