@@ -270,15 +270,19 @@
       <span class="gift-close" onclick="closeGiftPanel()">✕</span>
       <h3>🎁 送给好友</h3>
       <div class="gift-section">
-        <input type="text" id="giftItemName" placeholder="输入礼物名称">
         <input type="text" id="giftSenderName" placeholder="你的名字">
-        <textarea id="giftBlessing" placeholder="祝福语"></textarea>
-        <button id="sendGiftBtn">生成礼物代码</button>
+        <textarea id="giftBlessing" placeholder="输入祝福语"></textarea>
+        <button id="confirmGiftBtn">确认礼物</button>
       </div>
-      <div class="gift-section">
-        <h4>📬 领取礼物</h4>
-        <input type="text" id="giftCodeInput" placeholder="粘贴礼物代码">
-        <button id="receiveGiftBtn">领取礼物</button>
+      <div id="giftResult" class="gift-section" style="display:none;">
+        <h4>🎁 礼物确认</h4>
+        <div style="text-align:center;margin:20px 0;">
+          <div style="font-size:48px;margin-bottom:10px;">🎁</div>
+          <div style="font-size:14px;">礼物：随机鱼</div>
+          <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：你的祝福语</div>
+        </div>
+        <button id="generateCodeBtn" style="display:none;">生成礼物代码</button>
+        <div id="giftCodeDisplay" class="gift-code-display" style="display:none;"></div>
       </div>
     `;
     
@@ -286,8 +290,8 @@
     currentGiftPanel = giftPanel;
     
     // 绑定按钮事件
-    giftPanel.querySelector('#sendGiftBtn').onclick = sendGift;
-    giftPanel.querySelector('#receiveGiftBtn').onclick = receiveGift;
+    giftPanel.querySelector('#confirmGiftBtn').onclick = confirmGift;
+    giftPanel.querySelector('#generateCodeBtn').onclick = generateGiftCode;
     
     overlay.appendChild(giftPanel);
     document.body.appendChild(overlay);
@@ -300,32 +304,81 @@
     currentGiftPanel = null;
   }
   
-  // 发送礼物
-  function sendGift() {
-    const itemName = document.getElementById('giftItemName').value;
+  // 确认礼物
+  function confirmGift() {
     const senderName = document.getElementById('giftSenderName').value;
     const blessing = document.getElementById('giftBlessing').value;
     
-    if (!itemName) {
-      alert('请输入礼物名称');
+    if (!blessing) {
+      alert('请输入祝福语');
       return;
     }
     
-    const giftCode = generateGiftCode(itemName, senderName, blessing);
+    // 随机选择一个emoji
+    const randomEmoji = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+    
+    // 显示确认界面
+    const resultDiv = document.getElementById('giftResult');
+    resultDiv.style.display = 'block';
+    
+    // 更新显示内容
+    resultDiv.querySelector('div').innerHTML = `
+      <div style="font-size:48px;margin-bottom:10px;">${randomEmoji}</div>
+      <div style="font-size:14px;">礼物：随机鱼</div>
+      <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${blessing}</div>
+    `;
+    
+    // 显示生成代码按钮
+    document.getElementById('generateCodeBtn').style.display = 'block';
+  }
+  
+  // 生成礼物代码
+  function generateGiftCode() {
+    const senderName = document.getElementById('giftSenderName').value;
+    const blessing = document.getElementById('giftBlessing').value;
+    
+    // 随机选择一个emoji
+    const randomEmoji = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+    
+    // 构建礼物数据
+    const giftData = {
+      emoji: randomEmoji,
+      sender: senderName || '神秘好友',
+      blessing: blessing || '祝你养鱼开心！',
+      timestamp: Date.now()
+    };
+    
+    // 编码为 base64
+    const giftCode = btoa(JSON.stringify(giftData));
     
     // 显示生成的代码
-    const codeDisplay = document.createElement('div');
-    codeDisplay.className = 'gift-code-display';
+    const codeDisplay = document.getElementById('giftCodeDisplay');
     codeDisplay.innerHTML = `<code>${giftCode}</code>`;
+    codeDisplay.style.display = 'block';
     
-    // 替换原有的代码显示区域
-    const panel = currentGiftPanel;
-    if (!panel) return;
-    const existingDisplay = panel.querySelector('.gift-code-display');
-    if (existingDisplay) {
-      existingDisplay.remove();
+    // 显示复制按钮
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = '复制代码';
+    copyBtn.style.cssText = 'width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;margin-top:10px;';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(giftCode).then(() => {
+        alert('礼物代码已复制到剪贴板！');
+      }).catch(() => {
+        alert('复制失败，请手动复制：' + giftCode);
+      });
+    };
+    
+    // 清除旧的复制按钮
+    const oldCopyBtn = codeDisplay.querySelector('button');
+    if (oldCopyBtn) {
+      oldCopyBtn.remove();
     }
-    panel.querySelector('.gift-section').appendChild(codeDisplay);
+    codeDisplay.appendChild(copyBtn);
+    
+    // 更新统计
+    stats.giftsSent++;
+    saveFishToStorage();
+  }
     
     // 复制到剪贴板
     navigator.clipboard.writeText(giftCode).then(() => {
