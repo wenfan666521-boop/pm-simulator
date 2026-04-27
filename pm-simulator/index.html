@@ -74,11 +74,7 @@
   <div class="wechat-nav" id="listNav"><span class="back hidden">‹</span><span class="title">微信</span><span class="actions">➕</span></div>
   <div id="conversation-list" class="scene"></div>
   <div id="chat-room" class="scene hidden">
-    <div class="chat-room-nav hidden" id="chatNav">
-      <span class="back" id="chatBackBtn" onclick="backToList()">‹</span>
-      <div class="avatar" id="chatAvatar">👤</div>
-      <span class="name" id="chatName">联系人</span>
-    </div>
+
     <div class="msg-list" id="msgList"></div>
     <div class="choice-area" id="choiceArea"></div>
   </div>
@@ -329,39 +325,9 @@ function openChar(charKey) {
   document.getElementById('conversation-list').classList.add('hidden');
   document.getElementById('chat-room').classList.remove('hidden');
   document.getElementById('listNav').classList.add('hidden');
-  document.getElementById('chatNav').classList.remove('hidden');
-
-  document.getElementById('chatAvatar').textContent = c.emoji;
-  document.getElementById('chatAvatar').style.background = c.color + '22';
-  document.getElementById('chatName').textContent = c.name;
 
   renderMessages();
-  showFloatingHomeBtn();
 }
-
-function backToList() {
-  
-  document.getElementById('conversation-list').classList.remove('hidden');
-  document.getElementById('chat-room').classList.add('hidden');
-  document.getElementById('listNav').classList.remove('hidden');
-  document.getElementById('chatNav').classList.add('hidden');
-  state.currentChar = null;
-  state.choiceLock = false;
-  renderConversations();
-  hideFloatingHomeBtn();
-}
-
-function enableBackBtn(ok) {
-  const btn = document.getElementById('chatBackBtn');
-  if (ok) {
-    btn.style.pointerEvents = 'auto';
-    btn.style.color = '#007aff';
-  } else {
-    btn.style.pointerEvents = 'none';
-    btn.style.color = '#c7c7cc';
-  }
-}
-
 function renderMessages() {
   const list = document.getElementById('msgList');
   const choiceArea = document.getElementById('choiceArea');
@@ -565,7 +531,7 @@ function showEnding() {
 
 function resetGame() {
   initState();
-  backToList();
+  parent.backToHome();
 }
 
 function scrollBottom(el) {
@@ -579,17 +545,6 @@ function getTimeStr() {
 
 renderConversations();
 
-function showFloatingHomeBtn(){
-  const btn = document.getElementById('floatingHomeBtn');
-  const toast = document.getElementById('floatingToast');
-  btn.classList.remove('hidden');
-  btn.onmouseenter = function(){toast.classList.remove('hidden')};
-  btn.onmouseleave = function(){toast.classList.add('hidden')};
-}
-function hideFloatingHomeBtn(){
-  document.getElementById('floatingHomeBtn').classList.add('hidden');
-  document.getElementById('floatingToast').classList.add('hidden');
-}
 </script>
 <div class="floating-home-btn hidden" id="floatingHomeBtn" onclick="parent.backToHome()">🏠</div><div class="floating-toast hidden" id="floatingToast">点击返回主页</div>
 </body>
