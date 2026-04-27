@@ -248,7 +248,7 @@
   // 解析礼物代码
   function parseGiftCode(code) {
     try {
-      const decoded = atob(code);
+      const decoded = decodeURIComponent(atob(code));
       return JSON.parse(decoded);
     } catch {
       return null;
@@ -348,8 +348,8 @@
       timestamp: Date.now()
     };
     
-    // 编码为 base64
-    const giftCode = btoa(JSON.stringify(giftData));
+    // 编码为 base64（UTF-8安全）
+    const giftCode = btoa(encodeURIComponent(JSON.stringify(giftData)));
     
     // 显示生成的代码和复制按钮
     const codeDisplay = document.getElementById('giftCodeDisplay');
