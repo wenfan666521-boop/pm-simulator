@@ -23,14 +23,6 @@
     .fish { position: absolute; font-size: 24px; z-index: 10; }
     .fish.bubble { font-size: 16px; color: rgba(255,255,255,.7); animation: float-up 3s ease-in-out infinite; }
     
-    @keyframes swim {
-      0% { transform: translate(0, 0) rotate(0deg); }
-      25% { transform: translate(20px, -10px) rotate(5deg); }
-      50% { transform: translate(-15px, 5px) rotate(-3deg); }
-      75% { transform: translate(10px, -5px) rotate(2deg); }
-      100% { transform: translate(0, 0) rotate(0deg); }
-    }
-    
     @keyframes float-up {
       0% { transform: translateY(0) translateX(0); opacity: 0.7; }
       50% { transform: translateY(-30px) translateX(10px); opacity: 0.9; }
@@ -63,8 +55,8 @@
     </div>
     
     <div class="tank-controls">
-      <button class="tank-btn" onclick="addRandomFish()">➕ 添加鱼</button>
-      <button class="tank-btn" onclick="feedFish()">🍽️ 喂鱼</button>
+      <button class="tank-btn" id="addFishBtn" onclick="addRandomFish()">➕ 添加鱼</button>
+      <button class="tank-btn" id="feedFishBtn" onclick="feedFish()">🍽️ 喂鱼</button>
       <button class="tank-btn" onclick="cleanTank()">🧹 清理</button>
     </div>
   </div>
@@ -75,16 +67,62 @@
   let fishes = [];
   let bubbles = [];
   let fishIdCounter = 0;
+  let lastAddFishTime = 0; // 上次添加鱼的时间
+  const ADD_FISH_COOLDOWN = 30 * 60 * 1000; // 30分钟冷却时间
+  let lastFeedFishTime = 0; // 上次喂鱼的时间
+  const FEED_FISH_COOLDOWN = 15 * 60 * 1000; // 15分钟喂鱼冷却时间
+  let achievements = []; // 已解锁的成就
   
   // 初始化
   function init() {
     loadFishFromStorage();
     setInterval(generateBubble, 2000);
     setInterval(updateFishPositions, 100); // 每100ms更新，让游动更流畅
+    setInterval(updateAddFishButton, 1000); // 每秒更新添加按钮状态
+    setInterval(updateFeedFishButton, 1000); // 每秒更新喂鱼按钮状态
+    updateAddFishButton();
+    updateFeedFishButton();
+  }
+  
+  // 检查是否可以添加鱼
+  function canAddFish() {
+    const now = Date.now();
+    return now - lastAddFishTime >= ADD_FISH_COOLDOWN;
+  }
+  
+  // 获取冷却剩余时间（秒）
+  function getCooldownRemaining() {
+    const now = Date.now();
+    const elapsed = now - lastAddFishTime;
+    const remaining = ADD_FISH_COOLDOWN - elapsed;
+    return Math.max(0, Math.ceil(remaining / 1000));
+  }
+  
+  // 更新添加鱼按钮状态
+  function updateAddFishButton() {
+    const btn = document.getElementById('addFishBtn');
+    if (!btn) return;
+    
+    if (canAddFish()) {
+      btn.disabled = false;
+      btn.textContent = '➕ 添加鱼';
+      btn.style.opacity = '1';
+    } else {
+      const remaining = getCooldownRemaining();
+      const minutes = Math.floor(remaining / 60);
+      const seconds = remaining % 60;
+      btn.disabled = true;
+      btn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+      btn.style.opacity = '0.6';
+    }
   }
   
   // 添加随机鱼
   function addRandomFish() {
+    if (!canAddFish()) {
+      return;
+    }
+    
     const tank = document.getElementById('tankWater');
     const fish = document.createElement('div');
     const fishType = fishTypes[Math.floor(Math.random() * fishTypes.length)];
@@ -95,14 +133,81 @@
     fish.textContent = fishType;
     fish.style.left = x + 'px';
     fish.style.top = y + 'px';
-    fish.style.animation = 'swim 3s ease-in-out infinite';
+    // 鱼的移动完全由JS控制，不再使用CSS动画
     fish.id = 'fish-' + fishIdCounter++;
     
-    tank.appendChild(fish);
-    fishes.push({ id: fish.id, type: fishType, x, y, dx: (Math.random() - 0.5) * 8, dy: (Math.random() - 0.5) * 8 });
+    // 绑定点击事件 - 摸鱼减少冷却时间
+    fish.style.cursor = 'pointer';
+    fish.onclick = () => petFish(fish.id);
     
+    tank.appendChild(fish);
+    fishes.push({ id: fish.id, type: fishType, x, y, dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8), dy: (Math.random() - 0.5) * 3, feedCount: 0 });
+    
+    lastAddFishTime = Date.now();
     updateFishCount();
+    checkAchievements(); // 检查成就
     saveFishToStorage();
+  }
+  
+  // 成就系统定义
+  const ACHIEVEMENTS = [
+    {
+      id: 'first_life',
+      name: '第一条生命',
+      description: '从水下第一颗生命萌芽开始...噢抱歉拿错剧本了',
+      check: () => fishes.length >= 1
+    }
+  ];
+  
+  // 检查并解锁成就
+  function checkAchievements() {
+    ACHIEVEMENTS.forEach(achievement => {
+      if (!achievements.includes(achievement.id) && achievement.check()) {
+        achievements.push(achievement.id);
+        showAchievementPopup(achievement);
+        saveFishToStorage();
+      }
+    });
+  }
+  
+  // 显示成就弹窗
+  function showAchievementPopup(achievement) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    
+    const popup = document.createElement('div');
+    popup.style.cssText = 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px 40px;border-radius:20px;text-align:center;color:#fff;max-width:300px;box-shadow:0 10px 40px rgba(0,0,0,0.5);';
+    popup.innerHTML = `
+      <div style="font-size:48px;margin-bottom:15px;">🏆</div>
+      <div style="font-size:14px;opacity:0.8;margin-bottom:10px;">成就解锁</div>
+      <div style="font-size:22px;font-weight:700;margin-bottom:10px;">${achievement.name}</div>
+      <div style="font-size:14px;opacity:0.9;line-height:1.5;">${achievement.description}</div>
+      <button onclick="this.parentNode.parentNode.remove()" style="margin-top:20px;padding:10px 30px;border:none;border-radius:25px;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-size:14px;">确定</button>
+    `;
+    
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+  }
+  
+  // 摸鱼 - 点击鱼减少冷却时间
+  function petFish(fishId) {
+    if (!canAddFish()) {
+      lastAddFishTime = Math.max(0, lastAddFishTime - 60000); // 减少1分钟
+      updateAddFishButton();
+      saveFishToStorage();
+      
+      // 显示摸鱼反馈（不改变鱼的永久大小）
+      const fishEl = document.getElementById(fishId);
+      const fishData = fishes.find(f => f.id === fishId);
+      if (fishEl && fishData) {
+        // 保存当前大小
+        const currentScale = 1 + (fishData.feedCount || 0) * 0.15;
+        fishEl.style.transform = `scale(${currentScale * 1.2})`;
+        setTimeout(() => {
+          fishEl.style.transform = `scale(${currentScale})`;
+        }, 150);
+      }
+    }
   }
   
   // 生成水泡
@@ -140,38 +245,35 @@
       
       // 每100ms随机改变方向和速度，让游动更自然
       if (Math.random() < 0.2) {
-        fish.dx += (Math.random() - 0.5) * 3; // 随机加速度
-        fish.dy += (Math.random() - 0.5) * 3;
+        fish.dx += (Math.random() - 0.5) * 8; // 水平速度变化更大
+        fish.dy += (Math.random() - 0.5) * 1; // 垂直速度变化很小
         
-        // 限制最大速度
-        const maxSpeed = 15;
-        fish.dx = Math.max(-maxSpeed, Math.min(maxSpeed, fish.dx));
-        fish.dy = Math.max(-maxSpeed, Math.min(maxSpeed, fish.dy));
+        // 限制最大速度：水平快，垂直慢
+        const maxSpeedX = 25;
+        const maxSpeedY = 5;
+        fish.dx = Math.max(-maxSpeedX, Math.min(maxSpeedX, fish.dx));
+        fish.dy = Math.max(-maxSpeedY, Math.min(maxSpeedY, fish.dy));
       }
       
       // 更新位置
       fish.x += fish.dx * 0.1; // 乘以0.1因为每100ms更新一次
       fish.y += fish.dy * 0.1;
       
-      // 边界检测 - 碰到边界时随机反弹
+      // 边界检测 - 碰到边界时水平翻转反方向移动
       if (fish.x <= 0) {
         fish.x = 0;
-        fish.dx = Math.random() * 8 + 5; // 向右游动
-        fish.dy = (Math.random() - 0.5) * 10; // 随机上下
+        fish.dx = Math.abs(fish.dx); // 水平翻转向右
       } else if (fish.x >= tankWidth - 40) {
         fish.x = tankWidth - 40;
-        fish.dx = -(Math.random() * 8 + 5); // 向左游动
-        fish.dy = (Math.random() - 0.5) * 10;
+        fish.dx = -Math.abs(fish.dx); // 水平翻转向左
       }
       
       if (fish.y <= 0) {
         fish.y = 0;
-        fish.dy = Math.random() * 8 + 5; // 向下游动
-        fish.dx = (Math.random() - 0.5) * 10;
+        fish.dy = Math.abs(fish.dy) + 1; // 向下
       } else if (fish.y >= tankHeight - 40) {
         fish.y = tankHeight - 40;
-        fish.dy = -(Math.random() * 8 + 5); // 向上游动
-        fish.dx = (Math.random() - 0.5) * 10;
+        fish.dy = -Math.abs(fish.dy) - 1; // 向上
       }
       
       fishEl.style.left = fish.x + 'px';
@@ -179,29 +281,123 @@
     });
   }
   
+  // 检查是否可以喂鱼
+  function canFeedFish() {
+    const now = Date.now();
+    return now - lastFeedFishTime >= FEED_FISH_COOLDOWN;
+  }
+  
+  // 获取喂鱼冷却剩余时间（秒）
+  function getFeedCooldownRemaining() {
+    const now = Date.now();
+    const elapsed = now - lastFeedFishTime;
+    const remaining = FEED_FISH_COOLDOWN - elapsed;
+    return Math.max(0, Math.ceil(remaining / 1000));
+  }
+  
+  // 更新喂鱼按钮状态
+  function updateFeedFishButton() {
+    const btn = document.getElementById('feedFishBtn');
+    if (!btn) return;
+    
+    if (canFeedFish()) {
+      btn.disabled = false;
+      btn.textContent = '🍽️ 喂鱼';
+      btn.style.opacity = '1';
+    } else {
+      const remaining = getFeedCooldownRemaining();
+      const minutes = Math.floor(remaining / 60);
+      const seconds = remaining % 60;
+      btn.disabled = true;
+      btn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+      btn.style.opacity = '0.6';
+    }
+  }
+  
   // 喂鱼
   function feedFish() {
+    if (!canFeedFish()) {
+      return;
+    }
+    
     const tank = document.getElementById('tankWater');
+    const tankWidth = tank.offsetWidth;
+    const tankHeight = tank.offsetHeight;
+    lastFeedFishTime = Date.now();
+    updateFeedFishButton();
+    
+    // 查找可以喂食的鱼（喂食次数 < 5）
+    const feedableFish = fishes.filter(f => f.feedCount < 5);
+    
+    if (feedableFish.length === 0) {
+      // 没有可喂食的鱼，鱼饵保留在原位不消失
+      const food = document.createElement('div');
+      food.className = 'fish';
+      food.textContent = '🍎';
+      food.style.left = '50%';
+      food.style.top = '50%';
+      food.style.fontSize = '20px';
+      food.style.pointerEvents = 'none'; // 防止干扰
+      tank.appendChild(food);
+      return;
+    }
+    
+    // 随机选择一条可喂食的鱼
+    const targetFish = feedableFish[Math.floor(Math.random() * feedableFish.length)];
+    const fishEl = document.getElementById(targetFish.id);
+    
+    // 计算鱼前方位置（根据鱼的移动方向）
+    const distance = 60; // 鱼饵生成位置距离鱼的像素
+    const dx = targetFish.dx || (Math.random() > 0.5 ? 1 : -1);
+    const dy = targetFish.dy || (Math.random() - 0.5);
+    const magnitude = Math.sqrt(dx * dx + dy * dy) || 1;
+    const dirX = dx / magnitude;
+    const dirY = dy / magnitude;
+    
+    // 鱼饵生成在鱼的前方
+    let foodX = targetFish.x + dirX * distance;
+    let foodY = targetFish.y + dirY * distance;
+    
+    // 确保鱼饵在鱼缸范围内
+    foodX = Math.max(10, Math.min(tankWidth - 30, foodX));
+    foodY = Math.max(10, Math.min(tankHeight - 30, foodY));
+    
+    // 创建鱼饵
     const food = document.createElement('div');
     food.className = 'fish';
     food.textContent = '🍎';
-    food.style.left = '50%';
-    food.style.top = '50%';
+    food.style.left = foodX + 'px';
+    food.style.top = foodY + 'px';
     food.style.fontSize = '20px';
-    food.style.animation = 'swim 2s ease-in-out';
+    food.id = 'food-' + Date.now();
     
     tank.appendChild(food);
     
-    setTimeout(() => {
-      if (food.parentNode) {
-        food.parentNode.removeChild(food);
-      }
-    }, 2000);
+    if (fishEl) {
+      // 1秒后鱼饵消失的同时鱼变大
+      setTimeout(() => {
+        // 鱼饵消失
+        if (food.parentNode) {
+          food.parentNode.removeChild(food);
+        }
+        // 鱼变大
+        targetFish.feedCount++;
+        const scale = 1 + targetFish.feedCount * 0.15; // 每次喂食变大15%
+        fishEl.style.transform = `scale(${scale})`;
+        saveFishToStorage();
+      }, 1000);
+    }
   }
   
   // 清理鱼缸
   function cleanTank() {
+    if (!confirm('确定要清理鱼缸吗？所有鱼和鱼饵都会被清除！')) {
+      return;
+    }
+    
     const tank = document.getElementById('tankWater');
+    
+    // 清理所有鱼
     fishes.forEach(fish => {
       const fishEl = document.getElementById(fish.id);
       if (fishEl) {
@@ -214,7 +410,22 @@
       }
     });
     fishes = [];
+    
+    // 清理所有鱼饵
+    const foods = tank.querySelectorAll('[id^="food-"]');
+    foods.forEach(food => {
+      if (food.parentNode) {
+        food.parentNode.removeChild(food);
+      }
+    });
+    
+    // 重置冷却时间
+    lastAddFishTime = 0;
+    lastFeedFishTime = 0;
+    
     updateFishCount();
+    updateAddFishButton();
+    updateFeedFishButton();
     saveFishToStorage();
   }
   
@@ -225,15 +436,20 @@
   
   // 保存鱼到localStorage
   function saveFishToStorage() {
-    const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy }));
-    localStorage.setItem('fishTankData', JSON.stringify(fishData));
+    const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0 }));
+    const data = { fishes: fishData, lastAddFishTime, lastFeedFishTime, achievements };
+    localStorage.setItem('fishTankData', JSON.stringify(data));
   }
   
   // 从localStorage加载鱼
   function loadFishFromStorage() {
     const savedData = localStorage.getItem('fishTankData');
     if (savedData) {
-      const fishData = JSON.parse(savedData);
+      const data = JSON.parse(savedData);
+      const fishData = data.fishes || [];
+      lastAddFishTime = data.lastAddFishTime || 0;
+      lastFeedFishTime = data.lastFeedFishTime || 0;
+      achievements = data.achievements || [];
       const tank = document.getElementById('tankWater');
       
       fishData.forEach(f => {
@@ -242,11 +458,20 @@
         fish.textContent = f.type;
         fish.style.left = f.x + 'px';
         fish.style.top = f.y + 'px';
-        fish.style.animation = 'swim 3s ease-in-out infinite';
+        // 鱼的移动完全由JS控制，不再使用CSS动画
+        fish.style.cursor = 'pointer';
         fish.id = 'fish-' + fishIdCounter++;
+        fish.onclick = () => petFish(fish.id);
+        
+        // 恢复喂食次数和大小
+        const feedCount = f.feedCount || 0;
+        if (feedCount > 0) {
+          const scale = 1 + feedCount * 0.15;
+          fish.style.transform = `scale(${scale})`;
+        }
         
         tank.appendChild(fish);
-        fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy });
+        fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount });
       });
       
       updateFishCount();
