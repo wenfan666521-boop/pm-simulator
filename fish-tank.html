@@ -37,7 +37,10 @@
 <div class="app-container">
   <div class="tank-header">
     <h1 class="tank-title">🐠 我的鱼缸</h1>
-    <button class="tank-btn" onclick="showAchievements()" style="padding:8px 15px;font-size:12px;">🏆 成就</button>
+    <div style="display:flex;gap:10px;">
+      <button class="tank-btn" onclick="toggleFullscreen()" id="toggleBtn" style="padding:8px 15px;font-size:12px;">🖥️ 全屏</button>
+      <button class="tank-btn" onclick="showAchievements()" style="padding:8px 15px;font-size:12px;">🏆 成就</button>
+    </div>
   </div>
   
   <div class="fish-tank" id="fishTank">
@@ -77,6 +80,20 @@
     petFishClicks: 0        // 点击鱼的次数（摸鱼）
   };
   
+  // 检测是否在iframe中
+  const isInIframe = window.self !== window.top;
+  
+  // 全屏切换函数
+  function toggleFullscreen() {
+    if (isInIframe) {
+      // 在iframe中，打开新窗口（全屏版本）
+      window.open('fish-tank.html', '_blank');
+    } else {
+      // 在新窗口中，提示用户关闭或返回
+      alert('请关闭此页面，或在首页重新打开摸鱼模拟器');
+    }
+  }
+  
   // 初始化
   function init() {
     loadFishFromStorage();
@@ -88,6 +105,12 @@
     updateAddFishButton();
     updateFeedFishButton();
     schedulePlantGenerate(); // 立即执行一次
+    
+    // 根据模式更新按钮文字
+    const toggleBtn = document.getElementById('toggleBtn');
+    if (toggleBtn) {
+      toggleBtn.textContent = isInIframe ? '🖥️ 全屏' : '📱 手机版';
+    }
   }
   
   // 随机安排下次生成水草的时间
