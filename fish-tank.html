@@ -1162,6 +1162,16 @@
         const snakeCount = fishes.filter(f => f.type === '🐍').length;
         return hatCount >= 1 && snakeCount >= 1;
       }
+    },
+    {
+      id: 'shining_gem',
+      name: '最耀眼的宝石',
+      description: '我需要的诊金很少，祝我快乐！',
+      check: () => {
+        const hatCount = fishes.filter(f => f.type === '🎩').length;
+        const gemCount = fishes.filter(f => f.type === '💎').length;
+        return hatCount >= 1 && gemCount >= 1;
+      }
     }
   ];
   
