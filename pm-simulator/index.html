@@ -6,8 +6,8 @@
   <title>产品经理模拟器</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;background:#ededed;height:100%;overflow:hidden}
-    #app{flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;background:#ededed;height:100%;overflow:visible}
+    #app{flex:1;display:flex;flex-direction:column;height:100%;overflow:visible}
     .wechat-nav{height:56px;background:#ededed;display:flex;justify-content:space-between;align-items:center;padding:0 16px;border-bottom:.5px solid #d1d1d6;flex-shrink:0}
     .wechat-nav .back{font-size:22px;cursor:pointer;color:#007aff;line-height:1}
     .wechat-nav .back.hidden{visibility:hidden}
@@ -25,7 +25,7 @@
     .conv-time{font-size:11px;color:#8e8e93}
     .badge{background:#ff3b30;color:#fff;font-size:11px;font-weight:600;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-top:4px;padding:0 5px}
     .badge.hidden{display:none}
-    #chat-room{flex:1;display:flex;flex-direction:column;background:#ededed;overflow:hidden}
+    #chat-room{flex:1;display:flex;flex-direction:column;background:#ededed;overflow-y:scroll;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
     #chat-room.hidden{display:none}
     .chat-header{height:56px;background:#ededed;display:flex;align-items:center;padding:0 16px;border-bottom:.5px solid #d1d1d6;flex-shrink:0}
     .chat-header .back{font-size:22px;cursor:pointer;color:#007aff;margin-right:12px}
