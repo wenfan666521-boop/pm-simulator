@@ -1152,6 +1152,16 @@
         const hatCount = fishes.filter(f => f.type === '🎩').length;
         return wolfCount >= 1 && hatCount >= 1;
       }
+    },
+    {
+      id: 'death_overlord',
+      name: '死亡执政官',
+      description: '你似乎还在沉睡，但没有关系...',
+      check: () => {
+        const hatCount = fishes.filter(f => f.type === '🎩').length;
+        const snakeCount = fishes.filter(f => f.type === '🐍').length;
+        return hatCount >= 1 && snakeCount >= 1;
+      }
     }
   ];
   
