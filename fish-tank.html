@@ -351,20 +351,20 @@
     // 编码为 base64
     const giftCode = btoa(JSON.stringify(giftData));
     
-    // 显示生成的代码
+    // 显示生成的代码和复制按钮
     const codeDisplay = document.getElementById('giftCodeDisplay');
     codeDisplay.innerHTML = `<code>${giftCode}</code>`;
     codeDisplay.style.display = 'block';
     
-    // 显示复制按钮
+    // 创建复制按钮
     const copyBtn = document.createElement('button');
-    copyBtn.textContent = '复制代码';
     copyBtn.style.cssText = 'width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;margin-top:10px;';
+    copyBtn.textContent = '复制代码';
     copyBtn.onclick = () => {
       navigator.clipboard.writeText(giftCode).then(() => {
-        alert('礼物代码已复制到剪贴板！');
+        copyBtn.textContent = '已复制！';
       }).catch(() => {
-        alert('复制失败，请手动复制：' + giftCode);
+        alert('复制失败，请手动复制');
       });
     };
     
@@ -374,6 +374,16 @@
       oldCopyBtn.remove();
     }
     codeDisplay.appendChild(copyBtn);
+    
+    // 自动复制到剪贴板
+    navigator.clipboard.writeText(giftCode).then(() => {
+      // 复制成功，更新按钮提示
+      copyBtn.textContent = '去发送给朋友领取礼物和祝福吧！';
+      copyBtn.style.background = 'linear-gradient(135deg, #34c759 0%, #28a745 100%)';
+    }).catch(() => {
+      // 复制失败，显示提示
+      codeDisplay.innerHTML += `<div style="font-size:12px;margin-top:10px;opacity:0.8;">请手动复制代码发送给朋友</div>`;
+    });
     
     // 更新统计
     stats.giftsSent++;
