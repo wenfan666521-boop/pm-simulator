@@ -660,9 +660,7 @@
   
   // 确认收取礼物
   function confirmReceive() {
-    console.log('confirmReceive called');
     const code = document.getElementById('receiveCodeInput').value;
-    console.log('code:', code);
     
     if (!code) {
       alert('请输入礼物代码');
@@ -670,7 +668,6 @@
     }
     
     const giftData = parseGiftCode(code);
-    console.log('giftData:', giftData);
     
     if (!giftData) {
       alert('无效的礼物代码');
@@ -683,8 +680,8 @@
       return;
     }
     
-    // 生成码的hash用于标识
-    const codeHash = btoa(code);
+    // 生成码的hash用于标识（需要先编码防止非Latin1字符）
+    const codeHash = btoa(encodeURIComponent(code.trim()));
     
     // 检查是否已使用过
     if (usedCodes.includes(codeHash)) {
