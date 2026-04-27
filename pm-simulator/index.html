@@ -6,10 +6,8 @@
   <title>产品经理模拟器</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;background:#ededed;height:100vh;display:flex;justify-content:center;align-items:center}
-    .phone{width:390px;height:844px;background:#fff;border-radius:44px;box-shadow:0 0 40px rgba(0,0,0,.15),0 0 0 8px #3a3a3c;overflow:hidden;display:flex;flex-direction:column;position:relative}
-    .status-bar{height:48px;background:#ededed;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:12px;font-weight:600;color:#1c1c1e;flex-shrink:0}
-    .status-bar .time{font-weight:700}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;background:#fff;height:100%;overflow:hidden}
+    #app{flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden}
     .wechat-nav{height:56px;background:#ededed;display:flex;justify-content:space-between;align-items:center;padding:0 16px;border-bottom:.5px solid #d1d1d6;flex-shrink:0}
     .wechat-nav .back{font-size:22px;cursor:pointer;color:#007aff;line-height:1}
     .wechat-nav .back.hidden{visibility:hidden}
@@ -69,8 +67,7 @@
   </style>
 </head>
 <body>
-<div class="phone" id="app">
-  <div class="status-bar"><span class="time" id="statusTime">21:46</span><span>🔋 100%</span></div>
+<div id="app">
   <div class="wechat-nav" id="listNav"><span class="back hidden">‹</span><span class="title">微信</span><span class="actions">➕</span></div>
   <div id="conversation-list" class="scene"></div>
   <div id="chat-room" class="scene hidden">
@@ -288,12 +285,6 @@ function getLastMsgPreview(charKey) {
 }
 
 // === 渲染 ===
-function renderTime() {
-  const n = new Date();
-  document.getElementById('statusTime').textContent = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
-}
-renderTime(); setInterval(renderTime, 30000);
-
 function renderConversations() {
   const list = document.getElementById('conversation-list');
   list.innerHTML = '';
