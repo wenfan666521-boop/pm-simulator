@@ -302,11 +302,12 @@
     codeDisplay.innerHTML = `<code>${giftCode}</code>`;
     
     // 替换原有的代码显示区域
-    const existingDisplay = giftPanel.querySelector('.gift-code-display');
+    const panel = document.querySelector('.gift-panel');
+    const existingDisplay = panel.querySelector('.gift-code-display');
     if (existingDisplay) {
       existingDisplay.remove();
     }
-    giftPanel.querySelector('.gift-section').appendChild(codeDisplay);
+    panel.querySelector('.gift-section').appendChild(codeDisplay);
     
     // 复制到剪贴板
     navigator.clipboard.writeText(giftCode).then(() => {
