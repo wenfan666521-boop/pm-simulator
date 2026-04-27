@@ -1027,12 +1027,17 @@
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
     
-    const unlockedCount = achievements.length;
-    const totalCount = ACHIEVEMENTS.length;
+    // 计算普通成就
+    const normalUnlocked = achievements.filter(id => ACHIEVEMENTS.some(a => a.id === id));
+    const secretUnlocked = achievements.filter(id => SECRET_ACHIEVEMENTS.some(a => a.id === id));
+    const unlockedCount = normalUnlocked.length + secretUnlocked.length;
+    const totalCount = ACHIEVEMENTS.length + SECRET_ACHIEVEMENTS.length;
     
     let listHTML = '';
+    
+    // 普通成就列表
     ACHIEVEMENTS.forEach(a => {
-      const isUnlocked = achievements.includes(a.id);
+      const isUnlocked = normalUnlocked.includes(a.id);
       if (isUnlocked) {
         listHTML += `<div style="padding:15px;background:rgba(255,255,255,0.15);border-radius:10px;margin-bottom:10px;">
           <div style="font-size:18px;margin-bottom:5px;">🏆 ${a.name}</div>
@@ -1044,6 +1049,16 @@
           <div style="font-size:16px;">🔒 ${a.name}</div>
         </div>`;
       }
+    });
+    
+    // 隐藏成就列表（解锁后才显示，带金色边框和✨前缀）
+    SECRET_ACHIEVEMENTS.forEach(a => {
+      if (!achievements.includes(a.id)) return; // 未解锁的不显示
+      listHTML += `<div style="padding:15px;background:rgba(255,215,0,0.1);border-radius:10px;margin-bottom:10px;border:1px solid rgba(255,215,0,0.4);">
+        <div style="font-size:12px;opacity:0.6;color:#F7DC6F;margin-bottom:5px;">✨ 隐藏成就</div>
+        <div style="font-size:18px;margin-bottom:5px;">✨ ${a.name}</div>
+        <div style="font-size:12px;opacity:0.8;margin-bottom:5px;font-style:italic;">"${a.description}"</div>
+      </div>`;
     });
     
     const popup = document.createElement('div');
