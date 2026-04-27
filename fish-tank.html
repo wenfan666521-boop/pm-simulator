@@ -136,6 +136,7 @@
     if (!plantEl) return;
     
     stats.plantsCollected++; // 记录收集水草次数
+    checkAchievements(); // 检查成就
     
     // 减少喂鱼冷却1分钟
     if (!canFeedFish()) {
@@ -230,6 +231,7 @@
   // 添加随机鱼
   function addRandomFish() {
     stats.addFishClicks++; // 记录点击添加鱼按钮
+    checkAchievements(); // 检查成就
     if (!canAddFish()) {
       saveFishToStorage();
       return;
@@ -333,6 +335,7 @@
   // 摸鱼 - 点击鱼减少冷却时间
   function petFish(fishId) {
     stats.petFishClicks++; // 记录摸鱼点击次数
+    checkAchievements(); // 检查成就
     if (!canAddFish()) {
       lastAddFishTime = Math.max(0, lastAddFishTime - 60000); // 减少1分钟
       updateAddFishButton();
@@ -459,6 +462,7 @@
   // 喂鱼
   function feedFish() {
     stats.feedFishClicks++; // 记录点击喂鱼按钮
+    checkAchievements(); // 检查成就
     if (!canFeedFish()) {
       saveFishToStorage();
       return;
