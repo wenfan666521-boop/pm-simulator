@@ -717,23 +717,15 @@
       return;
     }
     
-    // 检查每日次数
-    checkDevDailyReset();
-    if (devDailyUsage >= DEV_DAILY_LIMIT) {
-      alert('今日测试口令次数已用完，请明天再来！');
-      return;
-    }
-    
-    // 验证口令
+    // 验证口令（开发者模式下不限制次数）
     if (code === DEV_MODE_PASSWORD) {
-      devDailyUsage++;
       giftCount += DEV_REWARD_AMOUNT;
       saveFishToStorage();
       
       alert(`🎁 测试口令兑换成功！获得 ${DEV_REWARD_AMOUNT} 个礼物！\n剩余礼物：${giftCount} 个`);
       
-      // 关闭当前面板
-      const overlay = document.querySelector('.gift-panel').parentNode;
+      // 清空输入框
+      document.getElementById('devCodeInput').value = '';
       if (overlay) overlay.remove();
     } else {
       alert('无效的测试口令');
