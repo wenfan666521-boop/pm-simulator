@@ -74,7 +74,11 @@
   <div class="wechat-nav" id="listNav"><span class="back hidden">‹</span><span class="title">微信</span><span class="actions">➕</span></div>
   <div id="conversation-list" class="scene"></div>
   <div id="chat-room" class="scene hidden">
-
+    <div class="chat-room-nav">
+      <span class="back" id="chatBackBtn" onclick="backToList()">‹</span>
+      <div class="avatar" id="chatAvatar">👤</div>
+      <span class="name" id="chatName">联系人</span>
+    </div>
     <div class="msg-list" id="msgList"></div>
     <div class="choice-area" id="choiceArea"></div>
   </div>
@@ -318,6 +322,17 @@ function renderConversations() {
   });
 }
 
+function enableBackBtn(ok) {
+  const btn = document.getElementById('chatBackBtn');
+  if (!btn) return;
+  if (ok) {
+    btn.style.pointerEvents = 'auto';
+    btn.style.color = '#007aff';
+  } else {
+    btn.style.pointerEvents = 'none';
+    btn.style.color = '#c7c7cc';
+  }
+}
 function backToList() {
   document.getElementById('conversation-list').classList.remove('hidden');
   document.getElementById('chat-room').classList.add('hidden');
@@ -333,6 +348,10 @@ function openChar(charKey) {
   document.getElementById('conversation-list').classList.add('hidden');
   document.getElementById('chat-room').classList.remove('hidden');
   document.getElementById('listNav').classList.add('hidden');
+
+  document.getElementById('chatAvatar').textContent = c.emoji;
+  document.getElementById('chatAvatar').style.background = c.color + '22';
+  document.getElementById('chatName').textContent = c.name;
 
   renderMessages();
 }
@@ -368,7 +387,7 @@ function renderMessages() {
     }
   }
 
-  // 进入对话后锁定返回按钮（直到选项出现）
+  enableBackBtn(false); // 进入对话后锁定返回按钮（直到选项出现）
 
   // 3. 从 dlgProgress 恢复播放进度
   if (!state.dlgProgress[nextDlg.id]) state.dlgProgress[nextDlg.id] = 0;
