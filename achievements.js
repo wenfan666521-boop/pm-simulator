@@ -150,6 +150,7 @@ function checkAchievements() {
 function checkSecretAchievements() {
   SECRET_ACHIEVEMENTS.forEach(achievement => {
     if (!achievements.includes(achievement.id) && achievement.check()) {
+      achievements.push(achievement.id);
       if (achievement.giftReward > 0) {
         giftCount += achievement.giftReward;
         showSecretAchievementPopup(achievement, achievement.giftReward);
