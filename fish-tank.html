@@ -1468,6 +1468,7 @@
     }
 
     const overlay = document.createElement('div');
+    overlay.id = 'specialBaitOverlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center;';
 
     const baitName = multiplier >= 100 ? '传说鱼饵' : '神奇鱼饵';
@@ -1491,7 +1492,7 @@
         <div style="max-height:300px;overflow-y:auto;">
           ${fishOptionsHTML}
         </div>
-        <button onclick="this.parentNode.parentNode.remove()" style="margin-top:15px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">取消</button>
+        <button onclick="document.getElementById('specialBaitOverlay').remove()" style="margin-top:15px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">取消</button>
       </div>
     `;
 
@@ -1524,7 +1525,8 @@
     }
 
     // 关闭弹窗
-    document.querySelectorAll('[style*="z-index:1000"]').forEach(el => el.remove());
+    const overlay = document.getElementById('specialBaitOverlay');
+    if (overlay) overlay.remove();
 
     saveFishToStorage();
     stats.successfulFeeds++;
