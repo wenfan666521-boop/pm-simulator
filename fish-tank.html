@@ -1172,6 +1172,16 @@
         const gemCount = fishes.filter(f => f.type === '💎').length;
         return hatCount >= 1 && gemCount >= 1;
       }
+    },
+    {
+      id: 'purple_snake',
+      name: '紫色的小蛇',
+      description: '特意用这种方式解锁，真是辛苦您了！敬礼~☆',
+      check: () => {
+        const snakeCount = fishes.filter(f => f.type === '🐍').length;
+        const purpleCount = fishes.filter(f => f.type === '🟣').length;
+        return snakeCount >= 1 && purpleCount >= 1;
+      }
     }
   ];
   
