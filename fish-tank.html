@@ -93,13 +93,8 @@
   <div class="tank-controls">
     <button class="tank-btn" id="addFishBtn" onclick="addRandomFish()">➕ 添加鱼</button>
     <button class="tank-btn" id="feedFishBtn" onclick="feedFish()">🍽️ 喂鱼</button>
-  </div>
-  
-  <div class="tank-controls" style="background:rgba(0,0,0,0.4);">
     <button class="tank-btn" onclick="showGiftPanel()">💫 祈祷</button>
-    <button class="tank-btn" onclick="showReceivePanel()">📬 收礼</button>
   </div>
-</div>
 
 <script>
   const fishTypes = ['🐠', '🐟', '🦈', '🐙', '🦑', '🦀', '🦐', '🐚'];
@@ -1064,6 +1059,7 @@
       '<div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">☰ 菜单</div>' +
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
       '<button onclick="toggleFullscreen();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖥️ 全屏模式</button>' +
+      '<button onclick="showReceivePanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📬 收礼</button>' +
       '<button onclick="showAchievements();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🏆 成就列表</button>' +
       '<button onclick="cleanTank();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧹 清理鱼缸</button>' +
       '</div>' +
