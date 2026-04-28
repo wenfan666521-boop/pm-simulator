@@ -123,6 +123,94 @@ const ACHIEVEMENTS = [
     giftReward: 5,
     unlockHint: '拥有三十八条鱼',
     check: () => fishes.length >= 38
+  },
+  {
+    id: 'pet_fish_apprentice',
+    name: '摸鱼学徒',
+    description: '不错，今天又靠摸鱼赚了5毛钱',
+    giftReward: 1,
+    unlockHint: '第10次摸鱼',
+    check: () => stats.petFishClicks >= 10
+  },
+  {
+    id: 'pet_fish_veteran',
+    name: '摸鱼熟练工',
+    description: '你已经掌握了基本的摸鱼技巧——偷偷去厕所用手机摸',
+    giftReward: 2,
+    unlockHint: '第50次摸鱼',
+    check: () => stats.petFishClicks >= 50
+  },
+  {
+    id: 'pet_fish_expert',
+    name: '摸鱼高手',
+    description: '你已经掌握了高级的摸鱼技巧——趁老板不在电脑小窗口摸',
+    giftReward: 3,
+    unlockHint: '第100次摸鱼',
+    check: () => stats.petFishClicks >= 100
+  },
+  {
+    id: 'pet_fish_master',
+    name: '摸鱼大师',
+    description: '无他，唯手熟尔！',
+    giftReward: 3,
+    unlockHint: '第500次摸鱼',
+    check: () => stats.petFishClicks >= 500
+  },
+  {
+    id: 'feed_fish_20',
+    name: '再来一碗',
+    description: '鱼已经习惯了「想吃就张嘴」的生活，人什么时候才能过上「穷了就来钱」的日子……',
+    giftReward: 1,
+    unlockHint: '投喂20次鱼',
+    check: () => stats.feedFishClicks >= 20
+  },
+  {
+    id: 'feed_fish_50',
+    name: '跨界养猪',
+    description: '你以养鱼的名义，成功养出了五头猪。水产局和畜牧局同时给你发来贺电，并询问你到底在养什么。',
+    giftReward: 1,
+    unlockHint: '投喂50次鱼',
+    check: () => stats.feedFishClicks >= 50
+  },
+  {
+    id: 'feed_fish_100',
+    name: '通货膨胀',
+    description: '投喂100次后，鱼已经对一粒两粒饲料不屑一顾。它们要求加薪和缩短工时。',
+    giftReward: 1,
+    unlockHint: '投喂100次鱼',
+    check: () => stats.feedFishClicks >= 100
+  },
+  {
+    id: 'use_shrink_bait',
+    name: '"喝我"',
+    description: '爱丽丝喝下了带有「喝我」标签的药水，身体一下子就变小了……',
+    giftReward: 1,
+    unlockHint: '使用缩小鱼饵',
+    check: () => stats.shrinkBaitUsed >= 1
+  },
+  {
+    id: 'use_magic_bait',
+    name: '"吃我"',
+    description: '爱丽丝吃下了带有「吃我」标签的蛋糕，身体一下子就变大了……',
+    giftReward: 1,
+    unlockHint: '使用神奇鱼饵',
+    check: () => stats.magicBaitUsed >= 1
+  },
+  {
+    id: 'use_legend_bait',
+    name: '"吃我"2',
+    description: '爱丽丝吃下了带有「吃我」标签的蛋糕，身体一下子就变大了。等一下，这有点太大了吧？！',
+    giftReward: 1,
+    unlockHint: '使用传说鱼饵',
+    check: () => stats.legendBaitUsed >= 1
+  },
+  {
+    id: 'use_restore_bait',
+    name: '穿越',
+    description: '重生后，我逆袭成为海洋霸主——海神默许了这类小说在海底流通',
+    giftReward: 1,
+    unlockHint: '使用还原鱼饵',
+    check: () => stats.restoreBaitUsed >= 1
   }
 ];
 

@@ -117,7 +117,11 @@
     cleanCount: 0,          // 清理次数
     petFishClicks: 0,      // 点击鱼的次数(摸鱼)
     giftsSent: 0,           // 送礼次数
-    giftsReceived: 0       // 收礼次数
+    giftsReceived: 0,       // 收礼次数
+    legendBaitUsed: 0,      // 传说鱼饵使用次数
+    magicBaitUsed: 0,       // 神奇鱼饵使用次数
+    shrinkBaitUsed: 0,      // 缩小鱼饵使用次数
+    restoreBaitUsed: 0      // 还原鱼饵使用次数
   };
 
   // 礼物系统全局变量
@@ -1607,6 +1611,12 @@
     const overlay = document.getElementById('specialBaitOverlay');
     if (overlay) overlay.remove();
 
+    // 记录特殊鱼饵使用次数
+    if (baitType === 'legend') stats.legendBaitUsed++;
+    else if (baitType === 'magic') stats.magicBaitUsed++;
+    else if (baitType === 'shrink') stats.shrinkBaitUsed++;
+    else if (baitType === 'restore') stats.restoreBaitUsed++;
+
     saveFishToStorage();
     stats.successfulFeeds++;
     checkAchievements();
@@ -1702,7 +1712,7 @@
       lastFeedFishTime = data.lastFeedFishTime || 0;
       achievements = data.achievements || [];
       nextPlantGenerateTime = data.nextPlantGenerateTime || 0;
-      stats = data.stats || { addFishClicks: 0, feedFishClicks: 0, successfulFeeds: 0, plantsCollected: 0, cleanCount: 0, petFishClicks: 0 };
+      stats = data.stats || { addFishClicks: 0, feedFishClicks: 0, successfulFeeds: 0, plantsCollected: 0, cleanCount: 0, petFishClicks: 0, giftsSent: 0, giftsReceived: 0, legendBaitUsed: 0, magicBaitUsed: 0, shrinkBaitUsed: 0, restoreBaitUsed: 0 };
 
       // 加载礼物数据
       if (data.giftData) {
