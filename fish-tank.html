@@ -590,6 +590,74 @@
     tank.style.backgroundRepeat = 'no-repeat';
   }
 
+  // 显示存档管理面板
+  function showSavePanel() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    overlay.innerHTML = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">' +
+      '<div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">📦 存档管理</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' +
+      '<button onclick="exportSave()" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📤 导出存档</button>' +
+      '<button onclick="document.getElementById(\'saveFileInput\').click()" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📥 导入存档</button>' +
+      '<button onclick="showMenu()" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">← 返回菜单</button>' +
+      '</div>' +
+      '<button onclick="overlay.remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
+      '<input type="file" id="saveFileInput" accept=".json" style="display:none;" onchange="importSave(this.files[0])">' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+  }
+
+  // 导出存档
+  function exportSave() {
+    const saveData = {
+      version: 1,
+      exportTime: new Date().toISOString(),
+      fishes: fishes,
+      stats: stats,
+      achievements: achievements,
+      giftCount: giftCount,
+      usedCodes: usedCodes
+    };
+
+    const json = JSON.stringify(saveData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    a.href = url;
+    a.download = `fish_tank_save_${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    alert('存档已导出！');
+  }
+
+  // 导入存档
+  function importSave(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!data.version || !data.fishes || !data.stats) {
+          throw new Error('Invalid save file');
+        }
+        fishes = data.fishes;
+        stats = { ...stats, ...data.stats };
+        achievements = data.achievements || [];
+        giftCount = data.giftCount || 1;
+        usedCodes = data.usedCodes || [];
+        saveFishToStorage();
+        location.reload();
+      } catch (err) {
+        alert('存档导入失败：文件格式错误');
+      }
+    };
+    reader.readAsText(file);
+  }
+
   // 显示送礼面板
   function showGiftPanel() {
     const overlay = document.createElement('div');
@@ -1145,6 +1213,7 @@
       '<button onclick="showReceivePanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📬 收礼</button>' +
       '<button onclick="showAchievements();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🏆 成就列表</button>' +
       '<button onclick="showBackgroundPanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖼️ 背景设置</button>' +
+      '<button onclick="showSavePanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📦 存档管理</button>' +
       '<button onclick="cleanTank();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧹 清理鱼缸</button>' +
       '</div>' +
       '<button onclick="this.parentNode.parentNode.remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
