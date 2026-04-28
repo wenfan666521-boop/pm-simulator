@@ -256,7 +256,7 @@
     const now = Date.now();
     if (now >= nextPlantGenerateTime) {
       generateRandomPlant();
-      nextPlantGenerateTime = now + Math.random() * 300 * 1000; // 0-300秒
+      nextPlantGenerateTime = now + Math.random() * 60 * 1000; // 0-60秒
     }
   }
 
@@ -716,19 +716,29 @@
 
       alert(`🎁 测试口令兑换成功！获得 ${DEV_REWARD_AMOUNT} 个礼物！\n剩余礼物：${giftCount} 个`);
 
-      // 清空输入框
+      // 清空输入框并关闭弹窗
       document.getElementById('devCodeInput').value = '';
-      if (overlay) overlay.remove();
+      closeDevPanel();
     } else if (code === 'magic5') {
       nextFeedMagicBait = true;
       alert('🍬 神奇鱼饵已激活！下次喂鱼必定触发5倍变大效果！');
       document.getElementById('devCodeInput').value = '';
+      closeDevPanel();
     } else if (code === 'legend100') {
       nextFeedLegendBait = true;
       alert('🍰 传说鱼饵已激活！下次喂鱼必定触发100倍变大效果！');
       document.getElementById('devCodeInput').value = '';
+      closeDevPanel();
     } else {
       alert('无效的测试口令');
+    }
+  }
+
+  // 关闭开发者面板
+  function closeDevPanel() {
+    const devPanel = document.querySelector('.gift-panel');
+    if (devPanel && devPanel.parentNode) {
+      devPanel.parentNode.remove();
     }
   }
 
