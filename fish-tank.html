@@ -256,7 +256,7 @@
     const now = Date.now();
     if (now >= nextPlantGenerateTime) {
       generateRandomPlant();
-      nextPlantGenerateTime = now + Math.random() * 60 * 1000; // 0-60秒
+      nextPlantGenerateTime = now + Math.random() * 20 * 1000; // 0-20秒
     }
   }
 
