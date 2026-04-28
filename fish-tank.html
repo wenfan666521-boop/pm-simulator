@@ -96,7 +96,7 @@
   </div>
   
   <div class="tank-controls" style="background:rgba(0,0,0,0.4);">
-    <button class="tank-btn" onclick="showGiftPanel()">🎁 送礼</button>
+    <button class="tank-btn" onclick="showGiftPanel()">💫 祈祷</button>
     <button class="tank-btn" onclick="showReceivePanel()">📬 收礼</button>
   </div>
 </div>
@@ -550,7 +550,7 @@
     giftPanel.className = 'gift-panel';
     giftPanel.innerHTML = `
       <span class="gift-close" onclick="closeGiftPanel()">✕</span>
-      <h3>🎁 送给好友</h3>
+      <h3>💫 祈祷祝福</h3>
       <div id="giftCountDisplay" style="text-align:center;margin-bottom:15px;padding:8px;background:rgba(255,255,255,0.1);border-radius:10px;font-size:12px;color:rgba(255,255,255,0.8);">剩余礼物：${giftCount} 个</div>
       <div class="gift-section">
         <input type="text" id="giftSenderName" placeholder="你的名字">
@@ -894,7 +894,7 @@
     // 显示成功提示
     const toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#34c759 0%,#28a745 100%);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;';
-    toast.innerHTML = `🎁 礼物已放入鱼缸！<br><span style="font-size:24px;margin-top:10px;display:block;">${emoji}</span>`;
+    toast.innerHTML = `💫 祝福已放入鱼缸！<br><span style="font-size:24px;margin-top:10px;display:block;">${emoji}</span>`;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2000);
   }
