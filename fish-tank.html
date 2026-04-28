@@ -570,23 +570,27 @@
       </div>
       <div id="giftResult" class="gift-section" style="display:none;">
         <h4>🎁 礼物确认</h4>
-        <div style="text-align:center;margin:20px 0;">
+        <div style="text-align:center;margin:15px 0;">
           <div style="font-size:48px;margin-bottom:10px;">🎁</div>
-          <div style="font-size:14px;">礼物：随机鱼</div>
-          <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：你的祝福语</div>
+          <div style="font-size:14px;">礼物：预览</div>
+          <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福语</div>
         </div>
-        <button id="generateCodeBtn" style="display:none;">生成礼物代码</button>
-        <div id="giftCodeDisplay" class="gift-code-display" style="display:none;"></div>
+        <div style="display:flex;gap:10px;margin-top:15px;">
+          <button id="addToMyTankBtn" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#34c759 0%,#28a745 100%);color:#fff;cursor:pointer;font-size:14px;">🏠 放入鱼缸</button>
+          <button id="sendToFriendBtn" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">📤 送给朋友</button>
+        </div>
+        <div id="giftCodeDisplay" class="gift-code-display" style="display:none;margin-top:15px;"></div>
       </div>
     `;
     
     // 保存当前面板引用
     currentGiftPanel = giftPanel;
-    
+
     // 绑定按钮事件
     giftPanel.querySelector('#confirmGiftBtn').onclick = confirmGift;
-    giftPanel.querySelector('#generateCodeBtn').onclick = generateGiftCode;
-    
+    giftPanel.querySelector('#addToMyTankBtn').onclick = addGiftToMyTank;
+    giftPanel.querySelector('#sendToFriendBtn').onclick = sendGiftToFriend;
+
     overlay.appendChild(giftPanel);
     document.body.appendChild(overlay);
   }
@@ -809,15 +813,18 @@
       currentGiftEmoji = emoji;
       loadingDiv.style.display = 'none';
       resultDiv.style.display = 'block';
-      
+
+      // 更新礼物预览
       resultDiv.querySelector('div').innerHTML = `
         <div style="font-size:48px;margin-bottom:10px;">${emoji}</div>
         <div style="font-size:14px;">礼物：${emoji}</div>
         <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${blessing}</div>
       `;
-      
-      // 显示生成代码按钮
-      document.getElementById('generateCodeBtn').style.display = 'block';
+
+      // 显示两个按钮（默认隐藏代码区域）
+      document.getElementById('addToMyTankBtn').style.display = 'block';
+      document.getElementById('sendToFriendBtn').style.display = 'block';
+      document.getElementById('giftCodeDisplay').style.display = 'none';
     }
     
     // AI优先：先调用AI语义理解
@@ -842,9 +849,122 @@
       showResult(localEmoji);
     });
   }
-  
-  // 生成礼物代码
+
+  // 放入自己的鱼缸
+  function addGiftToMyTank() {
+    const emoji = currentGiftEmoji || fishTypes[Math.floor(Math.random() * fishTypes.length)];
+
+    // 扣除礼物数
+    giftCount--;
+    totalGiftsSent++;
+    updateGiftCountDisplay();
+
+    // 添加鱼到鱼缸
+    const tank = document.getElementById('tankWater');
+    const x = Math.random() * (tank.offsetWidth - 40);
+    const y = Math.random() * (tank.offsetHeight - 40);
+    const fish = document.createElement('div');
+    fish.className = 'fish';
+    fish.textContent = emoji;
+    fish.style.left = x + 'px';
+    fish.style.top = y + 'px';
+    fish.id = 'fish-' + fishIdCounter++;
+    fish.onclick = () => petFish(fish.id);
+    tank.appendChild(fish);
+
+    // 注册到鱼群数组
+    fishes.push({
+      id: fish.id,
+      type: emoji,
+      x: x,
+      y: y,
+      dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
+      dy: (Math.random() - 0.5) * 3,
+      feedCount: 0
+    });
+
+    // 更新统计
+    stats.giftsReceived++;
+    saveFishToStorage();
+    checkSecretAchievements();
+
+    // 关闭面板
+    closeGiftPanel();
+
+    // 显示成功提示
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#34c759 0%,#28a745 100%);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;';
+    toast.innerHTML = `🎁 礼物已放入鱼缸！<br><span style="font-size:24px;margin-top:10px;display:block;">${emoji}</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+  }
+
+  // 送给朋友
+  function sendGiftToFriend() {
+    const senderName = document.getElementById('giftSenderName').value;
+    const blessing = document.getElementById('giftBlessing').value;
+
+    const emoji = currentGiftEmoji || fishTypes[Math.floor(Math.random() * fishTypes.length)];
+
+    // 构建礼物数据
+    const giftData = {
+      e: emoji,
+      s: senderName || '神秘好友',
+      b: blessing || '祝你养鱼开心！'
+    };
+
+    // 扣除礼物数
+    giftCount--;
+    totalGiftsSent++;
+    updateGiftCountDisplay();
+
+    // 生成礼物码
+    const jsonStr = JSON.stringify(giftData);
+    const compressed = LZString.compressToBase64(jsonStr);
+    const giftCode = btoa(encodeURIComponent(compressed));
+
+    // 显示代码区域，隐藏两个按钮
+    const codeDisplay = document.getElementById('giftCodeDisplay');
+    codeDisplay.innerHTML = `<code>${giftCode}</code>`;
+    codeDisplay.style.display = 'block';
+    document.getElementById('addToMyTankBtn').style.display = 'none';
+    document.getElementById('sendToFriendBtn').style.display = 'none';
+
+    // 创建复制按钮
+    const copyBtn = document.createElement('button');
+    copyBtn.style.cssText = 'width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;margin-top:10px;';
+    copyBtn.textContent = '复制代码';
+    copyBtn.onclick = () => {
+      const copyText = '送你一个礼物，粘贴口令代码去领取吧~【' + giftCode + '】';
+      navigator.clipboard.writeText(copyText).then(() => {
+        copyBtn.textContent = '已复制！';
+      }).catch(() => {
+        alert('复制失败，请手动复制');
+      });
+    };
+
+    const oldCopyBtn = codeDisplay.querySelector('button');
+    if (oldCopyBtn) {
+      oldCopyBtn.remove();
+    }
+    codeDisplay.appendChild(copyBtn);
+
+    // 自动复制
+    const copyText = '送你一个礼物，粘贴口令代码去领取吧~【' + giftCode + '】';
+    navigator.clipboard.writeText(copyText).then(() => {
+      copyBtn.textContent = '发送给朋友领取礼物吧！';
+      copyBtn.style.background = 'linear-gradient(135deg,#34c759 0%,#28a745 100%)';
+    }).catch(() => {});
+
+    // 保存统计
+    stats.giftsSent++;
+    saveFishToStorage();
+  }
+
+  // 生成礼物代码（已废弃，保留兼容性）
   function generateGiftCode() {
+    sendGiftToFriend();
+  }
     const senderName = document.getElementById('giftSenderName').value;
     const blessing = document.getElementById('giftBlessing').value;
     
