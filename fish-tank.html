@@ -138,8 +138,10 @@
   let devModeUnlocked = false; // 开发者模式是否解锁(刷新重置)
 
   // 特殊鱼饵状态
-  let nextFeedMagicBait = false; // 下次喂鱼触发神奇鱼饵(5倍)
-  let nextFeedLegendBait = false; // 下次喂鱼触发传说鱼饵(100倍)
+  let nextFeedMagicBait = false; // 下次喂鱼触发神奇鱼饵（2倍）
+  let nextFeedLegendBait = false; // 下次喂鱼触发传说鱼饵（10倍）
+  let nextFeedShrinkBait = false; // 下次喂鱼触发缩小鱼饵（1/2倍）
+  let nextFeedRestoreBait = false; // 下次喂鱼触发还原鱼饵（1倍）
 
   // 生成用户唯一ID
   function generateUserId() {
@@ -721,12 +723,22 @@
       closeDevPanel();
     } else if (code === 'magic5') {
       nextFeedMagicBait = true;
-      alert('🍬 神奇鱼饵已激活！下次喂鱼必定触发5倍变大效果！');
+      alert('🍬 神奇鱼饵已激活！下次喂鱼必定触发2倍变大效果！');
       document.getElementById('devCodeInput').value = '';
       closeDevPanel();
     } else if (code === 'legend100') {
       nextFeedLegendBait = true;
-      alert('🍰 传说鱼饵已激活！下次喂鱼必定触发100倍变大效果！');
+      alert('🍰 传说鱼饵已激活！下次喂鱼必定触发10倍变大效果！');
+      document.getElementById('devCodeInput').value = '';
+      closeDevPanel();
+    } else if (code === 'shrink5') {
+      nextFeedShrinkBait = true;
+      alert('🍸 缩小鱼饵已激活！下次喂鱼必定触发缩小效果！');
+      document.getElementById('devCodeInput').value = '';
+      closeDevPanel();
+    } else if (code === 'restore') {
+      nextFeedRestoreBait = true;
+      alert('🧃 还原鱼饵已激活！下次喂鱼必定触发还原效果！');
       document.getElementById('devCodeInput').value = '';
       closeDevPanel();
     } else {
@@ -1363,14 +1375,26 @@
       // 传说鱼饵优先
       specialBaitType = 'legend';
       specialBaitEmoji = '🍰';
-      specialBaitMultiplier = 100;
+      specialBaitMultiplier = 10;
       nextFeedLegendBait = false;
     } else if (nextFeedMagicBait) {
       // 神奇鱼饵
       specialBaitType = 'magic';
       specialBaitEmoji = '🍬';
-      specialBaitMultiplier = 5;
+      specialBaitMultiplier = 2;
       nextFeedMagicBait = false;
+    } else if (nextFeedShrinkBait) {
+      // 缩小鱼饵
+      specialBaitType = 'shrink';
+      specialBaitEmoji = '🍸';
+      specialBaitMultiplier = 0.5;
+      nextFeedShrinkBait = false;
+    } else if (nextFeedRestoreBait) {
+      // 还原鱼饵
+      specialBaitType = 'restore';
+      specialBaitEmoji = '🧃';
+      specialBaitMultiplier = 1;
+      nextFeedRestoreBait = false;
     } else {
       // 概率触发
       const rand = Math.random();
@@ -1378,18 +1402,28 @@
         // 0.01% 传说鱼饵
         specialBaitType = 'legend';
         specialBaitEmoji = '🍰';
-        specialBaitMultiplier = 100;
+        specialBaitMultiplier = 10;
       } else if (rand < 0.05) {
         // 5% 神奇鱼饵（0.01% < rand < 5%）
         specialBaitType = 'magic';
         specialBaitEmoji = '🍬';
-        specialBaitMultiplier = 5;
+        specialBaitMultiplier = 2;
+      } else if (rand < 0.10) {
+        // 5% 缩小鱼饵（5% <= rand < 10%）
+        specialBaitType = 'shrink';
+        specialBaitEmoji = '🍸';
+        specialBaitMultiplier = 0.5;
+      } else if (rand < 0.20) {
+        // 10% 还原鱼饵（10% <= rand < 20%）
+        specialBaitType = 'restore';
+        specialBaitEmoji = '🧃';
+        specialBaitMultiplier = 1;
       }
     }
 
     // 如果触发特殊鱼饵，显示选择弹窗
     if (specialBaitType) {
-      showSpecialBaitPopup(specialBaitEmoji, specialBaitMultiplier, tank, tankWidth, tankHeight);
+      showSpecialBaitPopup(specialBaitEmoji, specialBaitMultiplier, tank, tankWidth, tankHeight, specialBaitType);
       saveFishToStorage();
       return;
     }
@@ -1461,7 +1495,7 @@
   }
 
   // 显示特殊鱼饵选择弹窗
-  function showSpecialBaitPopup(baitEmoji, multiplier, tank, tankWidth, tankHeight) {
+  function showSpecialBaitPopup(baitEmoji, multiplier, tank, tankWidth, tankHeight, baitType) {
     if (fishes.length === 0) {
       alert('鱼缸里没有鱼，无法使用特殊鱼饵！');
       return;
@@ -1471,24 +1505,47 @@
     overlay.id = 'specialBaitOverlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center;';
 
-    const baitName = multiplier >= 100 ? '传说鱼饵' : '神奇鱼饵';
-    const multiplierText = multiplier >= 100 ? '100倍' : '5倍';
+    // 根据鱼饵类型设置名称和颜色
+    let baitName, multiplierText, titleColor, effectText;
+    if (baitType === 'legend') {
+      baitName = '传说鱼饵';
+      multiplierText = '10倍';
+      titleColor = '#FFD700';
+      effectText = '变大10倍';
+    } else if (baitType === 'magic') {
+      baitName = '神奇鱼饵';
+      multiplierText = '2倍';
+      titleColor = '#7DCFFF';
+      effectText = '变大2倍';
+    } else if (baitType === 'shrink') {
+      baitName = '缩小鱼饵';
+      multiplierText = '1/2';
+      titleColor = '#B19CD9';
+      effectText = '缩小到1/2';
+    } else {
+      baitName = '还原鱼饵';
+      multiplierText = '1倍';
+      titleColor = '#77DD77';
+      effectText = '还原到1倍';
+    }
 
     // 生成鱼的选项HTML
     let fishOptionsHTML = '';
     fishes.forEach((f, index) => {
       const currentScale = 1 + f.feedCount * 0.15;
-      fishOptionsHTML += `<div class="special-bait-fish-item" onclick="applySpecialBait(${index}, ${multiplier}, '${baitEmoji}')" style="padding:10px;margin:8px 0;background:rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;text-align:center;">
+      const newScale = baitType === 'restore' ? 1 : currentScale * multiplier;
+      const arrow = baitType === 'restore' ? '→ 1.0x' : `→ ${newScale.toFixed(1)}x`;
+      fishOptionsHTML += `<div class="special-bait-fish-item" onclick="applySpecialBait(${index}, ${multiplier}, '${baitEmoji}', '${baitType}')" style="padding:10px;margin:8px 0;background:rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;text-align:center;">
         <div style="font-size:32px;margin-bottom:5px;">${f.type}</div>
-        <div style="font-size:12px;opacity:0.8;">当前: ${currentScale.toFixed(1)}x → ${(currentScale * multiplier).toFixed(1)}x</div>
+        <div style="font-size:12px;opacity:0.8;">当前: ${currentScale.toFixed(1)}x ${arrow}</div>
       </div>`;
     });
 
     overlay.innerHTML = `
       <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:320px;max-height:450px;overflow-y:auto;text-align:center;">
         <div style="font-size:48px;margin-bottom:15px;">${baitEmoji}</div>
-        <div style="font-size:20px;font-weight:bold;margin-bottom:10px;color:${multiplier >= 100 ? '#FFD700' : '#7DCFFF'};">${baitName}</div>
-        <div style="font-size:14px;opacity:0.8;margin-bottom:20px;">选择一条鱼使其变大 <strong>${multiplierText}</strong></div>
+        <div style="font-size:20px;font-weight:bold;margin-bottom:10px;color:${titleColor};">${baitName}</div>
+        <div style="font-size:14px;opacity:0.8;margin-bottom:20px;">选择一条鱼使其<strong>${effectText}</strong></div>
         <div style="max-height:300px;overflow-y:auto;">
           ${fishOptionsHTML}
         </div>
@@ -1501,25 +1558,47 @@
   }
 
   // 应用特殊鱼饵效果
-  function applySpecialBait(fishIndex, multiplier, baitEmoji) {
+  function applySpecialBait(fishIndex, multiplier, baitEmoji, baitType) {
     if (fishIndex < 0 || fishIndex >= fishes.length) return;
 
     const targetFish = fishes[fishIndex];
     const fishEl = document.getElementById(targetFish.id);
 
     if (fishEl) {
-      // 计算新的倍数
-      const currentScale = 1 + targetFish.feedCount * 0.15;
-      const newScale = currentScale * multiplier;
-      targetFish.feedCount = Math.round((newScale - 1) / 0.15);
+      let newScale;
+      let toastBg, toastMsg;
 
-      // 应用变大效果
+      if (baitType === 'restore') {
+        // 还原鱼饵：恢复到1倍
+        newScale = 1;
+        targetFish.feedCount = 0;
+        toastBg = 'linear-gradient(135deg,#77DD77 0%,#28a745 100%)';
+        toastMsg = '鱼儿还原到 <strong>1倍</strong>！';
+      } else {
+        // 其他鱼饵：乘以倍率
+        const currentScale = 1 + targetFish.feedCount * 0.15;
+        newScale = currentScale * multiplier;
+        targetFish.feedCount = Math.round((newScale - 1) / 0.15);
+
+        if (baitType === 'legend') {
+          toastBg = 'linear-gradient(135deg,#FFD700 0%,#FFA500 100%)';
+          toastMsg = `鱼儿变大 <strong>10倍</strong>！`;
+        } else if (baitType === 'magic') {
+          toastBg = 'linear-gradient(135deg,#7DCFFF 0%,#007AFF 100%)';
+          toastMsg = `鱼儿变大 <strong>2倍</strong>！`;
+        } else {
+          toastBg = 'linear-gradient(135deg,#B19CD9 0%,#9370DB 100%)';
+          toastMsg = `鱼儿缩小到 <strong>1/2</strong>！`;
+        }
+      }
+
+      // 应用变换效果
       fishEl.style.transform = `scale(${newScale})`;
 
       // 显示成功提示
       const toast = document.createElement('div');
-      toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#FFD700 0%,#FFA500 100%);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;box-shadow:0 0 30px rgba(255,215,0,0.5);';
-      toast.innerHTML = `${baitEmoji} 鱼儿变大 <strong>${multiplier}倍</strong>！<br><span style="font-size:24px;margin-top:10px;display:block;">${targetFish.type}</span>`;
+      toast.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${toastBg};color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;box-shadow:0 0 30px rgba(0,0,0,0.3);`;
+      toast.innerHTML = `${baitEmoji} ${toastMsg}<br><span style="font-size:24px;margin-top:10px;display:block;">${targetFish.type}</span>`;
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 2000);
     }
