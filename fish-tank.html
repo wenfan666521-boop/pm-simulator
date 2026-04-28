@@ -1023,7 +1023,13 @@
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-    
+
+    // [DEBUG] 调试成就加载问题
+    const savedAchievements = JSON.parse(localStorage.getItem('fishTankData') || '{}').achievements || [];
+    console.log('[DEBUG] localStorage中的achievements:', savedAchievements);
+    console.log('[DEBUG] 当前achievements变量:', achievements);
+    console.log('[DEBUG] ACHIEVEMENTS定义数量:', ACHIEVEMENTS.length);
+
     // 计算普通成就
     const normalUnlocked = achievements.filter(id => ACHIEVEMENTS.some(a => a.id === id));
     const secretUnlocked = achievements.filter(id => SECRET_ACHIEVEMENTS.some(a => a.id === id));
