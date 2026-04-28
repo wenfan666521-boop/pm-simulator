@@ -593,6 +593,7 @@
   // 显示存档管理面板
   function showSavePanel() {
     const overlay = document.createElement('div');
+    overlay.id = 'savePanelOverlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
 
@@ -601,9 +602,8 @@
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
       '<button onclick="exportSave()" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📤 导出存档</button>' +
       '<button onclick="document.getElementById(\'saveFileInput\').click()" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📥 导入存档</button>' +
-      '<button onclick="showMenu()" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">← 返回菜单</button>' +
       '</div>' +
-      '<button onclick="overlay.remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
+      '<button onclick="document.getElementById(\'savePanelOverlay\').remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
       '<input type="file" id="saveFileInput" accept=".json" style="display:none;" onchange="importSave(this.files[0])">' +
       '</div>';
 
