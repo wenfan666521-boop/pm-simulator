@@ -1494,18 +1494,6 @@
   
   // 更新时间
   init();
-
-  // 页面加载后，如果有已解锁的成就，显示恢复提示
-  if (achievements.length > 0) {
-    setTimeout(() => {
-      const badge = document.createElement('div');
-      badge.style.cssText = 'position:fixed;bottom:20px;right:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:12px 20px;border-radius:15px;font-size:13px;z-index:999;box-shadow:0 5px 20px rgba(0,0,0,0.3);cursor:pointer;';
-      badge.innerHTML = `🏆 已解锁 ${achievements.length} 个成就 <span style="opacity:0.7;font-size:11px;">点击查看</span>`;
-      badge.onclick = () => { showAchievements(); badge.remove(); };
-      document.body.appendChild(badge);
-      setTimeout(() => badge.remove(), 5000);
-    }, 500);
-  }
 </script>
 </body>
 </html>
