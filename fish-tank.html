@@ -17,7 +17,7 @@
     .tank-title { font-size: 20px; font-weight: 700; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.5); }
 
     .fish-tank { flex: 1; background: url('https://raw.githubusercontent.com/wenfan666521-boop/pm-simulator/master/assets/images/tank-background.jpg') center center / cover no-repeat; position: relative; overflow: hidden; }
-    .fish-tank::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,31,63,0.6) 0%, rgba(0,51,102,0.6) 50%, rgba(0,34,68,0.6) 100%); z-index: 0; pointer-events: none; }
+    .fish-tank::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,31,63,0.5) 0%, rgba(0,51,102,0.2) 50%, rgba(0,34,68,0.8) 100%); z-index: 0; pointer-events: none; }
     .tank-water { position: relative; z-index: 1; }
     .tank-water { position: relative; width: 100%; height: 100%; }
 
@@ -96,6 +96,7 @@
     <button class="tank-btn" id="addFishBtn" onclick="addRandomFish()">➕ 添加鱼</button>
     <button class="tank-btn" id="feedFishBtn" onclick="feedFish()">🍽️ 喂鱼</button>
     <button class="tank-btn" onclick="showGiftPanel()">💫 祈祷</button>
+    <button class="tank-btn" onclick="showBackgroundPanel()">🖼️ 背景</button>
   </div>
 
 <script>
@@ -545,6 +546,49 @@
     if (countDisplay) {
       countDisplay.textContent = `剩余礼物:${giftCount} 个`;
     }
+  }
+
+  // 显示背景设置面板
+  function showBackgroundPanel() {
+    const existing = document.getElementById('backgroundPanelOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'backgroundPanelOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:320px;text-align:center;';
+    panel.innerHTML = `
+      <div style="font-size:24px;margin-bottom:20px;">🖼️ 鱼缸背景</div>
+      <input type="file" id="bgFileInput" accept="image/*" style="display:none;" onchange="handleBackgroundUpload(this.files[0])">
+      <button onclick="document.getElementById('bgFileInput').click()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;margin-bottom:10px;">📤 上传背景图片</button>
+      <button onclick="document.getElementById('backgroundPanelOverlay').remove()" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
+    `;
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+  }
+
+  // 处理背景图片上传
+  function handleBackgroundUpload(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setTankBackground(e.target.result);
+      document.getElementById('backgroundPanelOverlay').remove();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // 设置鱼缸背景
+  function setTankBackground(url) {
+    const tank = document.getElementById('fishTank');
+    tank.style.backgroundImage = `url('${url}')`;
+    tank.style.backgroundSize = 'cover';
+    tank.style.backgroundPosition = 'center center';
+    tank.style.backgroundRepeat = 'no-repeat';
   }
 
   // 显示送礼面板
