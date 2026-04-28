@@ -10,28 +10,28 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif; background: #001f3f; }
-    
+
     .app-container { width: 100%; height: 100%; display: flex; flex-direction: column; }
-    
+
     .tank-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(0,0,0,0.3); }
     .tank-title { font-size: 20px; font-weight: 700; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.5); }
-    
+
     .fish-tank { flex: 1; background: linear-gradient(180deg, #001f3f 0%, #003366 50%, #002244 100%); position: relative; overflow: hidden; }
     .tank-water { position: relative; width: 100%; height: 100%; }
-    
+
     .fish { position: absolute; font-size: 24px; z-index: 10; }
     .fish.bubble { font-size: 16px; color: rgba(255,255,255,.7); animation: float-up 3s ease-in-out infinite; }
-    
+
     @keyframes float-up {
       0% { transform: translateY(0) translateX(0); opacity: 0.7; }
       50% { transform: translateY(-30px) translateX(10px); opacity: 0.9; }
       100% { transform: translateY(-60px) translateX(-5px); opacity: 0; }
     }
-    
+
     .tank-controls { display: flex; justify-content: center; gap: 15px; padding: 15px 20px; background: rgba(0,0,0,0.3); }
     .tank-btn { padding: 10px 20px; background: rgba(255,255,255,.2); border: none; border-radius: 25px; color: #fff; font-size: 14px; cursor: pointer; backdrop-filter: blur(10px); transition: all 0.3s; }
     .tank-btn:hover { background: rgba(255,255,255,.3); transform: scale(1.05); }
-    
+
     .fish-counter { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.5); padding: 5px 10px; border-radius: 15px; color: #fff; font-size: 12px; }
 
   /* 送礼系统样式 */
@@ -45,7 +45,7 @@
   .gift-code-display { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-top: 15px; word-break: break-all; text-align: center; font-family: monospace; }
   .gift-code-display code { color: #4ade80; }
   .gift-close { position: absolute; top: 10px; right: 10px; cursor: pointer; font-size: 20px; }
-  
+
   /* 庆祝动画 */
   @keyframes glowPulse {
     0%, 100% { filter: drop-shadow(0 0 30px gold) drop-shadow(0 0 60px rgba(255,215,0,0.5)); transform: scale(1); }
@@ -83,13 +83,13 @@
     <h1 class="tank-title" onclick="handleTitleClick()" id="tankTitle">🐠 我的鱼缸 <span id="devHint" style="font-size:12px;opacity:0;"></span></h1>
     <button class="tank-btn" onclick="showMenu()" style="padding:8px 15px;font-size:12px;">☰ 菜单</button>
   </div>
-  
+
   <div class="fish-tank" id="fishTank">
     <div class="tank-water" id="tankWater">
       <div class="fish-counter">鱼的数量: <span id="fishCount">0</span></div>
     </div>
   </div>
-  
+
   <div class="tank-controls">
     <button class="tank-btn" id="addFishBtn" onclick="addRandomFish()">➕ 添加鱼</button>
     <button class="tank-btn" id="feedFishBtn" onclick="feedFish()">🍽️ 喂鱼</button>
@@ -112,21 +112,21 @@
   let stats = {
     addFishClicks: 0,      // 点击添加鱼按钮次数
     feedFishClicks: 0,     // 点击喂鱼按钮次数
-    successfulFeeds: 0,     // 成功喂鱼次数（鱼实际变大）
+    successfulFeeds: 0,     // 成功喂鱼次数(鱼实际变大)
     plantsCollected: 0,     // 收集水草次数
     cleanCount: 0,          // 清理次数
-    petFishClicks: 0,      // 点击鱼的次数（摸鱼）
+    petFishClicks: 0,      // 点击鱼的次数(摸鱼)
     giftsSent: 0,           // 送礼次数
     giftsReceived: 0       // 收礼次数
   };
-  
+
   // 礼物系统全局变量
   const INITIAL_GIFT_COUNT = 1; // 初始礼物数
   let giftCount = INITIAL_GIFT_COUNT; // 当前剩余礼物数
   let totalGiftsSent = 0; // 历史送礼总数
   let usedCodes = []; // 已使用的礼物码列表
-  let userId = ''; // 用户唯一ID（设备指纹）
-  
+  let userId = ''; // 用户唯一ID(设备指纹)
+
   // 开发者模式
   const DEV_MODE_PASSWORD = 'fish666'; // 测试口令
   const DEV_DAILY_LIMIT = 3; // 每日测试口令使用次数
@@ -135,8 +135,12 @@
   let devLastClickTime = 0; // 上次点击时间
   let devDailyUsage = 0; // 今日已使用次数
   let devLastUsageDate = ''; // 上次使用日期
-  let devModeUnlocked = false; // 开发者模式是否解锁（刷新重置）
-  
+  let devModeUnlocked = false; // 开发者模式是否解锁(刷新重置)
+
+  // 特殊鱼饵状态
+  let nextFeedMagicBait = false; // 下次喂鱼触发神奇鱼饵(5倍)
+  let nextFeedLegendBait = false; // 下次喂鱼触发传说鱼饵(100倍)
+
   // 生成用户唯一ID
   function generateUserId() {
     const stored = localStorage.getItem('fishTankUserId');
@@ -146,27 +150,27 @@
     return newId;
   }
   userId = generateUserId();
-  
-  // 处理标题点击（开发者模式解锁）
+
+  // 处理标题点击(开发者模式解锁)
   function handleTitleClick() {
     const now = Date.now();
     const hint = document.getElementById('devHint');
-    
-    // 如果超过3秒不清零，重新计数
+
+    // 如果超过3秒不清零,重新计数
     if (now - devLastClickTime > 3000) {
       devClickCount = 0;
     }
-    
+
     devLastClickTime = now;
     devClickCount++;
-    
+
     if (devModeUnlocked) return; // 已经解锁
-    
+
     if (devClickCount === 5) {
-      hint.textContent = '（还差2次...）';
+      hint.textContent = '(还差2次...)';
       hint.style.opacity = '0.6';
     } else if (devClickCount === 6) {
-      hint.textContent = '（再1次！）';
+      hint.textContent = '(再1次!)';
       hint.style.opacity = '0.8';
     } else if (devClickCount >= 7) {
       devModeUnlocked = true;
@@ -176,16 +180,16 @@
       saveFishToStorage();
     }
   }
-  
+
   // 显示开发者模式解锁提示
   function showDevModeUnlockedToast() {
     const toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;';
-    toast.innerHTML = '🔧 开发者模式已解锁！<br><span style="font-size:12px;opacity:0.7;">收礼面板中可输入测试口令</span>';
+    toast.innerHTML = '🔧 开发者模式已解锁!<br><span style="font-size:12px;opacity:0.7;">收礼面板中可输入测试口令</span>';
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2000);
   }
-  
+
   // 检查并重置每日使用次数
   function checkDevDailyReset() {
     const today = new Date().toDateString();
@@ -194,8 +198,8 @@
       devLastUsageDate = today;
     }
   }
-  
-  // 物品到emoji的本地映射（备用方案）
+
+  // 物品到emoji的本地映射(备用方案)
   const itemToEmojiMap = {
     '金鱼': '🐠', '小鱼': '🐟', '鲨鱼': '🦈', '章鱼': '🐙', '乌贼': '🦑',
     '螃蟹': '🦀', '虾': '🦐', '贝壳': '🐚', '海马': '🐴', '海豚': '🐬',
@@ -212,40 +216,40 @@
     '孔雀': '🦚', '火烈鸟': '🦩', '鸽子': '🐦', '猫头鹰': '🦉', '蝴蝶': '🦋',
     '蜜蜂': '🐝', '瓢虫': '🐞', '蚂蚁': '🐜', '蜗牛': '🐌', '毛毛虫': '🐛'
   };
-  
+
   // 检测是否在iframe中
   const isInIframe = window.self !== window.top;
-  
+
   // 全屏切换函数
   function toggleFullscreen() {
     if (isInIframe) {
-      // 在iframe中，打开新窗口（全屏版本）
+      // 在iframe中,打开新窗口(全屏版本)
       window.open('fish-tank.html', '_blank');
     } else {
-      // 在新窗口中，显示欢迎弹窗
-      alert('欢迎回小星工具箱首页看看：https://aowuaowu2026.xyz/');
+      // 在新窗口中,显示欢迎弹窗
+      alert('欢迎回小星工具箱首页看看:https://aowuaowu2026.xyz/');
     }
   }
-  
+
   // 初始化
   function init() {
     loadFishFromStorage();
     setInterval(generateBubble, 2000);
-    setInterval(updateFishPositions, 100); // 每100ms更新，让游动更流畅
+    setInterval(updateFishPositions, 100); // 每100ms更新,让游动更流畅
     setInterval(updateAddFishButton, 1000); // 每秒更新添加按钮状态
     setInterval(updateFeedFishButton, 1000); // 每秒更新喂鱼按钮状态
     setInterval(schedulePlantGenerate, 1000); // 检查是否需要生成水草
     updateAddFishButton();
     updateFeedFishButton();
     schedulePlantGenerate(); // 立即执行一次
-    
+
     // 根据模式更新按钮文字
     const toggleBtn = document.getElementById('toggleBtn');
     if (toggleBtn) {
       toggleBtn.textContent = isInIframe ? '🖥️ 全屏' : '🌟小星';
     }
   }
-  
+
   // 随机安排下次生成水草的时间
   let nextPlantGenerateTime = 0;
   function schedulePlantGenerate() {
@@ -255,21 +259,21 @@
       nextPlantGenerateTime = now + Math.random() * 300 * 1000; // 0-300秒
     }
   }
-  
+
   // 生成随机水草/珊瑚
   function generateRandomPlant() {
     const tank = document.getElementById('tankWater');
     if (!tank) return;
-    
+
     // 检查水草数量是否达到上限50
     if (plants.length >= 50) return;
-    
+
     const tankWidth = tank.offsetWidth;
     const tankHeight = tank.offsetHeight;
     const plantType = plantTypes[Math.floor(Math.random() * plantTypes.length)];
     const x = Math.random() * (tankWidth - 30);
     const y = tankHeight - 50; // 生成在水缸底部
-    
+
     const plant = document.createElement('div');
     plant.className = 'plant';
     plant.textContent = plantType;
@@ -281,25 +285,25 @@
     plant.style.transition = 'transform 0.2s';
     plant.id = 'plant-' + plantIdCounter++;
     plant.onclick = () => collectPlant(plant.id);
-    
+
     tank.appendChild(plant);
     plants.push({ id: plant.id, type: plantType, x, y });
   }
-  
-  // 收集水草，减少喂鱼冷却1分钟
+
+  // 收集水草,减少喂鱼冷却1分钟
   function collectPlant(plantId) {
     const plantEl = document.getElementById(plantId);
     if (!plantEl) return;
-    
+
     stats.plantsCollected++; // 记录收集水草次数
     checkAchievements(); // 检查成就
-    
+
     // 减少喂鱼冷却1分钟
     if (!canFeedFish()) {
       lastFeedFishTime = Math.max(0, lastFeedFishTime - 60000);
       updateFeedFishButton();
     }
-    
+
     // 收集动画
     plantEl.style.transform = 'scale(0)';
     plantEl.style.opacity = '0';
@@ -308,30 +312,30 @@
         plantEl.parentNode.removeChild(plantEl);
       }
     }, 200);
-    
+
     plants = plants.filter(p => p.id !== plantId);
     saveFishToStorage();
   }
-  
+
   // ========== 送礼系统 ==========
-  
+
   // 生成礼物代码
   function generateGiftCode(itemName, senderName, blessing) {
     // 语义识别 - 尝试多种匹配方式
     const emoji = recognizeItem(itemName);
-    
+
     // 构建礼物数据
     const giftData = {
       emoji: emoji,
       sender: senderName || '神秘好友',
-      blessing: blessing || '祝你养鱼开心！',
+      blessing: blessing || '祝你养鱼开心!',
       timestamp: Date.now()
     };
-    
+
     // 编码为 base64
     return btoa(JSON.stringify(giftData));
   }
-  
+
   // 语义识别物品
   function recognizeItem(itemName) {
     // 本地映射表优先匹配
@@ -340,11 +344,11 @@
         return emoji;
       }
     }
-    
+
     // 没有匹配到则返回默认礼物
     return '🎁';
   }
-  
+
   // 解析礼物代码
   function parseGiftCode(code) {
     try {
@@ -359,12 +363,12 @@
       return null;
     }
   }
-  
+
   // 全局变量保存当前送礼面板
   let currentGiftPanel = null;
   let currentGiftEmoji = null; // 当前选择的礼物emoji
-  
-  // 祝福语关键词到emoji映射（本地匹配）
+
+  // 祝福语关键词到emoji映射(本地匹配)
   const BLESSING_EMOJI_MAP = {
     '爱|喜欢|心|恋': '❤️',
     '快乐|开心|幸福|喜悦': '🎉',
@@ -389,18 +393,18 @@
     '友谊|朋友|陪伴|知己': '🤝',
     '爱情|浪漫|情侣|结婚': '💍'
   };
-  
-  // AI emoji agent API配置（百炼平台）
+
+  // AI emoji agent API配置(百炼平台)
   const AI_EMOJI_CONFIG = {
     endpoint: 'https://dashscope.aliyuncs.com/api/v1/apps/24111cfa5a494d08adbfb3f572487da9/completion',
     apiKey: 'sk-457b30bfdc5e49ea82d77a74606367db',
     timeout: 30000 // 30秒超时
   };
-  
-  // 根据祝福语获取emoji（本地关键词匹配）
+
+  // 根据祝福语获取emoji(本地关键词匹配)
   function getEmojiByBlessing(blessing) {
     if (!blessing) return null;
-    
+
     for (const [keywords, emoji] of Object.entries(BLESSING_EMOJI_MAP)) {
       const regex = new RegExp(keywords);
       if (regex.test(blessing)) {
@@ -409,13 +413,13 @@
     }
     return null;
   }
-  
-  // AI emoji agent API调用（百炼平台）
+
+  // AI emoji agent API调用(百炼平台)
   async function getAIEmoji(blessing) {
     if (!AI_EMOJI_CONFIG.endpoint) {
-      return null; // 未配置API，返回null
+      return null; // 未配置API,返回null
     }
-    
+
     try {
       const response = await Promise.race([
         fetch(AI_EMOJI_CONFIG.endpoint, {
@@ -431,64 +435,64 @@
             parameters: {}
           })
         }),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('timeout')), AI_EMOJI_CONFIG.timeout)
         )
       ]);
-      
+
       if (!response.ok) {
         throw new Error('API请求失败');
       }
-      
+
       const data = await response.json();
-      // 从百炼API响应中提取emoji（格式：{"output":{"text":"😊"},...}）
+      // 从百炼API响应中提取emoji(格式:{"output":{"text":"😊"},...})
       return data.output?.text || null;
     } catch (error) {
       console.error('AI emoji API调用失败:', error);
       return null;
     }
   }
-  
+
   // 显示庆祝动画
-  // 显示庆祝动画（全屏遮罩，点击关闭）
+  // 显示庆祝动画(全屏遮罩,点击关闭)
   function showCelebrationAnimation(emoji, blessing, onClose) {
     // 创建全屏遮罩
     const overlay = document.createElement('div');
     overlay.id = 'celebrationOverlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;';
-    
-    // 顶部文字（两行）
+
+    // 顶部文字(两行)
     const topTextContainer = document.createElement('div');
     topTextContainer.style.cssText = 'position:absolute;top:60px;left:50%;transform:translateX(-50%);text-align:center;animation:fadeInDown 0.8s ease-out;';
-    
+
     const topLine = document.createElement('div');
     topLine.style.cssText = 'color:#F7DC6F;font-size:22px;font-weight:bold;text-shadow:0 2px 10px rgba(0,0,0,0.5);margin-bottom:8px;';
     topLine.textContent = '✨ 你的祝福获得了海神的馈赠 ✨';
-    
+
     const bottomLine = document.createElement('div');
     bottomLine.style.cssText = 'color:rgba(220,220,220,0.9);font-size:14px;font-style:italic;text-shadow:0 1px 5px rgba(0,0,0,0.5);';
     bottomLine.textContent = '快送去给朋友吧~';
-    
+
     topTextContainer.appendChild(topLine);
     topTextContainer.appendChild(bottomLine);
     overlay.appendChild(topTextContainer);
-    
+
     // 创建粒子容器
     const particleContainer = document.createElement('div');
     particleContainer.style.cssText = 'position:absolute;width:100px;height:100px;left:50%;top:50%;margin-left:-50px;margin-top:-50px;z-index:5;';
-    
+
     // 创建emoji
     const emojiDiv = document.createElement('div');
     emojiDiv.style.cssText = 'font-size:120px;z-index:10;position:relative;animation:glowPulse 1.5s ease-in-out infinite;filter:drop-shadow(0 0 30px gold);cursor:pointer;';
     emojiDiv.textContent = emoji;
-    
+
     // 创建光环
     for (let i = 0; i < 3; i++) {
       const ring = document.createElement('div');
       ring.style.cssText = `position:absolute;width:100px;height:100px;left:50%;top:50%;margin-left:-50px;margin-top:-50px;border:3px solid gold;border-radius:50%;opacity:0;animation:ringExpand 1.5s ease-out ${i * 0.4}s infinite;`;
       particleContainer.appendChild(ring);
     }
-    
+
     // 创建星星
     const starPositions = [{x:-120,y:-80},{x:100,y:-60},{x:-90,y:60},{x:110,y:80},{x:-60,y:-130},{x:70,y:-120},{x:-140,y:20},{x:130,y:30}];
     const starEmojis = ['✨','⭐','🌟','💫'];
@@ -498,7 +502,7 @@
       star.textContent = starEmojis[i % 4];
       particleContainer.appendChild(star);
     });
-    
+
     // 创建粒子
     const colors = ['#FF6B6B','#4ECDC4','#45B7D1','#FFA07A','#98D8C8','#F7DC6F','#DDA0DD','#87CEEB'];
     for (let i = 0; i < 30; i++) {
@@ -508,45 +512,45 @@
       p.style.cssText = `position:absolute;width:10px;height:10px;border-radius:50%;left:50%;top:50%;margin-left:-5px;margin-top:-5px;background:${colors[Math.floor(Math.random() * colors.length)]};animation:particleFly 1.5s ease-out ${Math.random() * 0.5}s infinite;--tx:${Math.cos(angle) * distance}px;--ty:${Math.sin(angle) * distance}px;`;
       particleContainer.appendChild(p);
     }
-    
+
     // 提示文字
     const hint = document.createElement('div');
     hint.style.cssText = 'margin-top:30px;color:rgba(255,255,255,0.6);font-size:14px;z-index:10;';
     hint.textContent = '点击任意位置继续';
-    
+
     overlay.appendChild(particleContainer);
     overlay.appendChild(emojiDiv);
     overlay.appendChild(hint);
-    
+
     // 点击关闭
     overlay.onclick = () => {
       overlay.remove();
       if (onClose) onClose();
     };
-    
+
     document.body.appendChild(overlay);
   }
-  
+
   // 更新礼物数显示
   function updateGiftCountDisplay() {
     const countDisplay = document.getElementById('giftCountDisplay');
     if (countDisplay) {
-      countDisplay.textContent = `剩余礼物：${giftCount} 个`;
+      countDisplay.textContent = `剩余礼物:${giftCount} 个`;
     }
   }
-  
+
   // 显示送礼面板
   function showGiftPanel() {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-    
+
     const giftPanel = document.createElement('div');
     giftPanel.className = 'gift-panel';
     giftPanel.innerHTML = `
       <span class="gift-close" onclick="closeGiftPanel()">✕</span>
       <h3>💫 祈祷祝福</h3>
-      <div id="giftCountDisplay" style="text-align:center;margin-bottom:15px;padding:8px;background:rgba(255,255,255,0.1);border-radius:10px;font-size:12px;color:rgba(255,255,255,0.8);">剩余礼物：${giftCount} 个</div>
+      <div id="giftCountDisplay" style="text-align:center;margin-bottom:15px;padding:8px;background:rgba(255,255,255,0.1);border-radius:10px;font-size:12px;color:rgba(255,255,255,0.8);">剩余礼物:${giftCount} 个</div>
       <div class="gift-section">
         <input type="text" id="giftSenderName" placeholder="你的名字">
         <textarea id="giftBlessing" placeholder="输入祝福语"></textarea>
@@ -567,7 +571,7 @@
         <h4>🎁 礼物确认</h4>
         <div style="text-align:center;margin:15px 0;">
           <div style="font-size:48px;margin-bottom:10px;">🎁</div>
-          <div style="font-size:14px;">礼物：预览</div>
+          <div style="font-size:14px;">礼物:预览</div>
           <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福语</div>
         </div>
         <div style="display:flex;gap:10px;margin-top:15px;">
@@ -577,7 +581,7 @@
         <div id="giftCodeDisplay" class="gift-code-display" style="display:none;margin-top:15px;"></div>
       </div>
     `;
-    
+
     // 保存当前面板引用
     currentGiftPanel = giftPanel;
 
@@ -589,26 +593,26 @@
     overlay.appendChild(giftPanel);
     document.body.appendChild(overlay);
   }
-  
+
   function closeGiftPanel() {
     if (currentGiftPanel && currentGiftPanel.parentNode) {
       currentGiftPanel.parentNode.remove();
     }
     currentGiftPanel = null;
   }
-  
+
   let currentReceivedGift = null; // 当前收到的礼物数据
-  
+
   // 显示收礼面板
   function showReceivePanel() {
     // 简单的弹窗创建
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
     overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
-    
+
     // 检查是否需要重置每日次数
     checkDevDailyReset();
-    
+
     // 构建开发者模式部分
     let devSectionHTML = '';
     if (devModeUnlocked) {
@@ -618,7 +622,7 @@
         '<button id="confirmDevBtn" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(100,100,100,0.5);color:#fff;cursor:pointer;font-size:12px;">兑换 (+' + DEV_REWARD_AMOUNT + '礼物)</button>' +
         '</div>';
     }
-    
+
     // 构建面板HTML
     var panelHTML = '<span class="gift-close" onclick="this.parentNode.parentNode.remove()">✕</span>' +
       '<h3>📬 收取礼物</h3>' +
@@ -630,18 +634,18 @@
       '<h4>🎁 礼物预览</h4>' +
       '<div style="text-align:center;margin:20px 0;">' +
       '<div style="font-size:48px;margin-bottom:10px;">🎁</div>' +
-      '<div style="font-size:14px;">礼物：预览</div>' +
+      '<div style="font-size:14px;">礼物:预览</div>' +
       '<div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福语</div>' +
       '<div style="font-size:11px;opacity:0.6;">送礼人</div>' +
       '</div>' +
       '<button id="addToTankBtn">放入鱼缸</button>' +
       '</div>' +
       devSectionHTML;
-    
+
     overlay.innerHTML = '<div class="gift-panel" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:380px;max-width:90%;box-shadow:0 15px 50px rgba(0,0,0,0.5);">' + panelHTML + '</div>';
-    
+
     document.body.appendChild(overlay);
-    
+
     // 绑定按钮事件
     document.getElementById('confirmReceiveBtn').onclick = confirmReceive;
     document.getElementById('addToTankBtn').onclick = addReceivedFish;
@@ -649,81 +653,89 @@
       document.getElementById('confirmDevBtn').onclick = confirmDevCode;
     }
   }
-  
+
   // 确认收取礼物
   function confirmReceive() {
     const code = document.getElementById('receiveCodeInput').value;
-    
+
     if (!code) {
       alert('请输入礼物代码');
       return;
     }
-    
+
     const giftData = parseGiftCode(code);
-    
+
     if (!giftData) {
       alert('无效的礼物代码');
       return;
     }
-    
-    // 生成码的hash用于标识（需要先编码防止非Latin1字符）
+
+    // 生成码的hash用于标识(需要先编码防止非Latin1字符)
     const codeHash = btoa(encodeURIComponent(code.trim()));
-    
-    // 检查是否已使用过（开发者模式下跳过此检查）
+
+    // 检查是否已使用过(开发者模式下跳过此检查)
     if (usedCodes.includes(codeHash) && !devModeUnlocked) {
       alert('这个礼物已经被兑换过了~');
       return;
     }
-    
-    // 标记为已使用（开发者模式下跳过）
+
+    // 标记为已使用(开发者模式下跳过)
     if (!devModeUnlocked) {
       usedCodes.push(codeHash);
       saveFishToStorage();
     }
-    
-    // 显示礼物预览（使用缩短字段名 e/s/b）
+
+    // 显示礼物预览(使用缩短字段名 e/s/b)
     const resultDiv = document.getElementById('receiveResult');
     resultDiv.style.display = 'block';
-    
+
     resultDiv.querySelector('div').innerHTML = `
       <div style="font-size:48px;margin-bottom:10px;">${giftData.e}</div>
-      <div style="font-size:14px;">礼物：${giftData.e}</div>
-      <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${giftData.b}</div>
-      <div style="font-size:11px;opacity:0.6;">—— ${giftData.s}</div>
+      <div style="font-size:14px;">礼物:${giftData.e}</div>
+      <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福:${giftData.b}</div>
+      <div style="font-size:11px;opacity:0.6;">-- ${giftData.s}</div>
     `;
-    
+
     // 保存当前礼物数据
     currentReceivedGift = { emoji: giftData.e, sender: giftData.s, blessing: giftData.b };
   }
-  
+
   // 确认测试口令
   function confirmDevCode() {
     const code = document.getElementById('devCodeInput').value;
-    
+
     if (!code) {
       alert('请输入测试口令');
       return;
     }
-    
+
     // 验证口令（开发者模式下不限制次数）
     if (code === DEV_MODE_PASSWORD) {
       giftCount += DEV_REWARD_AMOUNT;
       saveFishToStorage();
-      
+
       alert(`🎁 测试口令兑换成功！获得 ${DEV_REWARD_AMOUNT} 个礼物！\n剩余礼物：${giftCount} 个`);
-      
+
       // 清空输入框
       document.getElementById('devCodeInput').value = '';
       if (overlay) overlay.remove();
+    } else if (code === 'magic5') {
+      nextFeedMagicBait = true;
+      alert('🍬 神奇鱼饵已激活！下次喂鱼必定触发5倍变大效果！');
+      document.getElementById('devCodeInput').value = '';
+    } else if (code === 'legend100') {
+      nextFeedLegendBait = true;
+      alert('🍰 传说鱼饵已激活！下次喂鱼必定触发100倍变大效果！');
+      document.getElementById('devCodeInput').value = '';
     } else {
       alert('无效的测试口令');
     }
   }
-  
+
   // 将收到的礼物鱼放入鱼缸
   function addReceivedFish() {
     if (!currentReceivedGift) return;
-    
+
     const tank = document.getElementById('tankWater');
     const x = Math.random() * (tank.offsetWidth - 40);
     const y = Math.random() * (tank.offsetHeight - 40);
@@ -735,8 +747,8 @@
     fish.id = 'fish-' + fishIdCounter++;
     fish.onclick = () => petFish(fish.id);
     tank.appendChild(fish);
-    
-    // 注册到鱼群数组（驱动游动）
+
+    // 注册到鱼群数组(驱动游动)
     fishes.push({
       id: fish.id,
       type: currentReceivedGift.emoji,
@@ -746,63 +758,63 @@
       dy: (Math.random() - 0.5) * 3,
       feedCount: 0
     });
-    
+
     // 更新统计
     stats.giftsReceived++;
     saveFishToStorage();
-    checkSecretAchievements(); // 检查隐藏成就（鱼数量变化相关）
-    
+    checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)
+
     // 关闭弹窗
     const overlay = document.querySelector('.gift-panel').parentNode;
     if (overlay) overlay.remove();
-    
+
     // 显示祝福弹窗
     showBlessingPopup(currentReceivedGift.sender, currentReceivedGift.blessing);
-    
+
     currentReceivedGift = null;
   }
-  
+
   // 确认礼物
-  // 确认礼物（新的AI优先流程）
-  // 确认礼物（AI优先流程）
+  // 确认礼物(新的AI优先流程)
+  // 确认礼物(AI优先流程)
   function confirmGift() {
     const senderName = document.getElementById('giftSenderName').value;
     const blessing = document.getElementById('giftBlessing').value.trim();
-    
+
     if (blessing.length > 50) {
       alert('祝福语不能超过50字');
       return;
     }
-    
+
     // 检查礼物数量
     if (giftCount <= 0) {
-      alert('礼物数不足，请先解锁成就获得更多礼物！');
+      alert('礼物数不足,请先解锁成就获得更多礼物!');
       return;
     }
-    
+
     if (!blessing) {
       alert('请输入祝福语');
       return;
     }
-    
+
     // 显示加载状态
     const resultDiv = document.getElementById('giftResult');
     const loadingDiv = document.getElementById('giftLoading');
-    
+
     resultDiv.style.display = 'none';
     loadingDiv.style.display = 'block';
-    
+
     // 显示祝福语在加载中
     document.getElementById('loadingBlessing').textContent = `「${blessing}」`;
-    
-    // 更新加载进度（20秒完成）
+
+    // 更新加载进度(20秒完成)
     let progress = 0;
     const progressInterval = setInterval(() => {
       progress += 0.5;
       document.getElementById('loadingProgress').style.width = `${Math.min(progress, 100)}%`;
       if (progress >= 100) clearInterval(progressInterval);
     }, 100);
-    
+
     // 显示结果的函数
     function showResult(emoji) {
       currentGiftEmoji = emoji;
@@ -812,34 +824,34 @@
       // 更新礼物预览
       resultDiv.querySelector('div').innerHTML = `
         <div style="font-size:48px;margin-bottom:10px;">${emoji}</div>
-        <div style="font-size:14px;">礼物：${emoji}</div>
-        <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福：${blessing}</div>
+        <div style="font-size:14px;">礼物:${emoji}</div>
+        <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福:${blessing}</div>
       `;
 
-      // 显示两个按钮（默认隐藏代码区域）
+      // 显示两个按钮(默认隐藏代码区域)
       document.getElementById('addToMyTankBtn').style.display = 'block';
       document.getElementById('sendToFriendBtn').style.display = 'block';
       document.getElementById('giftCodeDisplay').style.display = 'none';
     }
-    
-    // AI优先：先调用AI语义理解
+
+    // AI优先:先调用AI语义理解
     getAIEmoji(blessing).then(aiEmoji => {
       clearInterval(progressInterval);
-      
+
       if (aiEmoji) {
-        // AI成功：显示庆祝动画，点击后显示结果
+        // AI成功:显示庆祝动画,点击后显示结果
         showCelebrationAnimation(aiEmoji, blessing, () => {
           showResult(aiEmoji);
         });
       } else {
-        // AI失败：尝试本地关键词匹配（不显示庆祝动画）
+        // AI失败:尝试本地关键词匹配(不显示庆祝动画)
         const localEmoji = getEmojiByBlessing(blessing) || fishTypes[Math.floor(Math.random() * fishTypes.length)];
         showResult(localEmoji);
       }
     }).catch(error => {
-      // AI调用错误：静默降级到本地匹配
+      // AI调用错误:静默降级到本地匹配
       clearInterval(progressInterval);
-      
+
       const localEmoji = getEmojiByBlessing(blessing) || fishTypes[Math.floor(Math.random() * fishTypes.length)];
       showResult(localEmoji);
     });
@@ -889,7 +901,7 @@
     // 显示成功提示
     const toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#34c759 0%,#28a745 100%);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;';
-    toast.innerHTML = `💫 祝福已放入鱼缸！<br><span style="font-size:24px;margin-top:10px;display:block;">${emoji}</span>`;
+    toast.innerHTML = `💫 祝福已放入鱼缸!<br><span style="font-size:24px;margin-top:10px;display:block;">${emoji}</span>`;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2000);
   }
@@ -905,7 +917,7 @@
     const giftData = {
       e: emoji,
       s: senderName || '神秘好友',
-      b: blessing || '祝你养鱼开心！'
+      b: blessing || '祝你养鱼开心!'
     };
 
     // 扣除礼物数
@@ -918,7 +930,7 @@
     const compressed = LZString.compressToBase64(jsonStr);
     const giftCode = btoa(encodeURIComponent(compressed));
 
-    // 显示代码区域，隐藏两个按钮
+    // 显示代码区域,隐藏两个按钮
     const codeDisplay = document.getElementById('giftCodeDisplay');
     codeDisplay.innerHTML = `<code>${giftCode}</code>`;
     codeDisplay.style.display = 'block';
@@ -930,11 +942,11 @@
     copyBtn.style.cssText = 'width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;margin-top:10px;';
     copyBtn.textContent = '复制代码';
     copyBtn.onclick = () => {
-      const copyText = '送你一个礼物，粘贴口令代码去领取吧~【' + giftCode + '】';
+      const copyText = '送你一个礼物,粘贴口令代码去领取吧~【' + giftCode + '】';
       navigator.clipboard.writeText(copyText).then(() => {
-        copyBtn.textContent = '已复制！';
+        copyBtn.textContent = '已复制!';
       }).catch(() => {
-        alert('复制失败，请手动复制');
+        alert('复制失败,请手动复制');
       });
     };
 
@@ -945,9 +957,9 @@
     codeDisplay.appendChild(copyBtn);
 
     // 自动复制
-    const copyText = '送你一个礼物，粘贴口令代码去领取吧~【' + giftCode + '】';
+    const copyText = '送你一个礼物,粘贴口令代码去领取吧~【' + giftCode + '】';
     navigator.clipboard.writeText(copyText).then(() => {
-      copyBtn.textContent = '发送给朋友领取礼物吧！';
+      copyBtn.textContent = '发送给朋友领取礼物吧!';
       copyBtn.style.background = 'linear-gradient(135deg,#34c759 0%,#28a745 100%)';
     }).catch(() => {});
 
@@ -956,7 +968,7 @@
     saveFishToStorage();
   }
 
-  // 生成礼物代码（已废弃，保留兼容性）
+  // 生成礼物代码(已废弃,保留兼容性)
   function generateGiftCode() {
     sendGiftToFriend();
   }
@@ -964,37 +976,37 @@
   // 接收礼物
   function receiveGift() {
     const code = document.getElementById('giftCodeInput').value;
-    
+
     if (!code) {
       alert('请输入礼物代码');
       return;
     }
-    
+
     const giftData = parseGiftCode(code);
-    
+
     if (giftData) {
       // 显示礼物确认弹窗
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
       overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-      
+
       const popup = document.createElement('div');
       popup.style.cssText = 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:20px;color:#fff;width:340px;text-align:center;';
       popup.innerHTML = `
         <div style="font-size:48px;margin-bottom:15px;">🎁</div>
-        <div style="font-size:18px;font-weight:700;margin-bottom:10px;">收到礼物！</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:10px;">收到礼物!</div>
         <div style="font-size:14px;margin-bottom:15px;">${giftData.s} 送你 ${giftData.e}</div>
-        <div style="font-size:12px;opacity:0.9;line-height:1.5;margin-bottom:20px;">祝福：${giftData.b}</div>
+        <div style="font-size:12px;opacity:0.9;line-height:1.5;margin-bottom:20px;">祝福:${giftData.b}</div>
         <button onclick="this.parentNode.parentNode.remove();addGiftFish('${giftData.e}', '${giftData.s}', '${giftData.b}')" style="padding:12px 30px;border:none;border-radius:25px;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-size:14px;">放入鱼缸</button>
       `;
-      
+
       overlay.appendChild(popup);
       document.body.appendChild(overlay);
     } else {
       alert('无效的礼物代码');
     }
   }
-  
+
   // 添加礼物鱼到鱼缸
   function addGiftFish(emoji, sender, blessing) {
     const tank = document.getElementById('tankWater');
@@ -1008,8 +1020,8 @@
     fish.id = 'fish-' + fishIdCounter++;
     fish.onclick = () => petFish(fish.id);
     tank.appendChild(fish);
-    
-    // 注册到鱼群数组（驱动游动）
+
+    // 注册到鱼群数组(驱动游动)
     fishes.push({
       id: fish.id,
       type: emoji,
@@ -1019,42 +1031,42 @@
       dy: (Math.random() - 0.5) * 3,
       feedCount: 0
     });
-    
+
     // 更新统计
     stats.giftsReceived++;
     saveFishToStorage();
-    checkSecretAchievements(); // 检查隐藏成就（鱼数量变化相关）
-    
+    checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)
+
     // 显示祝福弹窗
     showBlessingPopup(sender, blessing);
   }
-  
+
   // 显示祝福弹窗
   function showBlessingPopup(sender, blessing) {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-    
+
     const popup = document.createElement('div');
     popup.style.cssText = 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:20px;color:#fff;width:340px;text-align:center;';
     popup.innerHTML = `
       <div style="font-size:48px;margin-bottom:15px;">🎉</div>
-      <div style="font-size:18px;font-weight:700;margin-bottom:10px;">收到祝福！</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:10px;">收到祝福!</div>
       <div style="font-size:14px;margin-bottom:15px;">${sender} 的祝福</div>
       <div style="font-size:12px;opacity:0.9;line-height:1.5;margin-bottom:20px;">${blessing}</div>
       <button onclick="this.parentNode.parentNode.remove()" style="padding:12px 30px;border:none;border-radius:25px;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-size:14px;">谢谢</button>
     `;
-    
+
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
   }
-  
+
   // 显示菜单
   function showMenu() {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-    
+
     overlay.innerHTML = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">' +
       '<div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">☰ 菜单</div>' +
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
@@ -1065,10 +1077,10 @@
       '</div>' +
       '<button onclick="this.parentNode.parentNode.remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
       '</div>';
-    
+
     document.body.appendChild(overlay);
   }
-  
+
   // 显示成就列表弹窗
   function showAchievements() {
     const overlay = document.createElement('div');
@@ -1080,9 +1092,9 @@
     const secretUnlocked = achievements.filter(id => SECRET_ACHIEVEMENTS.some(a => a.id === id));
     const unlockedCount = normalUnlocked.length + secretUnlocked.length;
     const totalCount = ACHIEVEMENTS.length + SECRET_ACHIEVEMENTS.length;
-    
+
     let listHTML = '';
-    
+
     // 普通成就列表
     ACHIEVEMENTS.forEach(a => {
       const isUnlocked = normalUnlocked.includes(a.id);
@@ -1098,8 +1110,8 @@
         </div>`;
       }
     });
-    
-    // 隐藏成就列表（解锁后才显示，带金色边框和✨前缀）
+
+    // 隐藏成就列表(解锁后才显示,带金色边框和✨前缀)
     SECRET_ACHIEVEMENTS.forEach(a => {
       if (!achievements.includes(a.id)) return; // 未解锁的不显示
       listHTML += `<div style="padding:15px;background:rgba(255,215,0,0.1);border-radius:10px;margin-bottom:10px;border:1px solid rgba(255,215,0,0.4);">
@@ -1108,7 +1120,7 @@
         <div style="font-size:12px;opacity:0.8;margin-bottom:5px;font-style:italic;">"${a.description}"</div>
       </div>`;
     });
-    
+
     const popup = document.createElement('div');
     popup.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:25px;border-radius:20px;color:#fff;width:340px;max-height:450px;overflow-y:auto;';
     popup.innerHTML = `
@@ -1117,30 +1129,30 @@
       ${listHTML}
       <button onclick="this.parentNode.parentNode.remove()" style="width:100%;margin-top:15px;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
     `;
-    
+
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
   }
-  
+
   // 检查是否可以添加鱼
   function canAddFish() {
     const now = Date.now();
     return now - lastAddFishTime >= ADD_FISH_COOLDOWN;
   }
-  
-  // 获取冷却剩余时间（秒）
+
+  // 获取冷却剩余时间(秒)
   function getCooldownRemaining() {
     const now = Date.now();
     const elapsed = now - lastAddFishTime;
     const remaining = ADD_FISH_COOLDOWN - elapsed;
     return Math.max(0, Math.ceil(remaining / 1000));
   }
-  
+
   // 更新添加鱼按钮状态
   function updateAddFishButton() {
     const btn = document.getElementById('addFishBtn');
     if (!btn) return;
-    
+
     if (canAddFish()) {
       btn.disabled = false;
       btn.textContent = '➕ 添加鱼';
@@ -1154,7 +1166,7 @@
       btn.style.opacity = '0.6';
     }
   }
-  
+
   // 添加随机鱼
   function addRandomFish() {
     stats.addFishClicks++; // 记录点击添加鱼按钮
@@ -1163,33 +1175,33 @@
       saveFishToStorage();
       return;
     }
-    
+
     const tank = document.getElementById('tankWater');
     const fish = document.createElement('div');
     const fishType = fishTypes[Math.floor(Math.random() * fishTypes.length)];
     const x = Math.random() * (tank.offsetWidth - 40);
     const y = Math.random() * (tank.offsetHeight - 40);
-    
+
     fish.className = 'fish';
     fish.textContent = fishType;
     fish.style.left = x + 'px';
     fish.style.top = y + 'px';
-    // 鱼的移动完全由JS控制，不再使用CSS动画
+    // 鱼的移动完全由JS控制,不再使用CSS动画
     fish.id = 'fish-' + fishIdCounter++;
-    
+
     // 绑定点击事件 - 摸鱼减少冷却时间
     fish.style.cursor = 'pointer';
     fish.onclick = () => petFish(fish.id);
-    
+
     tank.appendChild(fish);
     fishes.push({ id: fish.id, type: fishType, x, y, dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8), dy: (Math.random() - 0.5) * 3, feedCount: 0 });
-    
+
     lastAddFishTime = Date.now();
     updateFishCount();
     checkAchievements(); // 检查成就
     saveFishToStorage();
   }
-  
+
   // 摸鱼 - 点击鱼减少冷却时间
   function petFish(fishId) {
     stats.petFishClicks++; // 记录摸鱼点击次数
@@ -1198,8 +1210,8 @@
       lastAddFishTime = Math.max(0, lastAddFishTime - 60000); // 减少1分钟
       updateAddFishButton();
       saveFishToStorage();
-      
-      // 显示摸鱼反馈（不改变鱼的永久大小）
+
+      // 显示摸鱼反馈(不改变鱼的永久大小)
       const fishEl = document.getElementById(fishId);
       const fishData = fishes.find(f => f.id === fishId);
       if (fishEl && fishData) {
@@ -1212,21 +1224,21 @@
       }
     }
   }
-  
+
   // 生成水泡
   function generateBubble() {
     const tank = document.getElementById('tankWater');
     const bubble = document.createElement('div');
     const x = Math.random() * (tank.offsetWidth - 20);
-    
+
     bubble.className = 'fish bubble';
     bubble.textContent = '●';
     bubble.style.left = x + 'px';
     bubble.style.bottom = '0px';
-    
+
     tank.appendChild(bubble);
     bubbles.push(bubble);
-    
+
     // 3秒后移除水泡
     setTimeout(() => {
       if (bubble.parentNode) {
@@ -1235,33 +1247,33 @@
       }
     }, 3000);
   }
-  
+
   // 更新鱼的位置 - 更加自由随意的游动
   function updateFishPositions() {
     const tank = document.getElementById('tankWater');
     const tankWidth = tank.offsetWidth;
     const tankHeight = tank.offsetHeight;
-    
+
     fishes.forEach(fish => {
       const fishEl = document.getElementById(fish.id);
       if (!fishEl) return;
-      
-      // 每100ms随机改变方向和速度，让游动更自然
+
+      // 每100ms随机改变方向和速度,让游动更自然
       if (Math.random() < 0.2) {
         fish.dx += (Math.random() - 0.5) * 8; // 水平速度变化更大
         fish.dy += (Math.random() - 0.5) * 1; // 垂直速度变化很小
-        
-        // 限制最大速度：水平快，垂直慢
+
+        // 限制最大速度:水平快,垂直慢
         const maxSpeedX = 25;
         const maxSpeedY = 5;
         fish.dx = Math.max(-maxSpeedX, Math.min(maxSpeedX, fish.dx));
         fish.dy = Math.max(-maxSpeedY, Math.min(maxSpeedY, fish.dy));
       }
-      
+
       // 更新位置
       fish.x += fish.dx * 0.1; // 乘以0.1因为每100ms更新一次
       fish.y += fish.dy * 0.1;
-      
+
       // 边界检测 - 碰到边界时水平翻转反方向移动
       if (fish.x <= 0) {
         fish.x = 0;
@@ -1270,7 +1282,7 @@
         fish.x = tankWidth - 40;
         fish.dx = -Math.abs(fish.dx); // 水平翻转向左
       }
-      
+
       if (fish.y <= 0) {
         fish.y = 0;
         fish.dy = Math.abs(fish.dy) + 1; // 向下
@@ -1278,31 +1290,31 @@
         fish.y = tankHeight - 40;
         fish.dy = -Math.abs(fish.dy) - 1; // 向上
       }
-      
+
       fishEl.style.left = fish.x + 'px';
       fishEl.style.top = fish.y + 'px';
     });
   }
-  
+
   // 检查是否可以喂鱼
   function canFeedFish() {
     const now = Date.now();
     return now - lastFeedFishTime >= FEED_FISH_COOLDOWN;
   }
-  
-  // 获取喂鱼冷却剩余时间（秒）
+
+  // 获取喂鱼冷却剩余时间(秒)
   function getFeedCooldownRemaining() {
     const now = Date.now();
     const elapsed = now - lastFeedFishTime;
     const remaining = FEED_FISH_COOLDOWN - elapsed;
     return Math.max(0, Math.ceil(remaining / 1000));
   }
-  
+
   // 更新喂鱼按钮状态
   function updateFeedFishButton() {
     const btn = document.getElementById('feedFishBtn');
     if (!btn) return;
-    
+
     if (canFeedFish()) {
       btn.disabled = false;
       btn.textContent = '🍽️ 喂鱼';
@@ -1316,7 +1328,7 @@
       btn.style.opacity = '0.6';
     }
   }
-  
+
   // 喂鱼
   function feedFish() {
     stats.feedFishClicks++; // 记录点击喂鱼按钮
@@ -1325,16 +1337,57 @@
       saveFishToStorage();
       return;
     }
-    
+
     const tank = document.getElementById('tankWater');
     const tankWidth = tank.offsetWidth;
     const tankHeight = tank.offsetHeight;
     lastFeedFishTime = Date.now();
     updateFeedFishButton();
-    
+
+    // 检查是否有特殊鱼饵触发
+    let specialBaitType = null;
+    let specialBaitEmoji = null;
+    let specialBaitMultiplier = null;
+
+    if (nextFeedLegendBait) {
+      // 传说鱼饵优先
+      specialBaitType = 'legend';
+      specialBaitEmoji = '🍰';
+      specialBaitMultiplier = 100;
+      nextFeedLegendBait = false;
+    } else if (nextFeedMagicBait) {
+      // 神奇鱼饵
+      specialBaitType = 'magic';
+      specialBaitEmoji = '🍬';
+      specialBaitMultiplier = 5;
+      nextFeedMagicBait = false;
+    } else {
+      // 概率触发
+      const rand = Math.random();
+      if (rand < 0.0001) {
+        // 0.01% 传说鱼饵
+        specialBaitType = 'legend';
+        specialBaitEmoji = '🍰';
+        specialBaitMultiplier = 100;
+      } else if (rand < 0.05) {
+        // 5% 神奇鱼饵（0.01% < rand < 5%）
+        specialBaitType = 'magic';
+        specialBaitEmoji = '🍬';
+        specialBaitMultiplier = 5;
+      }
+    }
+
+    // 如果触发特殊鱼饵，显示选择弹窗
+    if (specialBaitType) {
+      showSpecialBaitPopup(specialBaitEmoji, specialBaitMultiplier, tank, tankWidth, tankHeight);
+      saveFishToStorage();
+      return;
+    }
+
+    // 正常喂鱼流程
     // 查找可以喂食的鱼（喂食次数 < 5）
     const feedableFish = fishes.filter(f => f.feedCount < 5);
-    
+
     if (feedableFish.length === 0) {
       // 没有可喂食的鱼，鱼饵保留在原位不消失
       const food = document.createElement('div');
@@ -1347,11 +1400,11 @@
       tank.appendChild(food);
       return;
     }
-    
+
     // 随机选择一条可喂食的鱼
     const targetFish = feedableFish[Math.floor(Math.random() * feedableFish.length)];
     const fishEl = document.getElementById(targetFish.id);
-    
+
     // 计算鱼前方位置（根据鱼的移动方向）
     const distance = 60; // 鱼饵生成位置距离鱼的像素
     const dx = targetFish.dx || (Math.random() > 0.5 ? 1 : -1);
@@ -1359,15 +1412,15 @@
     const magnitude = Math.sqrt(dx * dx + dy * dy) || 1;
     const dirX = dx / magnitude;
     const dirY = dy / magnitude;
-    
+
     // 鱼饵生成在鱼的前方
     let foodX = targetFish.x + dirX * distance;
     let foodY = targetFish.y + dirY * distance;
-    
+
     // 确保鱼饵在鱼缸范围内
     foodX = Math.max(10, Math.min(tankWidth - 30, foodX));
     foodY = Math.max(10, Math.min(tankHeight - 30, foodY));
-    
+
     // 创建鱼饵
     const food = document.createElement('div');
     food.className = 'fish';
@@ -1376,9 +1429,9 @@
     food.style.top = foodY + 'px';
     food.style.fontSize = '20px';
     food.id = 'food-' + Date.now();
-    
+
     tank.appendChild(food);
-    
+
     if (fishEl) {
       // 1秒后鱼饵消失的同时鱼变大
       setTimeout(() => {
@@ -1396,16 +1449,87 @@
       }, 1000);
     }
   }
-  
-  // 清理鱼缸
-  function cleanTank() {
-    if (!confirm('确定要清理鱼缸吗？所有鱼、鱼饵和水草都会被清除！')) {
+
+  // 显示特殊鱼饵选择弹窗
+  function showSpecialBaitPopup(baitEmoji, multiplier, tank, tankWidth, tankHeight) {
+    if (fishes.length === 0) {
+      alert('鱼缸里没有鱼，无法使用特殊鱼饵！');
       return;
     }
-    
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center;';
+
+    const baitName = multiplier >= 100 ? '传说鱼饵' : '神奇鱼饵';
+    const multiplierText = multiplier >= 100 ? '100倍' : '5倍';
+
+    // 生成鱼的选项HTML
+    let fishOptionsHTML = '';
+    fishes.forEach((f, index) => {
+      const currentScale = 1 + f.feedCount * 0.15;
+      fishOptionsHTML += `<div class="special-bait-fish-item" onclick="applySpecialBait(${index}, ${multiplier}, '${baitEmoji}')" style="padding:10px;margin:8px 0;background:rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;text-align:center;">
+        <div style="font-size:32px;margin-bottom:5px;">${f.type}</div>
+        <div style="font-size:12px;opacity:0.8;">当前: ${currentScale.toFixed(1)}x → ${(currentScale * multiplier).toFixed(1)}x</div>
+      </div>`;
+    });
+
+    overlay.innerHTML = `
+      <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:320px;max-height:450px;overflow-y:auto;text-align:center;">
+        <div style="font-size:48px;margin-bottom:15px;">${baitEmoji}</div>
+        <div style="font-size:20px;font-weight:bold;margin-bottom:10px;color:${multiplier >= 100 ? '#FFD700' : '#7DCFFF'};">${baitName}</div>
+        <div style="font-size:14px;opacity:0.8;margin-bottom:20px;">选择一条鱼使其变大 <strong>${multiplierText}</strong></div>
+        <div style="max-height:300px;overflow-y:auto;">
+          ${fishOptionsHTML}
+        </div>
+        <button onclick="this.parentNode.parentNode.remove()" style="margin-top:15px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">取消</button>
+      </div>
+    `;
+
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+  }
+
+  // 应用特殊鱼饵效果
+  function applySpecialBait(fishIndex, multiplier, baitEmoji) {
+    if (fishIndex < 0 || fishIndex >= fishes.length) return;
+
+    const targetFish = fishes[fishIndex];
+    const fishEl = document.getElementById(targetFish.id);
+
+    if (fishEl) {
+      // 计算新的倍数
+      const currentScale = 1 + targetFish.feedCount * 0.15;
+      const newScale = currentScale * multiplier;
+      targetFish.feedCount = Math.round((newScale - 1) / 0.15);
+
+      // 应用变大效果
+      fishEl.style.transform = `scale(${newScale})`;
+
+      // 显示成功提示
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#FFD700 0%,#FFA500 100%);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;box-shadow:0 0 30px rgba(255,215,0,0.5);';
+      toast.innerHTML = `${baitEmoji} 鱼儿变大 <strong>${multiplier}倍</strong>！<br><span style="font-size:24px;margin-top:10px;display:block;">${targetFish.type}</span>`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+
+    // 关闭弹窗
+    document.querySelectorAll('[style*="z-index:1000"]').forEach(el => el.remove());
+
+    saveFishToStorage();
+    stats.successfulFeeds++;
+    checkAchievements();
+  }
+
+  // 清理鱼缸
+  function cleanTank() {
+    if (!confirm('确定要清理鱼缸吗?所有鱼、鱼饵和水草都会被清除!')) {
+      return;
+    }
+
     stats.cleanCount++; // 记录清理次数
     const tank = document.getElementById('tankWater');
-    
+
     // 清理所有鱼
     fishes.forEach(fish => {
       const fishEl = document.getElementById(fish.id);
@@ -1419,7 +1543,7 @@
       }
     });
     fishes = [];
-    
+
     // 清理所有鱼饵
     const foods = tank.querySelectorAll('[id^="food-"]');
     foods.forEach(food => {
@@ -1427,7 +1551,7 @@
         food.parentNode.removeChild(food);
       }
     });
-    
+
     // 清理所有水草
     plants.forEach(plant => {
       const plantEl = document.getElementById(plant.id);
@@ -1436,23 +1560,23 @@
       }
     });
     plants = [];
-    
+
     // 重置冷却时间
     lastAddFishTime = 0;
     lastFeedFishTime = 0;
     nextPlantGenerateTime = 0;
-    
+
     updateFishCount();
     updateAddFishButton();
     updateFeedFishButton();
     saveFishToStorage();
   }
-  
+
   // 更新鱼的数量
   function updateFishCount() {
     document.getElementById('fishCount').textContent = fishes.length;
   }
-  
+
   // 保存鱼到localStorage
   function saveFishToStorage() {
     const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0 }));
@@ -1476,7 +1600,7 @@
     };
     localStorage.setItem('fishTankData', JSON.stringify(data));
   }
-  
+
   // 从localStorage加载鱼
   function loadFishFromStorage() {
     const savedData = localStorage.getItem('fishTankData');
@@ -1488,7 +1612,7 @@
       achievements = data.achievements || [];
       nextPlantGenerateTime = data.nextPlantGenerateTime || 0;
       stats = data.stats || { addFishClicks: 0, feedFishClicks: 0, successfulFeeds: 0, plantsCollected: 0, cleanCount: 0, petFishClicks: 0 };
-      
+
       // 加载礼物数据
       if (data.giftData) {
         giftCount = data.giftData.giftCount ?? INITIAL_GIFT_COUNT;
@@ -1497,7 +1621,7 @@
         devDailyUsage = data.giftData.devDailyUsage || 0;
         devLastUsageDate = data.giftData.devLastUsageDate || '';
       }
-      
+
       // 加载水草
       const plantData = data.plants || [];
       plantData.forEach(p => {
@@ -1516,33 +1640,33 @@
         plants.push({ id: plant.id, type: p.type, x: p.x, y: p.y });
       });
       const tank = document.getElementById('tankWater');
-      
+
       fishData.forEach(f => {
         const fish = document.createElement('div');
         fish.className = 'fish';
         fish.textContent = f.type;
         fish.style.left = f.x + 'px';
         fish.style.top = f.y + 'px';
-        // 鱼的移动完全由JS控制，不再使用CSS动画
+        // 鱼的移动完全由JS控制,不再使用CSS动画
         fish.style.cursor = 'pointer';
         fish.id = 'fish-' + fishIdCounter++;
         fish.onclick = () => petFish(fish.id);
-        
+
         // 恢复喂食次数和大小
         const feedCount = f.feedCount || 0;
         if (feedCount > 0) {
           const scale = 1 + feedCount * 0.15;
           fish.style.transform = `scale(${scale})`;
         }
-        
+
         tank.appendChild(fish);
         fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount });
       });
-      
+
       updateFishCount();
     }
   }
-  
+
   // 更新时间
   init();
 </script>
