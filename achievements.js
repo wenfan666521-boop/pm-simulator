@@ -99,6 +99,30 @@ const ACHIEVEMENTS = [
     giftReward: 1,
     unlockHint: '第一次收集水草',
     check: () => stats.plantsCollected >= 1
+  },
+  {
+    id: 'five_fish',
+    name: '无与伦比',
+    description: '没错，这就是五鱼伦比！什么，你说谐音梗扣钱？不听不听……',
+    giftReward: 1,
+    unlockHint: '添加第五条鱼',
+    check: () => stats.addFishClicks >= 5
+  },
+  {
+    id: 'goalkeeper',
+    name: '守门员',
+    description: '十名球员已经上场，还差一个守门员。铁生已经摩拳擦掌做好准备了…',
+    giftReward: 2,
+    unlockHint: '添加第十条鱼',
+    check: () => stats.addFishClicks >= 10
+  },
+  {
+    id: 'womens_day',
+    name: '妇女节',
+    description: '女士们，节日快乐。',
+    giftReward: 5,
+    unlockHint: '拥有三十八条鱼',
+    check: () => fishes.length >= 38
   }
 ];
 
