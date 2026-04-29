@@ -1565,18 +1565,18 @@
         specialBaitType = 'legend';
         specialBaitEmoji = '🍰';
         specialBaitMultiplier = 10;
-      } else if (rand < 0.05) {
-        // 5% 神奇鱼饵（0.01% < rand < 5%）
+      } else if (rand < 0.0101) {
+        // 1% 神奇鱼饵（0.0001 ≤ rand < 1.01%）
         specialBaitType = 'magic';
         specialBaitEmoji = '🍬';
         specialBaitMultiplier = 2;
-      } else if (rand < 0.10) {
-        // 5% 缩小鱼饵（5% <= rand < 10%）
+      } else if (rand < 0.0201) {
+        // 1% 缩小鱼饵（1.01% ≤ rand < 2.01%）
         specialBaitType = 'shrink';
         specialBaitEmoji = '🍸';
         specialBaitMultiplier = 0.5;
-      } else if (rand < 0.20) {
-        // 10% 还原鱼饵（10% <= rand < 20%）
+      } else if (rand < 0.0401) {
+        // 2% 还原鱼饵（2.01% ≤ rand < 4.01%）
         specialBaitType = 'restore';
         specialBaitEmoji = '🧃';
         specialBaitMultiplier = 1;
