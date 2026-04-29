@@ -53,12 +53,8 @@
       animation: food-fall 10s ease-in forwards;
     }
     @keyframes food-fall {
-      0% { transform: translateY(0) translateX(0); opacity: 1; }
-      20% { transform: translateY(0) translateX(var(--wobble1, 0px)); }
-      40% { transform: translateY(0) translateX(var(--wobble2, 0px)); }
-      60% { transform: translateY(0) translateX(var(--wobble3, 0px)); }
-      80% { transform: translateY(0) translateX(var(--wobble4, 0px)); opacity: 1; }
-      100% { transform: translateY(0) translateX(0); opacity: 0.8; }
+      0% { top: -30px; left: 50%; transform: translateX(-50%); opacity: 1; }
+      100% { top: var(--target-y, 50%); left: var(--target-x, 50%); transform: translateX(-50%); opacity: 1; }
     }
     .plant { position: absolute; z-index: 11; }
 
@@ -1646,12 +1642,8 @@
     // 初始位置：顶部中央
     food.style.left = (tankWidth / 2 - 15) + 'px';
     food.style.top = '-30px';
-
-    // 随机横向摆动路径
-    food.style.setProperty('--wobble1', (Math.random() * 60 - 30) + 'px');
-    food.style.setProperty('--wobble2', (Math.random() * 60 - 30) + 'px');
-    food.style.setProperty('--wobble3', (Math.random() * 60 - 30) + 'px');
-    food.style.setProperty('--wobble4', (Math.random() * 60 - 30) + 'px');
+    food.style.setProperty('--target-x', foodX + 'px');
+    food.style.setProperty('--target-y', foodY + 'px');
 
     tank.appendChild(food);
 
