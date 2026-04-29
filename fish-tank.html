@@ -44,7 +44,7 @@
       z-index: 12;
       pointer-events: none;
       filter: drop-shadow(0 0 10px #ffd700);
-      animation: food-fall 1s ease-in forwards;
+      animation: food-fall 5s ease-in forwards;
     }
     @keyframes food-fall {
       0% { transform: translateY(0); opacity: 1; }
@@ -1642,12 +1642,12 @@
 
     // 强制渲染后，设置目标位置触发动画
     food.offsetHeight;
-    food.style.transition = 'top 1s ease-in, left 1s ease-in';
+    food.style.transition = 'top 5s ease-in, left 5s ease-in';
     food.style.left = foodX + 'px';
     food.style.top = foodY + 'px';
 
     if (fishEl) {
-      // 1秒后鱼饵消失的同时鱼变大
+      // 5秒后鱼饵消失的同时鱼变大
       setTimeout(() => {
         // 鱼饵消失
         if (food.parentNode) {
@@ -1660,7 +1660,7 @@
         saveFishToStorage();
         stats.successfulFeeds++; // 记录成功喂鱼次数
         checkAchievements(); // 检查成就
-      }, 1000);
+      }, 5000);
     }
   }
 
