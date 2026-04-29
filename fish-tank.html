@@ -24,17 +24,23 @@
     .fish { position: absolute; font-size: 24px; z-index: 10; }
     .fish.bubble { font-size: 16px; color: rgba(255,255,255,.7); animation: float-up 3s ease-in-out infinite; }
 
-    /* 新鱼出现时的发光+放大效果 */
+    /* 新鱼出现时的呼吸缩放+白光环效果 */
     .fish-new {
-      animation: fish-new-appear 2s ease-out forwards, fish-new-glow 1s ease-in-out 5;
+      animation: fish-new-appear 2s ease-out forwards, fish-new-breathe 1s ease-in-out 5;
     }
     @keyframes fish-new-appear {
       0% { transform: scale(0.5); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
-    @keyframes fish-new-glow {
-      0%, 100% { filter: drop-shadow(0 0 10px #ffffff); }
-      50% { filter: drop-shadow(0 0 25px #ffffff) drop-shadow(0 0 40px #ffffff); }
+    @keyframes fish-new-breathe {
+      0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 8px #ffffff);
+      }
+      50% {
+        transform: scale(1.15);
+        filter: drop-shadow(0 0 25px #ffffff) drop-shadow(0 0 40px #ffffff);
+      }
     }
 
     /* 鱼饵从顶部落下动画 */
