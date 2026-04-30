@@ -135,6 +135,10 @@
 <script>
   const fishTypes = ['🐠', '🐟', '🦈', '🐙', '🦑', '🦀', '🦐', '🐚'];
   const plantTypes = ['🍀', '🌱', '🌿', '🪸'];
+  // 特殊鱼定义：code -> { name, svg }
+  const SPECIAL_FISH = {
+    'NIKI': { name: 'niki', svg: 'assets/special-fishes/niki.svg' }
+  };
   let fishes = [];
   let bubbles = [];
   let plants = [];
@@ -845,6 +849,29 @@
       return;
     }
 
+    // 检查是否是特殊鱼代码
+    const trimmedCode = code.trim().toUpperCase();
+    if (trimmedCode.startsWith('FISH_')) {
+      const fishKey = trimmedCode;
+      const specialFish = SPECIAL_FISH[fishKey];
+      if (!specialFish) {
+        alert('无效的特殊鱼代码');
+        return;
+      }
+      const codeHash = btoa(encodeURIComponent(code));
+      if (usedCodes.includes(codeHash) && !devModeUnlocked) {
+        alert('这条鱼已经被兑换过了~');
+        return;
+      }
+      if (!devModeUnlocked) {
+        usedCodes.push(codeHash);
+        saveFishToStorage();
+      }
+      addSpecialFishToTank(specialFish.svg, specialFish.name);
+      alert(`🎉 成功兑换特殊鱼：${specialFish.name}！`);
+      return;
+    }
+
     const giftData = parseGiftCode(code);
 
     if (!giftData) {
@@ -1418,6 +1445,47 @@
     saveFishToStorage();
   }
 
+  // 添加特殊SVG鱼到鱼缸
+  function addSpecialFishToTank(svgPath, fishName) {
+    const tank = document.getElementById('tankWater');
+    const fish = document.createElement('div');
+    const x = Math.random() * (tank.offsetWidth - 60);
+    const y = Math.random() * (tank.offsetHeight - 60);
+
+    fish.className = 'fish fish-new';
+    fish.style.left = x + 'px';
+    fish.style.top = y + 'px';
+    fish.style.width = '50px';
+    fish.style.height = '50px';
+    fish.id = 'fish-' + fishIdCounter++;
+
+    // 使用img标签显示SVG
+    const img = document.createElement('img');
+    img.src = svgPath;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.pointerEvents = 'none';
+    fish.appendChild(img);
+
+    // 绑定点击事件 - 摸鱼减少冷却时间
+    fish.style.cursor = 'pointer';
+    fish.onclick = () => petFish(fish.id);
+
+    tank.appendChild(fish);
+
+    // 5秒后移除新鱼特效
+    setTimeout(() => {
+      fish.classList.remove('fish-new');
+    }, 5000);
+
+    fishes.push({ id: fish.id, type: svgPath, x, y, dx: (Math.random() > 0.5 ? 1 : -1) * (6 + Math.random() * 6), dy: (Math.random() - 0.5) * 2, feedCount: 0, isSpecial: true });
+
+    lastAddFishTime = Date.now();
+    updateFishCount();
+    checkAchievements();
+    saveFishToStorage();
+  }
+
   // 摸鱼 - 点击鱼减少冷却时间
   function petFish(fishId) {
     stats.petFishClicks++; // 记录摸鱼点击次数
@@ -1883,7 +1951,7 @@
 
   // 保存鱼到localStorage
   function saveFishToStorage() {
-    const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0 }));
+    const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0, isSpecial: f.isSpecial || false }));
     const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
     const data = {
       fishes: fishData,
@@ -1948,7 +2016,20 @@
       fishData.forEach(f => {
         const fish = document.createElement('div');
         fish.className = 'fish';
-        fish.textContent = f.type;
+        // 检查是否是特殊鱼(SVG)
+        const isSpecialFish = f.isSpecial || (f.type && f.type.startsWith('assets/'));
+        if (isSpecialFish) {
+          fish.style.width = '50px';
+          fish.style.height = '50px';
+          const img = document.createElement('img');
+          img.src = f.type;
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.pointerEvents = 'none';
+          fish.appendChild(img);
+        } else {
+          fish.textContent = f.type;
+        }
         fish.style.left = f.x + 'px';
         fish.style.top = f.y + 'px';
         // 鱼的移动完全由JS控制,不再使用CSS动画
@@ -1964,7 +2045,7 @@
         }
 
         tank.appendChild(fish);
-        fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount });
+        fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount, isSpecial: isSpecialFish });
       });
 
       updateFishCount();
