@@ -1740,16 +1740,16 @@
     // 初始位置：顶部中央
     food.style.left = (tankWidth / 2 - 15) + 'px';
     food.style.top = '-30px';
-    food.style.setProperty('--target-x', foodX + 'px');
-    food.style.setProperty('--target-y', foodY + 'px');
+    food.style.transform = 'translateX(-50%)';
 
     tank.appendChild(food);
 
-    // 强制渲染后，设置目标位置触发动画
+    // 强制渲染后，设置目标位置触发动画（用transition而非animation）
     food.offsetHeight;
-    food.style.transition = 'top 10s ease-in, left 10s ease-in';
+    food.style.transition = 'top 10s linear, left 10s linear';
     food.style.left = foodX + 'px';
     food.style.top = foodY + 'px';
+    food.style.transform = 'translateX(-50%)';
 
     if (fishEl) {
       // 5秒后鱼饵消失的同时鱼变大
