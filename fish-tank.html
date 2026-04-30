@@ -852,7 +852,7 @@
     // 检查是否是特殊鱼代码
     const trimmedCode = code.trim().toUpperCase();
     if (trimmedCode.startsWith('FISH_')) {
-      const fishKey = trimmedCode;
+      const fishKey = trimmedCode.substring(5); // 去掉FISH_前缀
       const specialFish = SPECIAL_FISH[fishKey];
       if (!specialFish) {
         alert('无效的特殊鱼代码');
