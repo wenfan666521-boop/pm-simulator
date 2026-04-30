@@ -1353,7 +1353,7 @@
         listHTML += `<div style="padding:15px;background:rgba(255,255,255,0.1);border-radius:10px;margin-bottom:10px;cursor:pointer;" onclick="focusOnFish('${f.id}');this.parentNode.parentNode.parentNode.remove();">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
             <span style="font-size:28px;">${f.type.startsWith('assets/') ? '<img src="' + f.type + '" style="width:32px;height:32px;vertical-align:middle;">' : f.type}</span>
-            <span style="font-size:16px;font-weight:bold;">⭐ ${f.name}</span>
+            <span style="font-size:16px;font-weight:bold;">⭐ ${f.name || ('鱼 #' + f.id.split('-')[1])}</span>
           </div>
           ${f.description ? '<div style="font-size:12px;opacity:0.7;margin-left:38px;">' + f.description + '</div>' : ''}
           <div style="font-size:10px;opacity:0.5;margin-left:38px;">收藏于 ${new Date(f.collectedAt).toLocaleDateString()}</div>
@@ -1594,7 +1594,7 @@
         ` : ''}
         ${!isCollected ? `
           <div style="margin-bottom:15px;">
-            <input type="text" id="collectNameInput" placeholder="给鱼起个名字（必填）" maxlength="20" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;box-sizing:border-box;">
+            <input type="text" id="collectNameInput" placeholder="给鱼起个名字（选填）" maxlength="20" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;box-sizing:border-box;">
           </div>
           <div style="margin-bottom:15px;">
             <textarea id="collectDescInput" placeholder="描述（选填，最多100字）" maxlength="100" rows="2" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;resize:none;box-sizing:border-box;"></textarea>
@@ -1637,15 +1637,18 @@
     overlay.querySelector('#confirmCollectBtn').onclick = () => {
       if (!isCollected) {
         const name = overlay.querySelector('#collectNameInput').value.trim();
-        if (!name) {
-          alert('请输入鱼的名字');
-          return;
-        }
         fishData.collected = true;
         fishData.name = name;
         fishData.description = overlay.querySelector('#collectDescInput').value.trim();
         fishData.collectedAt = Date.now();
         updateFishStarDisplay(fishEl, true);
+        overlay.remove();
+        // 显示toast提示
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;';
+        toast.innerHTML = '⭐ 已收藏，可以在收藏列表里查看~';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2500);
       } else {
         const name = overlay.querySelector('#collectNameInput').value.trim();
         if (!name) {
@@ -1654,9 +1657,9 @@
         }
         fishData.name = name;
         fishData.description = overlay.querySelector('#collectDescInput').value.trim();
+        saveFishToStorage();
+        overlay.remove();
       }
-      saveFishToStorage();
-      overlay.remove();
     };
   }
 
