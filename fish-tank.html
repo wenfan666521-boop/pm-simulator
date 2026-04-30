@@ -57,22 +57,6 @@
       100% { top: var(--target-y, 50%); left: var(--target-x, 50%); transform: translateX(-50%); opacity: 1; }
     }
     .plant { position: absolute; z-index: 11; }
-    /* 收藏星星图标 */
-    .fish-collect-star {
-      position: absolute;
-      top: -20px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 18px;
-      cursor: pointer;
-      display: none;
-      z-index: 20;
-      transition: transform 0.2s;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-    }
-    .fish-collect-star:hover {
-      transform: translateX(-50%) scale(1.3);
-    }
 
     @keyframes float-up {
       0% { transform: translateY(0) translateX(0); opacity: 0.7; }
@@ -1509,8 +1493,8 @@
 
     tank.appendChild(fish);
 
-    // 设置收藏星星（PC hover / 移动端长按）
-    setupCollectionStar(fish, fish.id);
+    // 设置收藏长按触发
+    setupCollectionLongPress(fish, fish.id);
 
     // 5秒后移除新鱼特效
     setTimeout(() => {
@@ -1524,37 +1508,39 @@
     saveFishToStorage();
   }
 
-  // 收藏星星 - PC hover显示 / 移动端长按触发
-  function setupCollectionStar(fishEl, fishId) {
-    const star = document.createElement('div');
-    star.className = 'fish-collect-star';
-    star.textContent = '⭐';
-    fishEl.appendChild(star);
-
+  // 收藏长按触发 - PC和移动端统一长按弹出
+  function setupCollectionLongPress(fishEl, fishId) {
     let longPressTimer = null;
+    const longPressDuration = 600; // 长按600ms触发
 
-    // PC: 鼠标悬停显示星星
-    fishEl.addEventListener('mouseenter', () => {
-      star.style.display = 'block';
+    // PC: mousedown 开始计时
+    fishEl.addEventListener('mousedown', (e) => {
+      longPressTimer = setTimeout(() => {
+        e.stopPropagation();
+        showCollectionMenu(fishId);
+      }, longPressDuration);
+    });
+    fishEl.addEventListener('mouseup', () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
     });
     fishEl.addEventListener('mouseleave', () => {
-      star.style.display = 'none';
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
     });
 
-    // PC: 点击星星显示收藏菜单
-    star.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showCollectionMenu(fishId);
-    });
-
-    // 移动端: 长按0.8秒触发收藏菜单
+    // 移动端: 长按0.6秒触发
     fishEl.addEventListener('touchstart', (e) => {
       longPressTimer = setTimeout(() => {
         e.preventDefault();
+        e.stopPropagation();
         showCollectionMenu(fishId);
-      }, 800);
+      }, longPressDuration);
     }, { passive: false });
-
     fishEl.addEventListener('touchend', () => {
       if (longPressTimer) {
         clearTimeout(longPressTimer);
@@ -1629,7 +1615,6 @@
         fishData.name = '';
         fishData.description = '';
         fishData.collectedAt = null;
-        updateFishStarDisplay(fishEl, false);
         saveFishToStorage();
         overlay.remove();
       };
@@ -1642,7 +1627,6 @@
         fishData.name = name;
         fishData.description = overlay.querySelector('#collectDescInput').value.trim();
         fishData.collectedAt = Date.now();
-        updateFishStarDisplay(fishEl, true);
         overlay.remove();
         // 显示toast提示
         const toast = document.createElement('div');
@@ -1662,14 +1646,6 @@
         overlay.remove();
       }
     };
-  }
-
-  // 更新鱼的收藏星星显示
-  function updateFishStarDisplay(fishEl, isCollected) {
-    const existingStar = fishEl.querySelector('.fish-collect-star');
-    if (existingStar) {
-      existingStar.textContent = isCollected ? '⭐' : '☆';
-    }
   }
 
   // 添加特殊SVG鱼到鱼缸
@@ -1700,8 +1676,8 @@
 
     tank.appendChild(fish);
 
-    // 设置收藏星星（PC hover / 移动端长按）
-    setupCollectionStar(fish, fish.id);
+    // 设置收藏长按触发
+    setupCollectionLongPress(fish, fish.id);
 
     // 5秒后移除新鱼特效
     setTimeout(() => {
@@ -2202,9 +2178,7 @@
       f.id = fishEl.id;
       fishEl.onclick = () => petFish(fishEl.id);
       tank.appendChild(fishEl);
-      setupCollectionStar(fishEl, fishEl.id);
-      const star = fishEl.querySelector('.fish-collect-star');
-      if (star) star.textContent = '⭐';
+      setupCollectionLongPress(fishEl, fishEl.id);
       setTimeout(() => {
         fishEl.style.opacity = '1';
       }, 50);
@@ -2345,15 +2319,8 @@
         tank.appendChild(fish);
         fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount, isSpecial: isSpecialFish, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null });
 
-        // 恢复收藏状态并设置星星
-        if (f.collected) {
-          setupCollectionStar(fish, fish.id);
-          // 更新星星显示为已收藏
-          const star = fish.querySelector('.fish-collect-star');
-          if (star) star.textContent = '⭐';
-        } else {
-          setupCollectionStar(fish, fish.id);
-        }
+        // 恢复收藏长按触发
+        setupCollectionLongPress(fish, fish.id);
       });
 
       updateFishCount();
