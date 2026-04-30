@@ -144,6 +144,34 @@
   const ADD_FISH_COOLDOWN = 30 * 60 * 1000; // 30分钟冷却时间
   let lastFeedFishTime = 0; // 上次喂鱼的时间
   const FEED_FISH_COOLDOWN = 15 * 60 * 1000; // 15分钟喂鱼冷却时间
+  // 背景音乐
+  let bgAudio = null;
+  let bgMusicEnabled = localStorage.getItem('bgMusicEnabled') === 'true';
+  function initBackgroundMusic() {
+    bgAudio = new Audio('minimax-output/aquarium-piano-slow.mp3');
+    bgAudio.loop = true;
+    bgAudio.volume = 0.3;
+    if (bgMusicEnabled) {
+      bgAudio.muted = false;
+      bgAudio.play().catch(() => {});
+    } else {
+      bgAudio.muted = true;
+    }
+  }
+  function toggleBackgroundMusic() {
+    bgMusicEnabled = !bgMusicEnabled;
+    localStorage.setItem('bgMusicEnabled', bgMusicEnabled);
+    if (bgAudio) {
+      if (bgMusicEnabled) {
+        bgAudio.muted = false;
+        bgAudio.play().catch(() => {});
+      } else {
+        bgAudio.pause();
+      }
+    }
+    // 重新显示菜单以更新按钮文字
+    showMenu();
+  }
   // 统计数据
   let stats = {
     addFishClicks: 0,      // 点击添加鱼按钮次数
@@ -284,6 +312,7 @@
     updateAddFishButton();
     updateFeedFishButton();
     schedulePlantGenerate(); // 立即执行一次
+    initBackgroundMusic();
 
     // 根据模式更新按钮文字
     const toggleBtn = document.getElementById('toggleBtn');
@@ -1253,6 +1282,7 @@
       '<button onclick="showReceivePanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📬 收礼</button>' +
       '<button onclick="showAchievements();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🏆 成就列表</button>' +
       '<button onclick="showBackgroundPanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖼️ 背景设置</button>' +
+      '<button onclick="toggleBackgroundMusic();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🎵 背景音乐 ' + (bgMusicEnabled ? 'ON' : 'OFF') + '</button>' +
       '<button onclick="showSavePanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📦 存档管理</button>' +
       '<button onclick="cleanTank();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧹 清理鱼缸</button>' +
       '</div>' +
