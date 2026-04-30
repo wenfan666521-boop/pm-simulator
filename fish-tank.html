@@ -57,6 +57,22 @@
       100% { top: var(--target-y, 50%); left: var(--target-x, 50%); transform: translateX(-50%); opacity: 1; }
     }
     .plant { position: absolute; z-index: 11; }
+    /* 收藏星星图标 */
+    .fish-collect-star {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      cursor: pointer;
+      display: none;
+      z-index: 20;
+      transition: transform 0.2s;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+    .fish-collect-star:hover {
+      transform: translateX(-50%) scale(1.3);
+    }
 
     @keyframes float-up {
       0% { transform: translateY(0) translateX(0); opacity: 0.7; }
@@ -1312,11 +1328,71 @@
       '<button onclick="toggleBackgroundMusic();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🎵 背景音乐 ' + (bgMusicEnabled ? 'ON' : 'OFF') + '</button>' +
       '<button onclick="showSavePanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📦 存档管理</button>' +
       '<button onclick="cleanTank();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧹 清理鱼缸</button>' +
+      '<button onclick="showCollectionList();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📋 收藏列表</button>' +
       '</div>' +
       '<button onclick="this.parentNode.parentNode.remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
       '</div>';
 
     document.body.appendChild(overlay);
+  }
+
+  // 显示收藏列表
+  function showCollectionList() {
+    const collectedFish = fishes.filter(f => f.collected);
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    let listHTML = '';
+    if (collectedFish.length === 0) {
+      listHTML = '<div style="text-align:center;padding:40px 20px;opacity:0.7;">还没有收藏的鱼哦～<br>悬停或长按一条鱼即可收藏！</div>';
+    } else {
+      collectedFish.forEach((f, index) => {
+        const fishEl = document.getElementById(f.id);
+        listHTML += `<div style="padding:15px;background:rgba(255,255,255,0.1);border-radius:10px;margin-bottom:10px;cursor:pointer;" onclick="focusOnFish('${f.id}');this.parentNode.parentNode.parentNode.remove();">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <span style="font-size:28px;">${f.type.startsWith('assets/') ? '<img src="' + f.type + '" style="width:32px;height:32px;vertical-align:middle;">' : f.type}</span>
+            <span style="font-size:16px;font-weight:bold;">⭐ ${f.name}</span>
+          </div>
+          ${f.description ? '<div style="font-size:12px;opacity:0.7;margin-left:38px;">' + f.description + '</div>' : ''}
+          <div style="font-size:10px;opacity:0.5;margin-left:38px;">收藏于 ${new Date(f.collectedAt).toLocaleDateString()}</div>
+        </div>`;
+      });
+    }
+
+    overlay.innerHTML = `
+      <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:320px;max-height:500px;overflow-y:auto;box-shadow:0 15px 50px rgba(0,0,0,0.5);">
+        <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">📋 收藏列表 (${collectedFish.length})</div>
+        <div style="max-height:400px;overflow-y:auto;">
+          ${listHTML}
+        </div>
+        <button onclick="this.parentNode.parentNode.remove()" style="margin-top:15px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+  }
+
+  // 定位并聚焦到某条鱼
+  function focusOnFish(fishId) {
+    const fishEl = document.getElementById(fishId);
+    if (!fishEl) return;
+    // 鱼缸滚动到鱼的位置
+    const tank = document.getElementById('fishTank');
+    if (tank) {
+      const fishRect = fishEl.getBoundingClientRect();
+      const tankRect = tank.getBoundingClientRect();
+      tank.scrollTop = fishRect.top - tankRect.top + tank.scrollTop - 100;
+    }
+    // 高亮闪烁效果
+    fishEl.style.transition = 'transform 0.3s, filter 0.3s';
+    fishEl.style.transform = 'scale(1.5)';
+    fishEl.style.filter = 'drop-shadow(0 0 20px gold)';
+    setTimeout(() => {
+      fishEl.style.transform = '';
+      fishEl.style.filter = '';
+    }, 1500);
   }
 
   // 显示成就列表弹窗
@@ -1433,16 +1509,163 @@
 
     tank.appendChild(fish);
 
+    // 设置收藏星星（PC hover / 移动端长按）
+    setupCollectionStar(fish, fish.id);
+
     // 5秒后移除新鱼特效
     setTimeout(() => {
       fish.classList.remove('fish-new');
     }, 5000);
-    fishes.push({ id: fish.id, type: fishType, x, y, dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8), dy: (Math.random() - 0.5) * 3, feedCount: 0 });
+    fishes.push({ id: fish.id, type: fishType, x, y, dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8), dy: (Math.random() - 0.5) * 3, feedCount: 0, collected: false, name: '', description: '', collectedAt: null });
 
     lastAddFishTime = Date.now();
     updateFishCount();
     checkAchievements(); // 检查成就
     saveFishToStorage();
+  }
+
+  // 收藏星星 - PC hover显示 / 移动端长按触发
+  function setupCollectionStar(fishEl, fishId) {
+    const star = document.createElement('div');
+    star.className = 'fish-collect-star';
+    star.textContent = '⭐';
+    fishEl.appendChild(star);
+
+    let longPressTimer = null;
+
+    // PC: 鼠标悬停显示星星
+    fishEl.addEventListener('mouseenter', () => {
+      star.style.display = 'block';
+    });
+    fishEl.addEventListener('mouseleave', () => {
+      star.style.display = 'none';
+    });
+
+    // PC: 点击星星显示收藏菜单
+    star.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showCollectionMenu(fishId);
+    });
+
+    // 移动端: 长按0.8秒触发收藏菜单
+    fishEl.addEventListener('touchstart', (e) => {
+      longPressTimer = setTimeout(() => {
+        e.preventDefault();
+        showCollectionMenu(fishId);
+      }, 800);
+    }, { passive: false });
+
+    fishEl.addEventListener('touchend', () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+    fishEl.addEventListener('touchmove', () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+  }
+
+  // 显示收藏菜单
+  function showCollectionMenu(fishId) {
+    const fishData = fishes.find(f => f.id === fishId);
+    if (!fishData) return;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    const isCollected = fishData.collected;
+    const starIcon = isCollected ? '⭐' : '☆';
+
+    overlay.innerHTML = `
+      <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:300px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">
+        <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">
+          ${starIcon} ${isCollected ? '已收藏鱼' : '收藏这条鱼'}
+        </div>
+        ${isCollected ? `
+          <div style="margin-bottom:15px;padding:10px;background:rgba(255,255,255,0.1);border-radius:10px;text-align:center;font-size:16px;">
+            ${fishData.type.startsWith('assets/') ? `<img src="${fishData.type}" style="width:40px;height:40px;vertical-align:middle;">` : fishData.type}
+            <span style="margin-left:8px;">${fishData.name || '(无名字)'}</span>
+          </div>
+        ` : ''}
+        ${!isCollected ? `
+          <div style="margin-bottom:15px;">
+            <input type="text" id="collectNameInput" placeholder="给鱼起个名字（必填）" maxlength="20" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;box-sizing:border-box;">
+          </div>
+          <div style="margin-bottom:15px;">
+            <textarea id="collectDescInput" placeholder="描述（选填，最多100字）" maxlength="100" rows="2" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;resize:none;box-sizing:border-box;"></textarea>
+          </div>
+        ` : `
+          <div style="margin-bottom:15px;">
+            <input type="text" id="collectNameInput" placeholder="修改名字" value="${fishData.name || ''}" maxlength="20" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;box-sizing:border-box;">
+          </div>
+          <div style="margin-bottom:15px;">
+            <textarea id="collectDescInput" placeholder="修改描述" maxlength="100" rows="2" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;resize:none;box-sizing:border-box;">${fishData.description || ''}</textarea>
+          </div>
+        `}
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button id="confirmCollectBtn" style="padding:12px;border:none;border-radius:10px;background:${isCollected ? 'rgba(100,100,100,0.5)' : 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)'};color:#fff;cursor:pointer;font-size:14px;">
+            ${isCollected ? '✏️ 保存修改' : '⭐ 确认收藏'}
+          </button>
+          ${isCollected ? `
+            <button id="cancelCollectBtn" style="padding:12px;border:none;border-radius:10px;background:rgba(255,100,100,0.3);color:#fff;cursor:pointer;font-size:14px;">💔 取消收藏</button>
+          ` : ''}
+          <button onclick="this.parentNode.parentNode.parentNode.remove()" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // 绑定按钮事件
+    if (isCollected) {
+      overlay.querySelector('#cancelCollectBtn').onclick = () => {
+        fishData.collected = false;
+        fishData.name = '';
+        fishData.description = '';
+        fishData.collectedAt = null;
+        updateFishStarDisplay(fishEl, false);
+        saveFishToStorage();
+        overlay.remove();
+      };
+    }
+
+    overlay.querySelector('#confirmCollectBtn').onclick = () => {
+      if (!isCollected) {
+        const name = overlay.querySelector('#collectNameInput').value.trim();
+        if (!name) {
+          alert('请输入鱼的名字');
+          return;
+        }
+        fishData.collected = true;
+        fishData.name = name;
+        fishData.description = overlay.querySelector('#collectDescInput').value.trim();
+        fishData.collectedAt = Date.now();
+        updateFishStarDisplay(fishEl, true);
+      } else {
+        const name = overlay.querySelector('#collectNameInput').value.trim();
+        if (!name) {
+          alert('名字不能为空');
+          return;
+        }
+        fishData.name = name;
+        fishData.description = overlay.querySelector('#collectDescInput').value.trim();
+      }
+      saveFishToStorage();
+      overlay.remove();
+    };
+  }
+
+  // 更新鱼的收藏星星显示
+  function updateFishStarDisplay(fishEl, isCollected) {
+    const existingStar = fishEl.querySelector('.fish-collect-star');
+    if (existingStar) {
+      existingStar.textContent = isCollected ? '⭐' : '☆';
+    }
   }
 
   // 添加特殊SVG鱼到鱼缸
@@ -1473,12 +1696,15 @@
 
     tank.appendChild(fish);
 
+    // 设置收藏星星（PC hover / 移动端长按）
+    setupCollectionStar(fish, fish.id);
+
     // 5秒后移除新鱼特效
     setTimeout(() => {
       fish.classList.remove('fish-new');
     }, 5000);
 
-    fishes.push({ id: fish.id, type: svgPath, x, y, dx: (Math.random() > 0.5 ? 1 : -1) * (6 + Math.random() * 6), dy: (Math.random() - 0.5) * 2, feedCount: 0, isSpecial: true });
+    fishes.push({ id: fish.id, type: svgPath, x, y, dx: (Math.random() > 0.5 ? 1 : -1) * (6 + Math.random() * 6), dy: (Math.random() - 0.5) * 2, feedCount: 0, isSpecial: true, collected: false, name: '', description: '', collectedAt: null });
 
     lastAddFishTime = Date.now();
     updateFishCount();
@@ -1895,15 +2121,28 @@
 
   // 清理鱼缸
   function cleanTank() {
-    if (!confirm('确定要清理鱼缸吗?所有鱼、鱼饵和水草都会被清除!')) {
+    // 分离收藏和非收藏的鱼
+    const collectedFish = fishes.filter(f => f.collected);
+    const normalFish = fishes.filter(f => !f.collected);
+
+    if (normalFish.length === 0) {
+      if (collectedFish.length > 0) {
+        alert('已跳过 ' + collectedFish.length + ' 条收藏鱼，没有可清理的鱼！');
+      } else {
+        alert('鱼缸里没有鱼！');
+      }
+      return;
+    }
+
+    if (!confirm('确定要清理鱼缸吗?收藏的鱼会被保留，其余鱼、鱼饵和水草都会被清除!')) {
       return;
     }
 
     stats.cleanCount++; // 记录清理次数
     const tank = document.getElementById('tankWater');
 
-    // 清理所有鱼
-    fishes.forEach(fish => {
+    // 清理所有非收藏的鱼
+    normalFish.forEach(fish => {
       const fishEl = document.getElementById(fish.id);
       if (fishEl) {
         fishEl.style.opacity = '0';
@@ -1914,7 +2153,58 @@
         }, 300);
       }
     });
+
+    // 清理所有收藏鱼在鱼缸中的元素（但保留数据）
+    collectedFish.forEach(fish => {
+      const fishEl = document.getElementById(fish.id);
+      if (fishEl) {
+        fishEl.style.opacity = '0';
+        setTimeout(() => {
+          if (fishEl.parentNode) {
+            fishEl.parentNode.removeChild(fishEl);
+          }
+        }, 300);
+      }
+    });
+    // 重置fishes数组，重新只放入收藏的鱼
     fishes = [];
+    collectedFish.forEach(f => {
+      fishes.push(f);
+    });
+
+    // 重新渲染收藏的鱼
+    collectedFish.forEach(f => {
+      const fishEl = document.createElement('div');
+      fishEl.className = 'fish';
+      const isSpecialFish = f.isSpecial || (f.type && f.type.startsWith('assets/'));
+      if (isSpecialFish) {
+        fishEl.style.width = '50px';
+        fishEl.style.height = '50px';
+        const img = document.createElement('img');
+        img.src = f.type;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.pointerEvents = 'none';
+        fishEl.appendChild(img);
+      } else {
+        fishEl.textContent = f.type;
+      }
+      fishEl.style.left = f.x + 'px';
+      fishEl.style.top = f.y + 'px';
+      fishEl.style.cursor = 'pointer';
+      fishEl.style.opacity = '0';
+      const oldId = f.id;
+      fishEl.id = 'fish-' + fishIdCounter++;
+      f.id = fishEl.id;
+      fishEl.onclick = () => petFish(fishEl.id);
+      tank.appendChild(fishEl);
+      setupCollectionStar(fishEl, fishEl.id);
+      const star = fishEl.querySelector('.fish-collect-star');
+      if (star) star.textContent = '⭐';
+      setTimeout(() => {
+        fishEl.style.opacity = '1';
+      }, 50);
+    });
 
     // 清理所有鱼饵
     const foods = tank.querySelectorAll('[id^="food-"]');
@@ -1942,6 +2232,10 @@
     updateAddFishButton();
     updateFeedFishButton();
     saveFishToStorage();
+
+    if (collectedFish.length > 0) {
+      alert('已保留 ' + collectedFish.length + ' 条收藏鱼！');
+    }
   }
 
   // 更新鱼的数量
@@ -1951,7 +2245,7 @@
 
   // 保存鱼到localStorage
   function saveFishToStorage() {
-    const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0, isSpecial: f.isSpecial || false }));
+    const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0, isSpecial: f.isSpecial || false, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null }));
     const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
     const data = {
       fishes: fishData,
@@ -2045,7 +2339,17 @@
         }
 
         tank.appendChild(fish);
-        fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount, isSpecial: isSpecialFish });
+        fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount, isSpecial: isSpecialFish, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null });
+
+        // 恢复收藏状态并设置星星
+        if (f.collected) {
+          setupCollectionStar(fish, fish.id);
+          // 更新星星显示为已收藏
+          const star = fish.querySelector('.fish-collect-star');
+          if (star) star.textContent = '⭐';
+        } else {
+          setupCollectionStar(fish, fish.id);
+        }
       });
 
       updateFishCount();
