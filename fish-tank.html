@@ -1595,27 +1595,27 @@
         ` : ''}
         ${!isCollected ? `
           <div style="margin-bottom:15px;">
-            <input type="text" id="collectNameInput" placeholder="给鱼起个名字（选填）" maxlength="20" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;box-sizing:border-box;">
+            <input type="text" id="collectNameInput" placeholder="给鱼起个名字（选填）" maxlength="20" style="width:100%;padding:12px 15px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;box-sizing:border-box;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2);transition:all 0.2s ease;outline:none;">
           </div>
           <div style="margin-bottom:15px;">
-            <textarea id="collectDescInput" placeholder="描述（选填，最多100字）" maxlength="100" rows="2" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;resize:none;box-sizing:border-box;"></textarea>
+            <textarea id="collectDescInput" placeholder="描述（选填，最多100字）" maxlength="100" rows="2" style="width:100%;padding:12px 15px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;resize:none;box-sizing:border-box;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2);transition:all 0.2s ease;outline:none;"></textarea>
           </div>
         ` : `
           <div style="margin-bottom:15px;">
-            <input type="text" id="collectNameInput" placeholder="修改名字" value="${fishData.name || ''}" maxlength="20" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;box-sizing:border-box;">
+            <input type="text" id="collectNameInput" placeholder="修改名字" value="${fishData.name || ''}" maxlength="20" style="width:100%;padding:12px 15px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;box-sizing:border-box;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2);transition:all 0.2s ease;outline:none;">
           </div>
           <div style="margin-bottom:15px;">
-            <textarea id="collectDescInput" placeholder="修改描述" maxlength="100" rows="2" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;resize:none;box-sizing:border-box;">${fishData.description || ''}</textarea>
+            <textarea id="collectDescInput" placeholder="修改描述" maxlength="100" rows="2" style="width:100%;padding:12px 15px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;resize:none;box-sizing:border-box;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2);transition:all 0.2s ease;outline:none;">${fishData.description || ''}</textarea>
           </div>
         `}
         <div style="display:flex;flex-direction:column;gap:10px;">
-          <button id="confirmCollectBtn" style="padding:12px;border:none;border-radius:10px;background:${isCollected ? 'rgba(100,100,100,0.5)' : 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)'};color:#fff;cursor:pointer;font-size:14px;">
+          <button id="confirmCollectBtn" onclick="this.style.transform='scale(0.95)';setTimeout(()=>{this.style.transform=''},100)" onmouseenter="this.style.boxShadow='0 0 20px rgba(102,126,234,0.8)';this.style.filter='brightness(1.1)'" onmouseleave="this.style.boxShadow='';this.style.filter=''" style="padding:12px 20px;border:none;border-radius:12px;background:${isCollected ? 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' : 'linear-gradient(135deg,#f093fb 0%,#f5576c 100%)'};color:#fff;cursor:pointer;font-size:15px;font-weight:bold;box-shadow:0 4px 15px rgba(0,0,0,0.3);transition:all 0.2s ease;text-shadow:0 1px 2px rgba(0,0,0,0.3);">
             ${isCollected ? '✏️ 保存修改' : '⭐ 确认收藏'}
           </button>
           ${isCollected ? `
-            <button id="cancelCollectBtn" style="padding:12px;border:none;border-radius:10px;background:rgba(255,100,100,0.3);color:#fff;cursor:pointer;font-size:14px;">💔 取消收藏</button>
+            <button id="cancelCollectBtn" onclick="this.style.transform='scale(0.95)';setTimeout(()=>{this.style.transform=''},100)" onmouseenter="this.style.boxShadow='0 0 20px rgba(255,100,100,0.6)';this.style.filter='brightness(1.1)'" onmouseleave="this.style.boxShadow='';this.style.filter=''" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b 0%,#ee5a5a 100%);color:#fff;cursor:pointer;font-size:15px;box-shadow:0 4px 15px rgba(255,100,100,0.3);transition:all 0.2s ease;text-shadow:0 1px 2px rgba(0,0,0,0.3);">💔 取消收藏</button>
           ` : ''}
-          <button onclick="this.parentNode.parentNode.parentNode.remove()" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
+          <button onclick="this.style.transform='scale(0.95)';setTimeout(()=>{this.style.transform='';this.parentNode.parentNode.parentNode.remove()},100)" onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'" style="padding:12px 20px;border:none;border-radius:12px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.7);cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.2);transition:all 0.2s ease;">关闭</button>
         </div>
       </div>
     `;
