@@ -934,27 +934,73 @@
         
         function closeGuideModal() {
             document.getElementById('guideModal').classList.remove('show');
-            
             // 关闭弹窗后，显示初始AI引导消息
             setTimeout(() => {
-                addMessage('👋 你好呀！我是AI助手，您的专属行程顾问～<br>最近有出差计划吗？告诉我你的目的地和时间，我来帮你安排得妥妥的！😊', 'ai');
-                }, 500);
-                // 预设对话示例2：用户输入
-                setTimeout(() => {
-                    addMessage('我要去北京参加商务会议，帮我规划行程，地点在国贸三期', 'user');
-                }, 2000);
-                // 预设对话示例3：AI回应
-                setTimeout(() => {
-                    addMessage('好的！国贸三期那边交通很方便，地铁1号线或10号线都能到～ 🚇<br><br>请告诉我：<br>· 出发城市是哪里？<br>· 计划什么时候出发？<br>· 计划哪天返回？<br>· 有没有酒店偏好？', 'ai');
-                }, 3500);
-                // 分隔符
-                setTimeout(() => {
-                    addMessage('<div style="text-align: center; color: #999; font-size: 12px; margin: 15px 0; border-top: 1px dashed #ddd; padding-top: 15px;">———— 以上为案例对话 ————</div>', 'ai');
+                addMessage('👋 你好呀！我是你的AI旅行助手～有什么想去的地方吗？告诉我，我来帮你规划！😊', 'ai');
+            }, 500);
+            // 预设对话示例2：用户输入
+            setTimeout(() => {
+                addMessage('我想去三亚玩几天，有什么推荐吗？', 'user');
+            }, 2000);
+            // 预设对话示例3：AI回应
+            setTimeout(() => {
+                addMessage('三亚很适合度假！🏖️ 亚龙湾、海棠湾、三亚湾各有特色——<br><br>· <b>亚龙湾</b>：高端度假首选，海水清澈，适合潜水和泡酒店<br>· <b>海棠湾</b>：新开发区，有很多亲子&情侣友好的豪华酒店<br>· <b>三亚湾</b>：离机场近，性价比高，适合第一次来<br><br>你想住哪种风格的酒店？', 'ai');
+            }, 3500);
+            // 分隔符
+            setTimeout(() => {
+                addMessage('<div style="text-align: center; color: #999; font-size: 12px; margin: 15px 0; border-top: 1px dashed #ddd; padding-top: 15px;">———— 以上为案例对话 ————</div>', 'ai');
             }, 300);
         }
-        </script>
-
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatMessages = document.getElementById('chatMessages');
+        if (chatInput) {
+            chatInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+            });
+        }
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => {
+                const text = chatInput.value.trim();
+                if (!text) return;
+                addMessage(text, 'user');
+                chatInput.value = '';
+                chatInput.style.height = 'auto';
+            });
+        }
+        function addMessage(text, type) {
+            if (!chatMessages) return;
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.innerHTML = text;
+            chatMessages.appendChild(msg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    </script>
+</head>
+<body>
     <div class="chat-container">
         <div class="chat-header">
+            <div class="ai-avatar">☀️</div>
+            <div class="header-info">
+                <div class="header-title">AI旅行助手</div>
+                <div class="header-status">在线</div>
+            </div>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+            <div class="input-wrapper">
+                <textarea class="chat-input" id="chatInput" placeholder="输入你的选择或需求..." rows="1"></textarea>
+                <button class="send-btn" id="sendBtn">➤</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        window.onload = function() {
+            showGuideModal();
+        };
+    </script>
+</body>
 </html>
         
