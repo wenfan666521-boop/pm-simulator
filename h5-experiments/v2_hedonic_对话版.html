@@ -643,7 +643,60 @@
             color: #1F1F2E;
         }
 
-    </style>
+    
+        .booking-success {
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            color: white;
+        }
+        
+        .booking-success .success-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .booking-success .success-icon {
+            font-size: 28px;
+        }
+        
+        .booking-success .success-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .booking-success .booking-items {
+            padding: 16px;
+        }
+        
+        .booking-success .booking-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .booking-success .booking-item:last-child {
+            border-bottom: none;
+            padding-top: 12px;
+            margin-top: 4px;
+        }
+        
+        .booking-success .booking-label {
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .booking-success .booking-value {
+            font-weight: 600;
+        }
+        
+        .booking-success .card-footer {
+            background: rgba(0,0,0,0.1);
+            border-top: none;
+            color: rgba(255,255,255,0.9);
+        }
+</style>
 </head>
 <body>
     <div class="chat-container">
@@ -1009,6 +1062,9 @@
                 case 'selection_card':
                     html = renderSelectionCard(data);
                     break;
+                case 'booking_success':
+                    html = renderBookingSuccess(data);
+                    break;
                 default:
                     addMessage(String(data.type) + ': ' + JSON.stringify(data), 'ai');
                     return;
@@ -1165,6 +1221,39 @@
             currentSessionId = null;
             document.getElementById('chatMessages').innerHTML = '';
             console.log('Conversation reset');
+        }
+
+        
+        function renderBookingSuccess(data) {
+            var html = '<div class="structured-card booking-success">';
+            
+            // 标题
+            if (data.title) {
+                html += '<div class="success-header">';
+                html += '<span class="success-icon">' + (data.icon || '🎉') + '</span>';
+                html += '<span class="success-title">' + data.title + '</span>';
+                html += '</div>';
+            }
+            
+            // 订单详情
+            html += '<div class="booking-items">';
+            if (data.items && data.items.length > 0) {
+                data.items.forEach(function(item) {
+                    html += '<div class="booking-item">';
+                    html += '<span class="booking-label">' + item.label + '</span>';
+                    html += '<span class="booking-value">' + item.value + '</span>';
+                    html += '</div>';
+                });
+            }
+            html += '</div>';
+            
+            // 底部
+            if (data.footer) {
+                html += '<div class="card-footer">' + data.footer + '</div>';
+            }
+            
+            html += '</div>';
+            return html;
         }
 </script>
 </body>
