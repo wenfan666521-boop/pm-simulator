@@ -959,6 +959,16 @@
                 this.style.height = 'auto';
                 this.style.height = Math.min(this.scrollHeight, 80) + 'px';
             });
+            chatInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    const text = chatInput.value.trim();
+                    if (!text) return;
+                    addMessage(text, 'user');
+                    chatInput.value = '';
+                    chatInput.style.height = 'auto';
+                }
+            });
         }
         if (sendBtn) {
             sendBtn.addEventListener('click', () => {
@@ -970,6 +980,7 @@
             });
         }
         function addMessage(text, type) {
+            const chatMessages = document.getElementById('chatMessages');
             if (!chatMessages) return;
             const msg = document.createElement('div');
             msg.className = `message ${type}`;
