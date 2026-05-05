@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI助手 · 专属行程顾问</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+            background: #EEF2F7;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 520px;
+            height: 100vh;
+            max-height: 100vh;
+            background: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.06);
+        }
+
+        /* Header */
+        .chat-header {
+            background: #FFFFFF;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+            border-bottom: 1px solid #E8EDF2;
+        }
+
+        .ai-avatar {
+            width: 44px;
+            height: 44px;
+            background: #EDF4FF;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .ai-avatar svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .ai-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .ai-info h2 {
+            color: #1F2937;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .ai-info p {
+            color: #6B7280;
+            font-size: 12px;
+            margin-top: 1px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #10B981;
+            background: #D1FAE5;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: #10B981;
+            border-radius: 50%;
+        }
+
+        /* Category Bar */
+        .category-bar {
+            display: flex;
+            gap: 8px;
+            padding: 10px 16px;
+            overflow-x: auto;
+            background: #F7F9FB;
+            border-bottom: 1px solid #E8EDF2;
+            scrollbar-width: none;
+            flex-shrink: 0;
+        }
+
+        .category-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .category-chip {
+            flex-shrink: 0;
+            padding: 7px 14px;
+            background: #FFFFFF;
+            border: 1px solid #E8EDF2;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #6B7280;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .category-chip:hover, .category-chip.active {
+            background: #3B82F6;
+            color: #FFFFFF;
+            border-color: #3B82F6;
+        }
+
+        /* Messages Area */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #F7F9FB;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 88%;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.ai {
+            align-self: flex-start;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .message-bubble {
+            padding: 11px 15px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+
+        .message.ai .message-bubble {
+            background: #FFFFFF;
+            border: 1px solid #E8EDF2;
+            color: #1F2937;
+            border-bottom-left-radius: 3px;
+        }
+
+        .message.user .message-bubble {
+            background: #3B82F6;
+            color: #FFFFFF;
+            border-bottom-right-radius: 3px;
+        }
+
+        .message-time {
+            font-size: 10px;
+            color: #9CA3AF;
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+
+        /* Button Panel - Action Buttons from AI */
+        .btn-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .action-btn {
+            padding: 8px 14px;
+            background: #FFFFFF;
+            border: 1px solid #3B82F6;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #3B82F6;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .action-btn:hover {
+            background: #3B82F6;
+            color: #FFFFFF;
+        }
+
+        .action-btn:active {
+            transform: scale(0.96);
+        }
+
+        .action-btn.selected {
+            background: #3B82F6;
+            color: #FFFFFF;
+        }
+
+        /* Selection Card - For multiple choices */
+        .selection-card {
+            background: #FFFFFF;
+            border: 1px solid #E8EDF2;
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .selection-card-title {
+            font-size: 12px;
+            color: #6B7280;
+            margin-bottom: 8px;
+        }
+
+        .selection-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            background: #F7F9FB;
+            border: 1px solid #E8EDF2;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .selection-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .selection-item:hover {
+            border-color: #3B82F6;
+            background: #EFF6FF;
+        }
+
+        .selection-item.selected {
+            border-color: #3B82F6;
+            background: #EFF6FF;
+        }
+
+        .selection-item .radio {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #D1D5DB;
+            border-radius: 50%;
+            margin-right: 10px;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .selection-item.selected .radio {
+            border-color: #3B82F6;
+            background: #3B82F6;
+            box-shadow: inset 0 0 0 3px #FFFFFF;
+        }
+
+        .selection-item .item-content {
+            flex: 1;
+        }
+
+        .selection-item .item-title {
+            font-size: 13px;
+            color: #1F2937;
+            font-weight: 500;
+        }
+
+        .selection-item .item-desc {
+            font-size: 11px;
+            color: #6B7280;
+            margin-top: 2px;
+        }
+
+        .selection-item .item-price {
+            font-size: 14px;
+            color: #EF4444;
+            font-weight: 600;
+        }
+
+        /* Confirm Bar */
+        .confirm-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .confirm-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .confirm-btn.primary {
+            background: #3B82F6;
+            color: #FFFFFF;
+        }
+
+        .confirm-btn.primary:hover {
+            background: #2563EB;
+        }
+
+        .confirm-btn.secondary {
+            background: #F3F4F6;
+            color: #6B7280;
+            border: 1px solid #E8EDF2;
+        }
+
+        .confirm-btn.secondary:hover {
+            background: #E5E7EB;
+        }
+
+        /* Summary Card */
+        .summary-card {
+            background: #F7F9FB;
+            border: 1px solid #E8EDF2;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 13px;
+        }
+
+        .summary-row:not(:last-child) {
+            border-bottom: 1px solid #E8EDF2;
+        }
+
+        .summary-label {
+            color: #6B7280;
+        }
+
+        .summary-value {
+            color: #1F2937;
+            font-weight: 500;
+        }
+
+        .summary-row.total {
+            padding-top: 10px;
+        }
+
+        .summary-row.total .summary-value {
+            color: #EF4444;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* Quick Options - Task Oriented */
+        .quick-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #FFFFFF;
+            border-top: 1px solid #E8EDF2;
+            flex-shrink: 0;
+        }
+
+        .quick-option {
+            flex: 1 1 calc(50% - 4px);
+            padding: 10px 12px;
+            background: #F3F4F6;
+            border: 1px solid #E8EDF2;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #4B5563;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 48px;
+        }
+
+        .quick-option:hover {
+            background: #EFF6FF;
+            border-color: #BFDBFE;
+            color: #2563EB;
+        }
+
+        .quick-option svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            stroke: currentColor;
+        }
+
+        /* Chat Input Area */
+        .chat-input-area {
+            display: none;
+        }
+
+        /* Restart Button */
+        .restart-btn {
+            display: block;
+            width: calc(100% - 32px);
+            margin: 6px 16px;
+            padding: 10px;
+            background: #F7F9FB;
+            border: 1px dashed #D1D5DB;
+            border-radius: 8px;
+            color: #6B7280;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .restart-btn:hover {
+            background: #3B82F6;
+            color: white;
+            border-color: #3B82F6;
+        }
+
+        /* Success Animation */
+        .success-icon {
+            width: 60px;
+            height: 60px;
+            background: #D1FAE5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px auto;
+        }
+
+        .success-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: #10B981;
+        }
+
+        /* ========== 聊天输入区域 ========== */
+        .chat-input-area {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #FFFFFF;
+            border-top: 1px solid #E8EDF2;
+            flex-shrink: 0;
+        }
+
+        .chat-input-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            background: #F3F4F6;
+            border: 1px solid #E8EDF2;
+            border-radius: 20px;
+            padding: 8px 14px;
+            min-height: 44px;
+            max-height: 120px;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input-wrapper:focus-within {
+            border-color: #3B82F6;
+            background: #FFFFFF;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 15px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            max-height: 96px;
+            overflow-y: auto;
+            font-family: inherit;
+        }
+
+        .chat-input::placeholder {
+            color: #9CA3AF;
+        }
+
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            background: #3B82F6;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .send-btn:hover {
+            background: #2563EB;
+            transform: scale(1.05);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .send-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: white;
+            fill: none;
+        }
+
+        /* 打字指示器 */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+            background: #FFFFFF;
+            border: 1px solid #E8EDF2;
+            border-radius: 12px;
+            border-bottom-left-radius: 3px;
+            width: fit-content;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #9CA3AF;
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-4px); opacity: 1; }
+        }
+
+        /* 隐藏快捷按钮栏（对话模式下） */
+        .quick-options.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="ai-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+            </div>
+            <div class="ai-info">
+                <h2>AI助手</h2>
+                <p>高效解决您的业务问题</p>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                在线
+            </div>
+        </div>
+
+        <div class="category-bar">
+            <div class="category-chip active" data-category="trip">🚄 差旅出行</div>
+            <div class="category-chip" data-category="schedule">📅 行程管理</div>
+            <div class="category-chip" data-category="hotel">🏨 酒店预订</div>
+            <div class="category-chip" data-category="flight">✈️ 机票服务</div>
+            <div class="category-chip" data-category="expense">📋 报销辅助</div>
+            <div class="category-chip" data-category="人工">📞 转人工</div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <!-- Messages will be injected here -->
+        </div>
+
+        <div class="quick-options" id="quickOptions">
+            <div class="quick-option" data-action="行程概览">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                </svg>
+                行程概览
+            </div>
+            <div class="quick-option" data-action="改签/退票">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v20M2 12h20"/>
+                </svg>
+                改签/退票
+            </div>
+            <div class="quick-option" data-action="行程提醒">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                行程提醒
+            </div>
+            <div class="quick-option" data-action="联系客服">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
+                </svg>
+                联系客服
+            </div>
+        </div>
+
+        <div class="chat-input-area" id="chatInputArea">
+            <div class="chat-input-wrapper">
+                <textarea 
+                    class="chat-input" 
+                    id="chatInput" 
+                    placeholder="输入问题，或选择快捷操作..." 
+                    rows="1"
+                ></textarea>
+            </div>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                <svg viewBox="0 0 24 24" stroke-width="2">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ========== 状态管理 ==========
+        const state = {
+            currentStep: 'welcome',
+            chatMode: false,  // 是否已进入自由对话模式
+            selectedCategory: null,
+            originCity: null,
+            destCity: '北京',
+            departDate: null,
+            returnDate: null,
+            selectedHotel: null,
+            selectedFlights: {
+                go: null,
+                back: null
+            },
+            budget: 3000
+        };
+
+        // ========== 数据定义 ==========
+        const flights = {
+            go: [
+                { id: 'MU5137', name: 'MU5137', time: '07:00-09:30', price: 680, from: '上海虹桥', to: '北京首都' },
+                { id: 'CA1519', name: 'CA1519', time: '08:30-11:00', price: 720, from: '上海虹桥', to: '北京首都' },
+                { id: 'MU5101', name: 'MU5101', time: '09:00-11:30', price: 650, from: '上海虹桥', to: '北京首都' }
+            ],
+            back: [
+                { id: 'CA1519B', name: 'CA1519', time: '18:00-20:30', price: 720, from: '北京首都', to: '上海虹桥' },
+                { id: 'MU5138', name: 'MU5138', time: '19:00-21:30', price: 700, from: '北京首都', to: '上海虹桥' },
+                { id: 'HU7603', name: 'HU7603', time: '17:30-20:00', price: 680, from: '北京首都', to: '上海虹桥' }
+            ]
+        };
+
+        const hotels = [
+            { id: 'jw', name: '北京JW万豪酒店', distance: '距国贸三期800m', price: 980, nights: 2 },
+            { id: 'china', name: '北京中国大饭店', distance: '距国贸三期1km', price: 860, nights: 2 }
+        ];
+
+        const cities = ['上海', '北京', '广州', '深圳', '杭州', '成都', '武汉', '西安'];
+        const dates = [
+            { label: '5月10日（周六）', value: '2025-05-10' },
+            { label: '5月11日（周日）', value: '2025-05-11' },
+            { label: '5月12日（周一）', value: '2025-05-12' },
+            { label: '5月13日（周二）', value: '2025-05-13' },
+            { label: '5月14日（周三）', value: '2025-05-14' }
+        ];
+
+        // ========== 工具函数 ==========
+        function formatTime() {
+            const now = new Date();
+            return now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // ========== 打字机效果 ==========
+        function typeWriter(element, text, speed = 30) {
+            return new Promise(resolve => {
+                let i = 0;
+                element.innerHTML = '';
+                function typing() {
+                    if (i < text.length) {
+                        element.innerHTML += text.charAt(i);
+                        i++;
+                        scrollToBottom();
+                        setTimeout(typing, speed);
+                    } else {
+                        resolve();
+                    }
+                }
+                typing();
+            });
+        }
+
+        // ========== 发送消息 ==========
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // 隐藏快捷选项
+            document.getElementById('quickOptions').classList.add('hidden');
+            state.chatMode = true;
+
+            // 显示用户消息
+            addUserMessage(message);
+            input.value = '';
+            input.style.height = 'auto';
+
+            // 显示AI正在输入
+            const chatMessages = document.getElementById('chatMessages');
+            const typingEl = document.createElement('div');
+            typingEl.className = 'message ai';
+            typingEl.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+            chatMessages.appendChild(typingEl);
+            scrollToBottom();
+
+            try {
+                // TODO: 接入百炼API
+                // const response = await callBailianAPI(message);
+                
+                // 模拟AI响应（实际使用时替换为真实API调用）
+                await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+                const response = generateAIResponse(message);
+                
+                // 移除打字指示器
+                chatMessages.removeChild(typingEl);
+
+                // 显示AI响应（带打字机效果）
+                const aiMsgEl = document.createElement('div');
+                aiMsgEl.className = 'message ai';
+                const bubbleEl = document.createElement('div');
+                bubbleEl.className = 'message-bubble';
+                aiMsgEl.appendChild(bubbleEl);
+                chatMessages.appendChild(aiMsgEl);
+                
+                await typeWriter(bubbleEl, response, 25);
+                
+                // 如果是功能关键词，恢复快捷按钮
+                if (shouldShowQuickOptions(message)) {
+                    document.getElementById('quickOptions').classList.remove('hidden');
+                    state.chatMode = false;
+                }
+            } catch (error) {
+                chatMessages.removeChild(typingEl);
+                addAIMessage('<strong>抱歉，网络出错了，请稍后再试。</strong>');
+            }
+        }
+
+        // 判断是否显示快捷选项
+        function shouldShowQuickOptions(msg) {
+            const keywords = ['行程', '预订', '酒店', '机票', '航班', '取消', '改签', '退款'];
+            return keywords.some(k => msg.includes(k));
+        }
+
+        // 模拟AI响应（正式接入API前使用）
+        function generateAIResponse(userMsg) {
+            const msg = userMsg.toLowerCase();
+            
+            if (msg.includes('你好') || msg.includes('hi') || msg.includes('hello')) {
+                return '您好！我是您的专属行程顾问。请问有什么可以帮您的？您可以直接打字提问，也可以使用下方的快捷操作。';
+            }
+            if (msg.includes('行程') || msg.includes('规划')) {
+                return '好的，我来帮您规划行程！请告诉我您的出发城市、目的地和出行日期，我来为您推荐最优方案。';
+            }
+            if (msg.includes('酒店')) {
+                return '为您找到了以下酒店推荐：\n\n🏨 北京JW万豪酒店\n   距国贸三期800m | ¥980/晚\n\n🏨 北京中国大饭店\n   距国贸三期1km | ¥860/晚\n\n请问您想选择哪家？';
+            }
+            if (msg.includes('机票') || msg.includes('航班')) {
+                return '为您找到以下航班：\n\n✈️ MU5137 上海07:00 → 北京09:30 ¥680\n✈️ CA1519 上海08:30 → 北京11:00 ¥720\n✈️ MU5101 上海09:00 → 北京11:30 ¥650\n\n请告诉我您的偏好，我来帮您选择。';
+            }
+            if (msg.includes('取消') || msg.includes('退')) {
+                return '好的，正在为您处理取消请求。请确认是取消以下订单吗？\n\n🏨 北京JW万豪酒店 × 2晚\n✈️ MU5137 去程\n✈️ CA1519 返程\n\n确认取消将扣除相应退款手续费。';
+            }
+            if (msg.includes('改签')) {
+                return '好的，我来帮您办理改签。请问您想改签哪个航班？改签可能需要支付50元手续费和票价差额。';
+            }
+            if (msg.includes('谢谢') || msg.includes('感谢')) {
+                return '不客气！很高兴能帮到您。如果还有其他问题，随时告诉我！';
+            }
+            
+            return '收到您的消息了。为了更好地帮助您，能否详细描述一下您的需求？比如您想要预订机票、酒店，或者需要修改行程等。';
+        }
+
+        // 自动调整输入框高度
+        function autoResizeInput() {
+            const input = document.getElementById('chatInput');
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 96) + 'px';
+        }
+
+        // 输入框回车发送（Shift+Enter换行）
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('chatInput');
+            if (input) {
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
+                input.addEventListener('input', autoResizeInput);
+            }
+        });
+
+        // ========== 消息渲染 ==========
+        function addAIMessage(htmlContent) {
+            const chatMessages = document.getElementById('chatMessages');
+            const msg = document.createElement('div');
+            msg.className = 'message ai';
+            msg.innerHTML = htmlContent;
+            chatMessages.appendChild(msg);
+            scrollToBottom();
+        }
+
+        function addUserMessage(content) {
+            const chatMessages = document.getElementById('chatMessages');
+            const msg = document.createElement('div');
+            msg.className = 'message user';
+            msg.innerHTML = `<div class="message-bubble">${content}</div><div class="message-time">${formatTime()}</div>`;
+            chatMessages.appendChild(msg);
+            scrollToBottom();
+        }
+
+        // ========== 选择卡片渲染 ==========
+        function renderSelectionCard(title, items) {
+            let html = `<div class="selection-card" data-step="${state.currentStep}">
+                <div class="selection-card-title">${title}</div>`;
+            
+            items.forEach(item => {
+                html += `
+                    <div class="selection-item" data-id="${item.id}">
+                        <div class="radio"></div>
+                        <div class="item-content">
+                            <div class="item-title">${item.name || item.label}</div>
+                            ${item.desc ? `<div class="item-desc">${item.desc}</div>` : ''}
+                        </div>
+                        ${item.price ? `<div class="item-price">¥${item.price}</div>` : ''}
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+
+        // ========== 步骤处理 ==========
+
+        // 步骤1：选择服务类型
+        function stepCategory() {
+            state.currentStep = 'category';
+            addAIMessage(`您好，欢迎使用差旅服务助手！<br><br>请选择您的服务需求：` + renderSelectionCard('服务类型', [
+                { id: 'plan', name: '🚄 规划行程', desc: '帮助您规划完整差旅行程' },
+                { id: 'book', name: '🏨 只订酒店', desc: '单独预订酒店住宿' },
+                { id: 'flight', name: '✈️ 只订机票', desc: '单独预订机票' },
+                { id: 'modify', name: '📝 修改订单', desc: '改签或取消已有订单' }
+            ]));
+        }
+
+        // 步骤2：选择出发城市（规划行程）
+        function stepOriginCity() {
+            state.currentStep = 'originCity';
+            addAIMessage('请选择您的出发城市：' + renderSelectionCard('出发城市', 
+                cities.map(c => ({ id: c, name: c }))
+            ));
+        }
+
+        // 步骤3：选择目的地城市
+        function stepDestCity() {
+            state.currentStep = 'destCity';
+            const otherCities = cities.filter(c => c !== state.originCity);
+            addAIMessage('请选择您的目的地城市：' + renderSelectionCard('目的地城市',
+                otherCities.map(c => ({ id: c, name: c }))
+            ));
+        }
+
+        // 步骤4：选择出发日期
+        function stepDepartDate() {
+            state.currentStep = 'departDate';
+            addAIMessage('请选择您的出发日期：' + renderSelectionCard('出发日期', dates));
+        }
+
+        // 步骤5：选择返回日期
+        function stepReturnDate() {
+            state.currentStep = 'returnDate';
+            const futureDates = dates.filter(d => d.value > state.departDate);
+            addAIMessage('请选择您的返回日期：' + renderSelectionCard('返回日期', futureDates));
+        }
+
+        // 步骤6：选择去程航班
+        function stepSelectFlights() {
+            state.currentStep = 'selectGoFlight';
+            addAIMessage(`📍 ${state.originCity} → ${state.destCity} &nbsp;|&nbsp; 去程 ${state.departDate} · 返程 ${state.returnDate}<br><br>请选择去程航班：` + renderSelectionCard('去程航班',
+                flights.go.map(f => ({ 
+                    id: f.id, 
+                    name: `${f.name} ${f.time}`, 
+                    desc: `${f.from} → ${f.to}`,
+                    price: f.price 
+                }))
+            ));
+        }
+
+        // 步骤7：选择返程航班
+        function stepSelectReturnFlight() {
+            state.currentStep = 'selectBackFlight';
+            addAIMessage('请选择返程航班：' + renderSelectionCard('返程航班',
+                flights.back.map(f => ({ 
+                    id: f.id, 
+                    name: `${f.name} ${f.time}`, 
+                    desc: `${f.from} → ${f.to}`,
+                    price: f.price 
+                }))
+            ));
+        }
+
+        // 步骤8：选择酒店
+        function stepSelectHotel() {
+            state.currentStep = 'selectHotel';
+            addAIMessage('请选择酒店：' + renderSelectionCard('酒店推荐',
+                hotels.map(h => ({ 
+                    id: h.id, 
+                    name: h.name, 
+                    desc: `${h.distance} · ${h.nights}晚`,
+                    price: h.price * h.nights 
+                }))
+            ));
+        }
+
+        // 步骤9：确认订单
+        function stepConfirmOrder() {
+            state.currentStep = 'confirmOrder';
+            const totalPrice = state.selectedHotel.price * state.selectedHotel.nights + 
+                              state.selectedFlights.go.price + 
+                              state.selectedFlights.back.price;
+            
+            const summaryHtml = `
+                <div class="summary-card">
+                    <div class="summary-row">
+                        <span class="summary-label">去程航班</span>
+                        <span class="summary-value">${state.selectedFlights.go.name} ${state.selectedFlights.go.time}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">返程航班</span>
+                        <span class="summary-value">${state.selectedFlights.back.name} ${state.selectedFlights.back.time}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">酒店</span>
+                        <span class="summary-value">${state.selectedHotel.name} ×${state.selectedHotel.nights}晚</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span class="summary-label">合计</span>
+                        <span class="summary-value">¥${totalPrice}</span>
+                    </div>
+                </div>
+            `;
+
+            addAIMessage(`<strong>订单确认</strong><br>请核对您的行程信息：${summaryHtml}
+                <div class="confirm-bar">
+                    <button class="confirm-btn secondary" onclick="modifyOrder()">修改行程</button>
+                    <button class="confirm-btn primary" onclick="confirmOrder()">确认预订</button>
+                </div>
+            `);
+        }
+
+        function modifyOrder() {
+            addUserMessage('修改行程');
+            stepSelectFlights();
+        }
+
+        function confirmOrder() {
+            addUserMessage('确认预订');
+            stepSuccess();
+        }
+
+        // 步骤10：预订成功
+        function stepSuccess() {
+            const totalPrice = state.selectedHotel.price * state.selectedHotel.nights + 
+                              state.selectedFlights.go.price + 
+                              state.selectedFlights.back.price;
+            
+            addAIMessage(`
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                </div>
+                <strong style="display:block;text-align:center;font-size:16px;">预订成功！</strong>
+                <br>
+                <strong>行程单已发送至您的邮箱</strong><br><br>
+                🏨 酒店确认号：MARriott-2025-${state.departDate.slice(-5).replace('-','')}<br>
+                ✈️ 去程确认：${state.selectedFlights.go.id}-BJS<br>
+                ✈️ 返程确认：${state.selectedFlights.back.id}-SHA<br><br>
+                <strong>合计：¥${totalPrice}</strong>
+                <div class="confirm-bar">
+                    <button class="confirm-btn secondary" onclick="restart()">重新规划</button>
+                    <button class="confirm-btn primary" onclick="showTripOverview()">查看行程</button>
+                </div>
+            `);
+        }
+
+        // ========== 酒店单独预订流程 ==========
+        function stepHotelCity() {
+            state.currentStep = 'hotelCity';
+            addAIMessage('请选择目的地城市：' + renderSelectionCard('目的地城市',
+                cities.map(c => ({ id: c, name: c }))
+            ));
+        }
+
+        function stepHotelDates() {
+            state.currentStep = 'checkIn';
+            addAIMessage('请选择入住日期：' + renderSelectionCard('入住日期', dates));
+        }
+
+        function stepHotelNights() {
+            state.currentStep = 'nights';
+            addAIMessage('请选择入住晚数：' + renderSelectionCard('入住晚数',
+                [
+                    { id: 1, name: '1晚', price: hotels[0].price },
+                    { id: 2, name: '2晚', price: hotels[0].price * 2 },
+                    { id: 3, name: '3晚', price: hotels[0].price * 3 },
+                    { id: 4, name: '4晚', price: hotels[0].price * 4 }
+                ]
+            ));
+        }
+
+        function stepHotelConfirm() {
+            state.currentStep = 'hotelConfirm';
+            const totalPrice = state.selectedHotel.price * state.nights;
+            addAIMessage(`
+                <strong>酒店预订确认</strong><br><br>
+                📍 城市：${state.destCity}<br>
+                🏨 酒店：${state.selectedHotel.name}<br>
+                📅 入住：${state.departDate} × ${state.nights}晚<br><br>
+                <strong>合计：¥${totalPrice}</strong>
+                <div class="confirm-bar">
+                    <button class="confirm-btn secondary" onclick="restart()">重新选择</button>
+                    <button class="confirm-btn primary" onclick="confirmHotelOnly()">确认预订</button>
+                </div>
+            `);
+        }
+
+        function confirmHotelOnly() {
+            addUserMessage('确认预订');
+            const totalPrice = state.selectedHotel.price * state.nights;
+            addAIMessage(`
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                </div>
+                <strong style="display:block;text-align:center;font-size:16px;">预订成功！</strong>
+                <br>
+                🏨 酒店确认号：MARriott-${state.departDate.slice(-5).replace('-','')}<br>
+                📅 入住日期：${state.departDate}<br>
+                📅 退房日期：第${state.nights}晚<br><br>
+                <strong>合计：¥${totalPrice}</strong>
+            `);
+        }
+
+        // ========== 机票单独预订流程 ==========
+        function stepFlightOrigin() {
+            state.currentStep = 'flightOrigin';
+            addAIMessage('请选择出发城市：' + renderSelectionCard('出发城市',
+                cities.map(c => ({ id: c, name: c }))
+            ));
+        }
+
+        function stepFlightDest() {
+            state.currentStep = 'flightDest';
+            const otherCities = cities.filter(c => c !== state.originCity);
+            addAIMessage('请选择目的地城市：' + renderSelectionCard('目的地城市',
+                otherCities.map(c => ({ id: c, name: c }))
+            ));
+        }
+
+        function stepFlightType() {
+            state.currentStep = 'flightType';
+            addAIMessage('请选择航班类型：' + renderSelectionCard('航班类型',
+                [
+                    { id: 'single', name: '单程', desc: '只订去程或返程' },
+                    { id: 'round', name: '往返', desc: '一起去一起回' }
+                ]
+            ));
+        }
+
+        function stepSingleFlight() {
+            state.currentStep = 'singleFlightDate';
+            addAIMessage('请选择出发日期：' + renderSelectionCard('出发日期', dates));
+        }
+
+        function stepSingleFlightSelect() {
+            state.currentStep = 'singleFlight';
+            addAIMessage('请选择航班：' + renderSelectionCard('可选航班',
+                flights.go.map(f => ({ 
+                    id: f.id, 
+                    name: `${f.name} ${f.time}`, 
+                    desc: `${f.from} → ${f.to}`,
+                    price: f.price 
+                }))
+            ));
+        }
+
+        function stepSingleConfirm() {
+            state.currentStep = 'singleConfirm';
+            addAIMessage(`
+                <strong>机票预订确认</strong><br><br>
+                ✈️ 航班：${state.selectedFlights.go.name}<br>
+                📍 路线：${state.originCity} → ${state.destCity}<br>
+                ⏰ 时间：${state.selectedFlights.go.time}<br><br>
+                <strong>票价：¥${state.selectedFlights.go.price}</strong>
+                <div class="confirm-bar">
+                    <button class="confirm-btn secondary" onclick="restart()">重新选择</button>
+                    <button class="confirm-btn primary" onclick="confirmFlightOnly()">确认预订</button>
+                </div>
+            `);
+        }
+
+        function confirmFlightOnly() {
+            addUserMessage('确认预订');
+            addAIMessage(`
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                </div>
+                <strong style="display:block;text-align:center;font-size:16px;">预订成功！</strong>
+                <br>
+                ✈️ 机票确认号：${state.selectedFlights.go.id}-${state.destCity.slice(0,1)}${state.originCity.slice(0,1)}<br>
+                📅 航班日期：${state.departDate}<br>
+                ⏰ 起飞时间：${state.selectedFlights.go.time}<br><br>
+                <strong>票价：¥${state.selectedFlights.go.price}</strong>
+            `);
+        }
+
+        // ========== 修改订单流程 ==========
+        function stepModifyOrder() {
+            state.currentStep = 'modifyAction';
+            addAIMessage(`
+                <strong>订单管理</strong><br><br>
+                请选择您要进行的操作：
+                ${renderSelectionCard('操作选项', [
+                    { id: 'change', name: '✏️ 改签', desc: '修改航班日期或时间' },
+                    { id: 'cancel', name: '❌ 取消', desc: '取消已预订的订单' },
+                    { id: 'refund', name: '💰 退款查询', desc: '查看退款进度' }
+                ])}
+            `);
+        }
+
+        function stepModifyFlight() {
+            state.currentStep = 'modifyFlight';
+            addAIMessage('请选择要改签的行程：' + renderSelectionCard('待改签行程',
+                [
+                    { id: 'go', name: '去程 5月10日 MU5137', desc: '上海虹桥 → 北京首都 07:00' },
+                    { id: 'back', name: '返程 5月12日 CA1519', desc: '北京首都 → 上海虹桥 18:00' }
+                ]
+            ));
+        }
+
+        function stepNewDate() {
+            state.currentStep = 'newDate';
+            addAIMessage('请选择新的航班日期：' + renderSelectionCard('可选日期', dates));
+        }
+
+        function stepChangeConfirm() {
+            state.currentStep = 'changeConfirm';
+            addAIMessage(`
+                <strong>改签确认</strong><br><br>
+                ✈️ 航班日期已修改为：新的日期<br>
+                📋 改签手续费：¥50<br>
+                💰 原票价差额：¥0<br><br>
+                <div class="confirm-bar">
+                    <button class="confirm-btn secondary" onclick="restart()">返回</button>
+                    <button class="confirm-btn primary" onclick="confirmChange()">确认改签</button>
+                </div>
+            `);
+        }
+
+        function confirmChange() {
+            addUserMessage('确认改签');
+            addAIMessage(`
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                </div>
+                <strong style="display:block;text-align:center;font-size:16px;">改签成功！</strong>
+                <br>
+                ✈️ 新航班日期：已更新<br>
+                📋 改签手续费：¥50（已扣款）<br>
+                📧 行程单已重新发送至邮箱
+            `);
+        }
+
+        function stepCancelConfirm() {
+            state.currentStep = 'cancelConfirm';
+            addAIMessage(`
+                <strong>取消订单</strong><br><br>
+                请确认要取消以下订单？<br><br>
+                🏨 北京JW万豪酒店 × 2晚<br>
+                ✈️ MU5137 去程<br>
+                ✈️ CA1519 返程<br><br>
+                <div class="confirm-bar">
+                    <button class="confirm-btn secondary" onclick="restart()">返回</button>
+                    <button class="confirm-btn primary" onclick="confirmCancel()">确认取消</button>
+                </div>
+            `);
+        }
+
+        function confirmCancel() {
+            addUserMessage('确认取消');
+            addAIMessage(`
+                <div class="success-icon" style="background:#FEE2E2;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </div>
+                <strong style="display:block;text-align:center;font-size:16px;">订单已取消</strong>
+                <br>
+                💰退款金额：¥3,360<br>
+                ⏰ 预计到账：3-5个工作日<br>
+                📧 取消确认已发送至邮箱
+            `);
+        }
+
+        function stepRefundQuery() {
+            state.currentStep = 'refundQuery';
+            addAIMessage(`
+                <strong>退款进度查询</strong><br><br>
+                📋 订单号：MARriott-2025-0510<br>
+                💰 退款金额：¥3,360<br>
+                ⏰ 退款方式：原路退回<br>
+                📅 预计到账：3-5个工作日<br><br>
+                <div class="confirm-bar">
+                    <button class="confirm-btn primary" onclick="restart()">完成</button>
+                </div>
+            `);
+        }
+
+        // ========== 快捷操作 ==========
+        function showTripOverview() {
+            addUserMessage('行程概览');
+            addAIMessage(`
+                <strong>📋 您的行程概览</strong><br><br>
+                <div class="summary-card">
+                    <div class="summary-row">
+                        <span class="summary-label">去程</span>
+                        <span class="summary-value">5月10日 MU5137 07:00-09:30</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">返程</span>
+                        <span class="summary-value">5月12日 CA1519 18:00-20:30</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">酒店</span>
+                        <span class="summary-value">北京JW万豪酒店 × 2晚</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span class="summary-label">合计</span>
+                        <span class="summary-value">¥3,360</span>
+                    </div>
+                </div>
+            `);
+        }
+
+        function showReminderOptions() {
+            state.currentStep = 'reminder';
+            addAIMessage('请选择提醒时间：' + renderSelectionCard('提醒时间', [
+                { id: '1h', name: '出发前1小时', desc: '5月10日 06:00' },
+                { id: '3h', name: '出发前3小时', desc: '5月10日 04:00' },
+                { id: '1d', name: '出发前1天', desc: '5月9日 07:00' },
+                { id: '3d', name: '出发前3天', desc: '5月7日 07:00' }
+            ]));
+        }
+
+        function showReminderSuccess(id) {
+            const item = document.querySelector(`.selection-item[data-id="${id}"] .item-title`);
+            if (item) {
+                addUserMessage(item.textContent);
+            }
+            addAIMessage(`
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                </div>
+                <strong style="display:block;text-align:center;">提醒已设置！</strong><br>
+                您将在指定时间收到行程提醒
+            `);
+        }
+
+        function showCustomerService() {
+            addUserMessage('联系客服');
+            addAIMessage(`
+                <strong>📞 转接人工客服</strong><br><br>
+                正在为您转接，请稍候...<br><br>
+                预计等待时间：<strong>2分钟</strong><br><br>
+                <div class="confirm-bar">
+                    <button class="confirm-btn secondary" onclick="restart()">取消转接</button>
+                </div>
+            `);
+        }
+
+        // ========== 重置 ==========
+        function restart() {
+            state.currentStep = 'welcome';
+            state.selectedCategory = null;
+            state.originCity = null;
+            state.destCity = '北京';
+            state.departDate = null;
+            state.returnDate = null;
+            state.selectedHotel = null;
+            state.selectedFlights = { go: null, back: null };
+            state.nights = null;
+            state.chatMode = false;
+
+            document.getElementById('chatMessages').innerHTML = '';
+            document.getElementById('quickOptions').classList.remove('hidden');
+            
+            setTimeout(() => {
+                stepCategory();
+            }, 100);
+        }
+
+        // ========== 事件委托处理点击 ==========
+        document.getElementById('chatMessages').addEventListener('click', function(e) {
+            // 查找被点击的选择项
+            const selectionItem = e.target.closest('.selection-item');
+            if (selectionItem) {
+                const id = selectionItem.getAttribute('data-id');
+                handleSelection(id, selectionItem);
+                return;
+            }
+
+            // 处理确认按钮
+            const confirmBtn = e.target.closest('.confirm-btn');
+            if (confirmBtn) {
+                // 由onclick处理
+                return;
+            }
+        });
+
+        function handleSelection(id, element) {
+            // 更新选中状态（只更新当前消息卡片内的）
+            const card = element.closest('.selection-card');
+            card.querySelectorAll('.selection-item').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+
+            // 根据当前步骤处理
+            switch (state.currentStep) {
+                case 'category':
+                    state.selectedCategory = id;
+                    const catName = element.querySelector('.item-title').textContent;
+                    setTimeout(() => {
+                        addUserMessage(catName);
+                        if (id === 'plan') stepOriginCity();
+                        else if (id === 'book') stepHotelCity();
+                        else if (id === 'flight') stepFlightOrigin();
+                        else if (id === 'modify') stepModifyOrder();
+                    }, 200);
+                    break;
+
+                case 'originCity':
+                    state.originCity = id;
+                    setTimeout(() => {
+                        addUserMessage(id);
+                        stepDestCity();
+                    }, 200);
+                    break;
+
+                case 'destCity':
+                    state.destCity = id;
+                    setTimeout(() => {
+                        addUserMessage(id);
+                        stepDepartDate();
+                    }, 200);
+                    break;
+
+                case 'departDate':
+                    const departItem = dates.find(d => d.value === id);
+                    state.departDate = id;
+                    setTimeout(() => {
+                        addUserMessage(departItem.label);
+                        stepReturnDate();
+                    }, 200);
+                    break;
+
+                case 'returnDate':
+                    const returnItem = dates.find(d => d.value === id);
+                    state.returnDate = id;
+                    setTimeout(() => {
+                        addUserMessage(returnItem.label);
+                        stepSelectFlights();
+                    }, 200);
+                    break;
+
+                case 'selectGoFlight':
+                    const goFlight = flights.go.find(f => f.id === id);
+                    state.selectedFlights.go = goFlight;
+                    setTimeout(() => {
+                        addUserMessage(`${goFlight.name} ${goFlight.time} ¥${goFlight.price}`);
+                        stepSelectReturnFlight();
+                    }, 200);
+                    break;
+
+                case 'selectBackFlight':
+                    const backFlight = flights.back.find(f => f.id === id);
+                    state.selectedFlights.back = backFlight;
+                    setTimeout(() => {
+                        addUserMessage(`${backFlight.name} ${backFlight.time} ¥${backFlight.price}`);
+                        stepSelectHotel();
+                    }, 200);
+                    break;
+
+                case 'selectHotel':
+                    const hotel = hotels.find(h => h.id === id);
+                    state.selectedHotel = hotel;
+                    setTimeout(() => {
+                        addUserMessage(`${hotel.name} ¥${hotel.price * hotel.nights}/晚`);
+                        stepConfirmOrder();
+                    }, 200);
+                    break;
+
+                case 'hotelCity':
+                    state.destCity = id;
+                    setTimeout(() => {
+                        addUserMessage(id);
+                        stepHotelDates();
+                    }, 200);
+                    break;
+
+                case 'checkIn':
+                    const checkInItem = dates.find(d => d.value === id);
+                    state.departDate = id;
+                    setTimeout(() => {
+                        addUserMessage(checkInItem.label);
+                        stepHotelNights();
+                    }, 200);
+                    break;
+
+                case 'nights':
+                    state.nights = parseInt(id);
+                    state.selectedHotel = { ...hotels[0], nights: state.nights };
+                    setTimeout(() => {
+                        addUserMessage(`${id}晚`);
+                        stepHotelConfirm();
+                    }, 200);
+                    break;
+
+                case 'flightOrigin':
+                    state.originCity = id;
+                    setTimeout(() => {
+                        addUserMessage(id);
+                        stepFlightDest();
+                    }, 200);
+                    break;
+
+                case 'flightDest':
+                    state.destCity = id;
+                    setTimeout(() => {
+                        addUserMessage(id);
+                        stepFlightType();
+                    }, 200);
+                    break;
+
+                case 'flightType':
+                    setTimeout(() => {
+                        addUserMessage(id === 'single' ? '单程' : '往返');
+                        if (id === 'round') {
+                            stepDepartDate();
+                        } else {
+                            stepSingleFlight();
+                        }
+                    }, 200);
+                    break;
+
+                case 'singleFlightDate':
+                    const singleDateItem = dates.find(d => d.value === id);
+                    state.departDate = id;
+                    setTimeout(() => {
+                        addUserMessage(singleDateItem.label);
+                        stepSingleFlightSelect();
+                    }, 200);
+                    break;
+
+                case 'singleFlight':
+                    const singleFlight = flights.go.find(f => f.id === id);
+                    state.selectedFlights.go = singleFlight;
+                    setTimeout(() => {
+                        addUserMessage(`${singleFlight.name} ${singleFlight.time} ¥${singleFlight.price}`);
+                        stepSingleConfirm();
+                    }, 200);
+                    break;
+
+                case 'modifyAction':
+                    setTimeout(() => {
+                        const actionNames = { change: '改签', cancel: '取消订单', refund: '退款查询' };
+                        addUserMessage(actionNames[id]);
+                        if (id === 'change') stepModifyFlight();
+                        else if (id === 'cancel') stepCancelConfirm();
+                        else if (id === 'refund') stepRefundQuery();
+                    }, 200);
+                    break;
+
+                case 'modifyFlight':
+                    setTimeout(() => {
+                        addUserMessage(id === 'go' ? '去程 MU5137' : '返程 CA1519');
+                        stepNewDate();
+                    }, 200);
+                    break;
+
+                case 'newDate':
+                    const newDateItem = dates.find(d => d.value === id);
+                    setTimeout(() => {
+                        addUserMessage(newDateItem.label);
+                        stepChangeConfirm();
+                    }, 200);
+                    break;
+
+                case 'reminder':
+                    showReminderSuccess(id);
+                    break;
+            }
+        }
+
+        // ========== 底部快捷操作事件 ==========
+        document.getElementById('quickOptions').addEventListener('click', function(e) {
+            const option = e.target.closest('.quick-option');
+            if (option) {
+                const action = option.getAttribute('data-action');
+                if (action === '行程概览') showTripOverview();
+                else if (action === '改签/退票') stepModifyOrder();
+                else if (action === '行程提醒') showReminderOptions();
+                else if (action === '联系客服') showCustomerService();
+            }
+        });
+
+        // ========== 分类标签点击 ==========
+        document.querySelectorAll('.category-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // ========== 初始化 ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            stepCategory();
+        });
+    </script>
+</body>
+</html>
