@@ -861,8 +861,9 @@
                         // 结构化消息（如hotel_card）
                         renderStructuredMessage(response);
                     } else if (typeof response === 'string') {
-                        // 普通文字回复
-                        addMessage(response, 'ai');
+                        // 普通文字回复，转换换行符
+                        const textWithBreaks = response.replace(/\n/g, '<br>');
+                        addMessage(textWithBreaks, 'ai');
                     } else {
                         // 其他情况，尝试转为字符串
                         addMessage(String(response), 'ai');
