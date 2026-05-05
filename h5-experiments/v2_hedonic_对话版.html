@@ -856,24 +856,24 @@
                 if (typing) typing.remove();
                 
                 if (response) {
-                    // 尝试解析为结构化消息
-                    try {
-                        const data = typeof response === 'string' ? JSON.parse(response) : response;
-                        if (data.type) {
-                            renderStructuredMessage(data);
-                            return;
-                        }
-                    } catch (e) {
-                        // 不是JSON，当作普通文字处理
+                    // 检查是否是结构化数据对象
+                    if (response && typeof response === 'object' && response.type) {
+                        // 结构化消息（如hotel_card）
+                        renderStructuredMessage(response);
+                    } else if (typeof response === 'string') {
+                        // 普通文字回复
+                        addMessage(response, 'ai');
+                    } else {
+                        // 其他情况，尝试转为字符串
+                        addMessage(String(response), 'ai');
                     }
-                    // 普通文字回复
-                    addMessage(response, 'ai');
                 } else {
                     addMessage('抱歉，网络出错了，请稍后再试。', 'ai');
                 }
             }).catch(err => {
                 const typing = document.getElementById('typing-indicator');
                 if (typing) typing.remove();
+                console.error('API call failed:', err);
                 addMessage('抱歉，服务暂时不可用，请稍后再试。', 'ai');
             });
         }
@@ -913,31 +913,47 @@
                 const data = await response.json();
                 console.log('Full API response:', JSON.stringify(data));
                 
-                // 尝试多种返回格式
-                // 1. 直接的 output 字段
-                if (data.output) {
-                    return data.output;
+                // 百炼Agent返回格式：{"output": {"text": "...", "session_id": "..."}}
+                let text = null;
+                
+                // 1. 标准 output.text 格式
+                if (data.output && data.output.text) {
+                    text = data.output.text;
                 }
-                // 2. text field
-                if (data.text) {
-                    return data.text;
+                // 2. 直接的 text 字段
+                else if (data.text) {
+                    text = data.text;
                 }
-                // 3. response field
-                if (data.response) {
-                    return data.response;
+                // 3. output 本身是字符串
+                else if (typeof data.output === 'string') {
+                    text = data.output;
                 }
-                // 4. choices array
-                if (data.choices && data.choices.length > 0) {
-                    const choice = data.choices[0];
-                    return choice.text || choice.message || choice.content || JSON.stringify(choice);
+                // 4. 其他可能格式
+                else if (data.response) {
+                    text = typeof data.response === 'string' ? data.response : data.response.text;
                 }
-                // 5. messages array
-                if (data.messages && data.messages.length > 0) {
-                    return data.messages[data.messages.length - 1].content;
+                else {
+                    console.log('Unknown response format');
+                    return JSON.stringify(data);
                 }
-                // 6. 原始返回
-                console.log('Unknown response format');
-                return JSON.stringify(data);
+                
+                // 检查是否包含JSON（用于结构化消息）
+                // JSON通常在text的开头或包含 {"type": ...
+                const jsonMatch = text.match(/\{[\s\S]*"type"[\s\S]*\}/);
+                if (jsonMatch) {
+                    try {
+                        const jsonData = JSON.parse(jsonMatch[0]);
+                        if (jsonData.type) {
+                            // 返回结构化数据，让sendMessage处理渲染
+                            return jsonData;
+                        }
+                    } catch (e) {
+                        // JSON解析失败，当作普通文字处理
+                    }
+                }
+                
+                // 普通文字回复
+                return text;
                 
             } catch (error) {
                 console.error('API call failed:', error);
