@@ -957,7 +957,7 @@
                         });
                     }
                     
-                    html += '<div class="hotel-item" data-id="' + itemId + '" onclick="selectHotel(\'' + itemId + '\')">';
+                    html += '<div class="hotel-item" data-id="' + itemId + '" // onclick="selectHotel(\'' + itemId + '\')">';
                     if (itemImg) {
                         html += '<img class="hotel-thumb" src="' + itemImg + '" alt="' + itemName + '">';
                     }
@@ -973,7 +973,7 @@
                         html += '<span class="hotel-rating">⭐ ' + itemRating + '</span>';
                     }
                     html += '</div></div>';
-                    html += '<button class="select-btn">选择</button>';
+                    html += '';
                     html += '</div>';
                 });
             }
@@ -1012,7 +1012,7 @@
                     var emoji = item.emoji || '📌';
                     var text = item.label || item.text || item.name || '';
                     var itemId = item.id || text;
-                    html += '<div class="selection-item" data-id="' + itemId + '" onclick="selectOption(\'' + itemId + '\', this)">';
+                    html += '<div class="selection-item" data-id="' + itemId + '" // onclick="selectOption(\'' + itemId + '\', this)">';
                     html += '<span class="emoji">' + emoji + '</span>';
                     html += '<span class="item-text">' + text + '</span>';
                     html += '</div>';
@@ -1026,14 +1026,9 @@
             return html;
         }
         
-        function selectHotel(hotelId) {
-            addMessage('我想选择：' + hotelId, 'user');
-        }
         
-        function selectOption(optionId, element) {
-            var text = element.querySelector('.item-text').textContent;
-            addMessage(text, 'user');
-        }
+        
+        
 
 
         function sendOption(text) {
