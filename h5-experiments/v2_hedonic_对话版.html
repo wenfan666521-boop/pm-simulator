@@ -861,9 +861,13 @@
                         // 结构化消息（如hotel_card）
                         renderStructuredMessage(response);
                     } else if (typeof response === 'string') {
-                        // 普通文字回复，转换换行符
-                        const textWithBreaks = response.replace(/\n/g, '<br>');
-                        addMessage(textWithBreaks, 'ai');
+                        // 普通文字回复，转换换行符和markdown加粗
+                        let processedText = response;
+                        // 转换 **bold** 为 <strong>bold</strong>
+                        processedText = processedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                        // 转换换行符
+                        processedText = processedText.replace(/\n/g, '<br>');
+                        addMessage(processedText, 'ai');
                     } else {
                         // 其他情况，尝试转为字符串
                         addMessage(String(response), 'ai');
