@@ -880,6 +880,9 @@
         }
         
         // ========== 百炼Agent API 调用 ==========
+                // ========== 多轮对话状态管理 ==========
+        let currentSessionId = null;
+        
         async function callBailianAgent(userMessage) {
             const apiKey = 'sk-41ec25d4bc7246b39f1706750dcac482';
             const endpoint = 'https://dashscope.aliyuncs.com/api/v1/apps/7f59b8a020ff4311a376f0a685f1024d/completion';
@@ -890,8 +893,16 @@
                     "input": {
                         "prompt": userMessage
                     },
-                    "parameters": {}
+                    "parameters": {
+                        "enable_thinking": false,
+                        "has_thoughts": false
+                    }
                 };
+                
+                // 如果有session_id，添加到请求中（支持多轮对话）
+                if (currentSessionId) {
+                    requestBody.input.session_id = currentSessionId;
+                }
                 
                 console.log('Sending request:', JSON.stringify(requestBody));
                 
@@ -916,6 +927,12 @@
                 
                 // 百炼Agent返回格式：{"output": {"text": "...", "session_id": "..."}}
                 let text = null;
+                
+                // 保存session_id用于后续多轮对话
+                if (data.output && data.output.session_id) {
+                    currentSessionId = data.output.session_id;
+                    console.log('Session ID updated:', currentSessionId);
+                }
                 
                 // 1. 标准 output.text 格式
                 if (data.output && data.output.text) {
@@ -1141,3 +1158,11 @@
     </script>
 </body>
 </html>
+
+        // 重置会话（开始新的对话）
+        function resetConversation() {
+            currentSessionId = null;
+            document.getElementById('chatMessages').innerHTML = '';
+            console.log('Conversation reset');
+        }
+        
