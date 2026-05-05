@@ -841,16 +841,200 @@
             chatInput.value = '';
             chatInput.style.height = 'auto';
 
+            // 显示AI正在输入
+            const chatMessages = document.getElementById('chatMessages');
+            const typingEl = document.createElement('div');
+            typingEl.className = 'message ai';
+            typingEl.id = 'typing-indicator';
+            typingEl.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+            chatMessages.appendChild(typingEl);
+            scrollToBottom();
+            
+            // TODO: 接入百炼Agent API
+            // const response = await callBailianAgent(text);
+            
+            // 模拟AI响应（实际使用时替换为真实API调用）
             setTimeout(() => {
-                const responses = [
-                    "好的！<span class='emoji'>😊</span> 正在为你处理...",
-                    "收到！<span class='emoji'>👍</span> 稍等片刻...",
-                    "明白！<span class='emoji'>💼</span> 正在查询最优方案...",
-                    "没问题！<span class='emoji'>✅</span> 请确认你的选择..."
-                ];
-                addMessage(responses[Math.floor(Math.random() * responses.length)], 'ai');
-            }, 800 + Math.random() * 600);
+                const typing = document.getElementById('typing-indicator');
+                if (typing) typing.remove();
+                
+                // 演示：返回酒店卡片
+                const demoHotelCard = {
+                    "type": "hotel_card",
+                    "header_image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600",
+                    "title": "✨ 为你精选了这几家酒店",
+                    "intro": "每一家都超有特色～",
+                    "items": [
+                        {
+                            "id": "jw",
+                            "title": "北京JW万豪酒店",
+                            "subtitle": "奢华商务之选",
+                            "rating": "4.8",
+                            "highlights": ["距国贸三期800m", "行政酒廊夜景超美", "早餐超丰盛"],
+                            "price_per_night": 980,
+                            "image": "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=200"
+                        },
+                        {
+                            "id": "rosewood",
+                            "title": "北京瑰丽酒店", 
+                            "subtitle": "艺术与品味",
+                            "rating": "4.9",
+                            "highlights": ["艺术氛围满分", "SPA超舒服", "泳池view很绝"],
+                            "price_per_night": 1280,
+                            "image": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=200"
+                        }
+                    ],
+                    "footer": "你对哪家感兴趣？或者告诉我最看重什么～"
+                };
+                
+                renderStructuredMessage(demoHotelCard);
+            }, 1000 + Math.random() * 1000);
         }
+
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chatMessages');
+            if (chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+        
+        // ========== 结构化消息渲染 ==========
+        function renderStructuredMessage(data) {
+            if (!data || !data.type) {
+                addMessage(String(data), 'ai');
+                return;
+            }
+            
+            let html = '';
+            
+            switch(data.type) {
+                case 'hotel_card':
+                    html = renderHotelCard(data);
+                    break;
+                case 'image_message':
+                    html = renderImageMessage(data);
+                    break;
+                case 'selection_card':
+                    html = renderSelectionCard(data);
+                    break;
+                default:
+                    addMessage(String(data.type) + ': ' + JSON.stringify(data), 'ai');
+                    return;
+            }
+            
+            addMessage(html, 'ai');
+        }
+        
+        function renderHotelCard(data) {
+            let html = '<div class="structured-card">';
+            
+            if (data.header_image) {
+                html += '<img class="card-hero-image" src="' + data.header_image + '" alt="">';
+            }
+            
+            html += '<div class="card-header">';
+            if (data.title) {
+                html += '<div class="card-title">' + data.title + '</div>';
+            }
+            if (data.intro) {
+                html += '<div class="card-intro">' + data.intro + '</div>';
+            }
+            html += '</div>';
+            
+            html += '<div class="hotel-items">';
+            if (data.items && data.items.length > 0) {
+                data.items.forEach(function(item) {
+                    var itemId = item.id || item.name || '';
+                    var itemName = item.title || item.name || '';
+                    var itemSub = item.subtitle || '';
+                    var itemImg = item.image || '';
+                    var itemPrice = item.price_per_night || item.price || '';
+                    var itemRating = item.rating || '';
+                    var highlights = '';
+                    if (item.highlights && item.highlights.length > 0) {
+                        item.highlights.forEach(function(h) {
+                            highlights += '<span class="highlight-tag">' + h + '</span>';
+                        });
+                    }
+                    
+                    html += '<div class="hotel-item" data-id="' + itemId + '" onclick="selectHotel(\'' + itemId + '\')">';
+                    if (itemImg) {
+                        html += '<img class="hotel-thumb" src="' + itemImg + '" alt="' + itemName + '">';
+                    }
+                    html += '<div class="hotel-info">';
+                    html += '<div class="hotel-name">' + itemName + '</div>';
+                    if (itemSub) {
+                        html += '<div class="hotel-subtitle">' + itemSub + '</div>';
+                    }
+                    html += '<div class="hotel-highlights">' + highlights + '</div>';
+                    html += '<div class="hotel-price-row">';
+                    html += '<span class="hotel-price">¥' + itemPrice + '/晚</span>';
+                    if (itemRating) {
+                        html += '<span class="hotel-rating">⭐ ' + itemRating + '</span>';
+                    }
+                    html += '</div></div>';
+                    html += '<button class="select-btn">选择</button>';
+                    html += '</div>';
+                });
+            }
+            html += '</div>';
+            
+            if (data.footer) {
+                html += '<div class="card-footer">' + data.footer + '</div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function renderImageMessage(data) {
+            var html = '<div class="image-message">';
+            if (data.image_url) {
+                html += '<img src="' + data.image_url + '" alt="">';
+            }
+            if (data.caption) {
+                html += '<div class="caption">' + data.caption + '</div>';
+            }
+            html += '</div>';
+            return html;
+        }
+        
+        function renderSelectionCard(data) {
+            var html = '<div class="structured-card">';
+            html += '<div class="card-header">';
+            if (data.title) {
+                html += '<div class="card-title">' + data.title + '</div>';
+            }
+            html += '</div>';
+            html += '<div class="hotel-items">';
+            if (data.items && data.items.length > 0) {
+                data.items.forEach(function(item) {
+                    var emoji = item.emoji || '📌';
+                    var text = item.label || item.text || item.name || '';
+                    var itemId = item.id || text;
+                    html += '<div class="selection-item" data-id="' + itemId + '" onclick="selectOption(\'' + itemId + '\', this)">';
+                    html += '<span class="emoji">' + emoji + '</span>';
+                    html += '<span class="item-text">' + text + '</span>';
+                    html += '</div>';
+                });
+            }
+            html += '</div>';
+            if (data.footer) {
+                html += '<div class="card-footer">' + data.footer + '</div>';
+            }
+            html += '</div>';
+            return html;
+        }
+        
+        function selectHotel(hotelId) {
+            addMessage('我想选择：' + hotelId, 'user');
+        }
+        
+        function selectOption(optionId, element) {
+            var text = element.querySelector('.item-text').textContent;
+            addMessage(text, 'user');
+        }
+
 
         function sendOption(text) {
             sendMessage(text);
