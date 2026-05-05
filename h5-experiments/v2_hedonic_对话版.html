@@ -934,6 +934,18 @@
         
         function closeGuideModal() {
             document.getElementById('guideModal').classList.remove('show');
+            
+            // 关闭弹窗后，显示初始AI引导消息
+            setTimeout(() => {
+                // 第一条消息：提醒出行目标，引导开始对话
+                addMessage('欢迎使用星程旅行助手 ✨ 我是你的专属行程规划伙伴～<br><br>'
+                    + '📋 <strong>本次出行目标</strong><br>'
+                    + '📍 目的地：<strong>北京</strong>（商务会议）<br>'
+                    + '🏢 会议地点：国贸三期<br>'
+                    + '✈️ 出发：上海 → 北京，5月10日<br>'
+                    + '🏠 返程：北京 → 上海，5月12日晚<br><br>'
+                    + '请在下方输入框中告诉我您的需求，我们开始规划吧～ 😊', 'ai');
+            }, 300);
         }
         </script>
 
