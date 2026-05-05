@@ -850,45 +850,77 @@
             chatMessages.appendChild(typingEl);
             scrollToBottom();
             
-            // TODO: 接入百炼Agent API
-            // const response = await callBailianAgent(text);
-            
-            // 模拟AI响应（实际使用时替换为真实API调用）
-            setTimeout(() => {
+            // 调用百炼Agent API
+            callBailianAgent(text).then(response => {
                 const typing = document.getElementById('typing-indicator');
                 if (typing) typing.remove();
                 
-                // 演示：返回酒店卡片
-                const demoHotelCard = {
-                    "type": "hotel_card",
-                    "header_image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600",
-                    "title": "✨ 为你精选了这几家酒店",
-                    "intro": "每一家都超有特色～",
-                    "items": [
-                        {
-                            "id": "jw",
-                            "title": "北京JW万豪酒店",
-                            "subtitle": "奢华商务之选",
-                            "rating": "4.8",
-                            "highlights": ["距国贸三期800m", "行政酒廊夜景超美", "早餐超丰盛"],
-                            "price_per_night": 980,
-                            "image": "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=200"
-                        },
-                        {
-                            "id": "rosewood",
-                            "title": "北京瑰丽酒店", 
-                            "subtitle": "艺术与品味",
-                            "rating": "4.9",
-                            "highlights": ["艺术氛围满分", "SPA超舒服", "泳池view很绝"],
-                            "price_per_night": 1280,
-                            "image": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=200"
+                if (response) {
+                    // 尝试解析为结构化消息
+                    try {
+                        const data = typeof response === 'string' ? JSON.parse(response) : response;
+                        if (data.type) {
+                            renderStructuredMessage(data);
+                            return;
                         }
-                    ],
-                    "footer": "你对哪家感兴趣？或者告诉我最看重什么～"
-                };
+                    } catch (e) {
+                        // 不是JSON，当作普通文字处理
+                    }
+                    // 普通文字回复
+                    addMessage(response, 'ai');
+                } else {
+                    addMessage('抱歉，网络出错了，请稍后再试。', 'ai');
+                }
+            }).catch(err => {
+                const typing = document.getElementById('typing-indicator');
+                if (typing) typing.remove();
+                addMessage('抱歉，服务暂时不可用，请稍后再试。', 'ai');
+            });
+        }
+        
+        // ========== 百炼Agent API 调用 ==========
+        async function callBailianAgent(userMessage) {
+            const apiKey = 'sk-41ec25d4bc7246b39f1706750dcac482';
+            const endpoint = 'https://dashscope.aliyuncs.com/api/v1/apps/7f59b8a020ff4311a376f0a685f1024d/completion';
+            
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + apiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "input": {
+                            "query": userMessage
+                        },
+                        "parameters": {}
+                    })
+                });
                 
-                renderStructuredMessage(demoHotelCard);
-            }, 1000 + Math.random() * 1000);
+                if (!response.ok) {
+                    console.error('API error:', response.status);
+                    return null;
+                }
+                
+                const data = await response.json();
+                
+                // 解析返回内容
+                // 百炼Agent返回格式可能是 {"output": "...", "choices": [...]}
+                if (data.output) {
+                    return data.output;
+                } else if (data.choices && data.choices.length > 0) {
+                    return data.choices[0].text || data.choices[0].message || data.choices[0];
+                } else if (data.response) {
+                    return data.response;
+                } else {
+                    console.log('API response:', JSON.stringify(data));
+                    return JSON.stringify(data);
+                }
+            } catch (error) {
+                console.error('API call failed:', error);
+                return null;
+            }
         }
 
         function scrollToBottom() {
