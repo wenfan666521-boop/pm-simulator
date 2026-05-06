@@ -903,15 +903,7 @@
                             <div class="step-desc">满意后回复「确认」，AI将模拟下单</div>
                         </div>
                     </div>
-                    <div style="margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%); border-radius: 12px; color: white;">
-                        <div style="font-weight: 600; margin-bottom: 8px;">📋 本次出行目标</div>
-                        <div style="font-size: 13px; line-height: 1.8;">
-                            <div>📍 <strong>目的地：</strong>北京（商务会议）</div>
-                            <div>🏢 <strong>会议地点：</strong>国贸三期</div>
-                            <div>✈️ <strong>出发：</strong>上海 → 北京，5月10日</div>
-                            <div>🏠 <strong>返程：</strong>北京 → 上海，5月12日晚</div>
-                        </div>
-                    </div>
+                    <div id="scenarioInfo"></div>
                     <div style="margin-top: 12px; padding: 12px; background: #FFF9E6; border-radius: 10px; font-size: 13px; color: #996600;">
                         <strong>💡 小贴士：</strong>不需要等待AI问完所有问题，可以直接说出您的完整需求！
                     </div>
@@ -928,23 +920,74 @@
         </div>
         
         <script>
+        // ========== 场景参数读取 ==========
+        const urlParams = new URLSearchParams(window.location.search);
+        const scenario = urlParams.get('v') || 'travel'; // 默认体验式旅游场景
+
+        const scenarioConfig = {
+            travel: {
+                title: '📋 本次出行目标',
+                lines: [
+                    '📍 <strong>目的地：</strong>厦门（休闲度假）',
+                    '🌴 <strong>旅行主题：</strong>海岛休闲 + 美食探索',
+                    '✈️ <strong>出发：</strong>上海 → 厦门，5月10日',
+                    '🏠 <strong>返程：</strong>厦门 → 上海，5月14日'
+                ],
+                aiIntro: '感谢您参加本次实验！您正在进行一次休闲度假的旅行规划，您的出行目标如下：'
+            },
+            business: {
+                title: '📋 本次出行目标',
+                lines: [
+                    '📍 <strong>目的地：</strong>北京（商务会议）',
+                    '🏢 <strong>会议地点：</strong>国贸三期',
+                    '✈️ <strong>出发：</strong>上海 → 北京，5月10日',
+                    '🏠 <strong>返程：</strong>北京 → 上海，5月12日晚'
+                ],
+                aiIntro: '感谢您参加本次实验！您正在进行一次商务出行的规划，您的出行目标如下：'
+            }
+        };
+
+        const currentScenario = scenarioConfig[scenario] || scenarioConfig.travel;
+
+        // ========== 初始化弹窗内容 ==========
+        function initScenarioModal() {
+            const scenarioEl = document.getElementById('scenarioInfo');
+            if (scenarioEl) {
+                let html = '<div style="font-weight: 600; margin-bottom: 8px;">' + currentScenario.title + '</div>';
+                html += '<div style="font-size: 13px; line-height: 1.8;">';
+                currentScenario.lines.forEach(line => {
+                    html += '<div>' + line + '</div>';
+                });
+                html += '</div>';
+                scenarioEl.innerHTML = html;
+            }
+            // 更新帮助按钮提示
+            const helpBtn = document.querySelector('.help-btn');
+            if (helpBtn) {
+                helpBtn.title = scenario === 'business' ? '差旅规划场景' : '旅游规划场景';
+            }
+        }
+
         function showGuideModal() {
             document.getElementById('guideModal').classList.add('show');
         }
-        
+
         function closeGuideModal() {
             document.getElementById('guideModal').classList.remove('show');
-            
+
             // 关闭弹窗后，显示初始AI引导消息
             setTimeout(() => {
-                addMessage('感谢您参加本次实验，您正在进行一次商务出行的规划，您的本次出行目标如下：<br><br>'
-                    + '📋 <strong>本次出行目标</strong><br>'
-                    + '📍 目的地：北京（商务会议）<br>'
-                    + '🏢 会议地点：国贸三期<br>'
-                    + '✈️ 出发：从上海出发，时间5月10日<br>'
-                    + '🏠 返程：返回北京，时间5月12日', 'ai');
+                let introHtml = currentScenario.aiIntro + '<br><br>';
+                introHtml += '<strong>' + currentScenario.title + '</strong><br>';
+                currentScenario.lines.forEach(line => {
+                    introHtml += line + '<br>';
+                });
+                addMessage(introHtml, 'ai');
             }, 300);
         }
+
+        // 页面加载时初始化弹窗内容
+        window.addEventListener('DOMContentLoaded', initScenarioModal);
         </script>
 
     <div class="chat-container">
