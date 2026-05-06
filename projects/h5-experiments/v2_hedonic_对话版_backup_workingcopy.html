@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI助手 · 专属行程顾问</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 520px;
+            height: 100vh;
+            max-height: 100vh;
+            background: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Header */
+        .chat-header {
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+
+        .ai-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+            position: relative;
+            flex-shrink: 0;
+            object-fit: cover;
+        }
+
+        .ai-avatar::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 14px;
+            height: 14px;
+            background: #4ADE80;
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.5);
+        }
+
+        .ai-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .ai-info h2 {
+            color: #FFFFFF;
+            font-size: 18px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ai-info p {
+            color: rgba(255,255,255,0.85);
+            font-size: 13px;
+            margin-top: 2px;
+        }
+
+        /* Messages Area */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            background: #FAFAFF;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .message {
+            display: flex;
+            gap: 10px;
+            max-width: 88%;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.ai {
+            align-self: flex-start;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            object-fit: cover;
+        }
+
+        .message-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%);
+        }
+
+        .message-content {
+            padding: 14px 18px;
+            border-radius: 20px;
+            line-height: 1.7;
+            font-size: 16px;
+            word-wrap: break-word;
+        }
+
+        .message.ai .message-content {
+            background: #FFFFFF;
+            border: 1px solid #E8E5FF;
+            border-top-left-radius: 4px;
+            color: #333;
+            box-shadow: 0 3px 12px rgba(102, 126, 234, 0.08);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            border-top-right-radius: 4px;
+            color: #FFFFFF;
+            box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .message-content .emoji {
+            font-size: 20px;
+            margin: 0 2px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .message-content strong {
+            color: #667EEA;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #A5A5B8;
+            margin-top: 6px;
+            padding: 0 4px;
+        }
+
+        .message.user .message-time {
+            text-align: right;
+        }
+
+        /* Option Cards (Task-oriented) */
+        .option-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .option-card {
+            background: linear-gradient(135deg, #F8F7FF 0%, #F0EFFF 100%);
+            border: 1px solid #E0DDFF;
+            border-radius: 14px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .option-card:hover, .option-card:active {
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            border-color: transparent;
+            transform: scale(1.02);
+        }
+
+        .option-card:hover .option-icon,
+        .option-card:active .option-icon {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .option-card:hover .option-label,
+        .option-card:active .option-label {
+            color: white;
+        }
+
+        .hotel-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .hotel-card {
+            background: linear-gradient(135deg, #F8F7FF 0%, #F0EFFF 100%);
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid #E0DDFF;
+        }
+
+        .hotel-card img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+        }
+
+        .hotel-card .hotel-info {
+            padding: 12px 14px;
+        }
+
+        .hotel-card .hotel-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .hotel-card .hotel-stars {
+            color: #F59E0B;
+            font-size: 12px;
+        }
+
+        .hotel-card .hotel-price {
+            font-size: 14px;
+            color: #667EEA;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .hotel-card .hotel-desc {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .option-card:hover .option-desc,
+        .option-card:active .option-desc {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .option-icon {
+            width: 42px;
+            height: 42px;
+            background: #E8E5FF;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .option-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            transition: color 0.2s;
+        }
+
+        .option-desc {
+            font-size: 13px;
+            color: #888;
+            margin-top: 2px;
+            transition: color 0.2s;
+        }
+
+        /* Input Area */
+        .chat-input-area {
+            padding: 12px 16px 16px;
+            background: #FFFFFF;
+            border-top: 1px solid #F0EFFF;
+            flex-shrink: 0;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            background: #F8F7FF;
+            border-radius: 24px;
+            padding: 10px 10px 10px 18px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #667EEA;
+            background: #FFFFFF;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+        }
+
+        .chat-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            color: #333;
+            resize: none;
+            max-height: 80px;
+            outline: none;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+
+        .chat-input::placeholder {
+            color: #A5A5B8;
+        }
+
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Quick Emojis */
+        .quick-emojis {
+            display: flex;
+            gap: 10px;
+            padding: 10px 4px 0;
+            flex-wrap: wrap;
+        }
+
+        .quick-emoji {
+            font-size: 24px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 10px;
+            transition: all 0.2s;
+            opacity: 0.75;
+        }
+
+        .quick-emoji:hover {
+            opacity: 1;
+            transform: scale(1.15);
+            background: #F0EFFF;
+        }
+
+        /* Restart Button */
+        .restart-btn {
+            display: block;
+            width: calc(100% - 32px);
+            margin: 8px 16px;
+            padding: 12px;
+            background: #F8F7FF;
+            border: 1px dashed #C4B8FF;
+            border-radius: 12px;
+            color: #667EEA;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .restart-btn:hover {
+            background: #667EEA;
+            color: white;
+            border-color: #667EEA;
+        }
+    
+        /* ========== AI结构化消息卡片 ========== */
+        
+        /* 通用卡片容器 */
+        .structured-card {
+            background: #FFFFFF;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-top: 12px;
+            box-shadow: 0 2px 12px rgba(102, 126, 234, 0.1);
+        }
+        
+        .structured-card .card-header {
+            padding: 16px;
+            border-bottom: 1px solid #F0EEFF;
+        }
+        
+        .structured-card .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1F1F2E;
+            margin-bottom: 4px;
+        }
+        
+        .structured-card .card-intro {
+            font-size: 13px;
+            color: #7C7C8A;
+        }
+        
+        /* 图片卡片 */
+        .card-hero-image {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+        }
+        
+        /* 酒店卡片 */
+        .hotel-items {
+            padding: 12px;
+        }
+        
+        .hotel-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            background: #FAFAFF;
+            border: 1px solid #E8E4FF;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .hotel-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .hotel-item:hover {
+            border-color: #667EEA;
+            background: #F5F3FF;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+        
+        .hotel-item .hotel-thumb {
+            width: 72px;
+            height: 72px;
+            border-radius: 10px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        
+        .hotel-item .hotel-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .hotel-item .hotel-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1F1F2E;
+            margin-bottom: 2px;
+        }
+        
+        .hotel-item .hotel-subtitle {
+            font-size: 12px;
+            color: #7C7C8A;
+            margin-bottom: 6px;
+        }
+        
+        .hotel-item .hotel-highlights {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+        
+        .hotel-item .highlight-tag {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: #F0EEFF;
+            border-radius: 4px;
+            color: #667EEA;
+        }
+        
+        .hotel-item .hotel-price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .hotel-item .hotel-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: #FF6B6B;
+        }
+        
+        .hotel-item .hotel-rating {
+            font-size: 12px;
+            color: #FFB800;
+        }
+        
+        .hotel-item .select-btn {
+            padding: 6px 14px;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .hotel-item .select-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .structured-card .card-footer {
+            padding: 12px 16px;
+            border-top: 1px solid #F0EEFF;
+            font-size: 13px;
+            color: #7C7C8A;
+            text-align: center;
+        }
+        
+        /* 图片消息 */
+        .image-message {
+            margin-top: 12px;
+        }
+        
+        .image-message img {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .image-message .caption {
+            font-size: 13px;
+            color: #5C5C6A;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        /* 打字指示器 */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+            background: #FAFAFF;
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #667EEA;
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-6px); opacity: 1; }
+        }
+        
+        /* 选择项样式 */
+        .structured-card .selection-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: #FAFAFF;
+            border: 1px solid #E8E4FF;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .structured-card .selection-item:hover {
+            border-color: #667EEA;
+            background: #F5F3FF;
+        }
+        
+        .structured-card .selection-item .emoji {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+        
+        .structured-card .selection-item .item-text {
+            flex: 1;
+            font-size: 14px;
+            color: #1F1F2E;
+        }
+
+    
+        .booking-success {
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            color: white;
+        }
+        
+        .booking-success .success-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .booking-success .success-icon {
+            font-size: 28px;
+        }
+        
+        .booking-success .success-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .booking-success .booking-items {
+            padding: 16px;
+        }
+        
+        .booking-success .booking-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .booking-success .booking-item:last-child {
+            border-bottom: none;
+            padding-top: 12px;
+            margin-top: 4px;
+        }
+        
+        .booking-success .booking-label {
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .booking-success .booking-value {
+            font-weight: 600;
+        }
+        
+        .booking-success .card-footer {
+            background: rgba(0,0,0,0.1);
+            border-top: none;
+            color: rgba(255,255,255,0.9);
+        }
+
+        /* ========== 实验指导弹窗 ========== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 0;
+            max-width: 480px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: scale(0.9) translateY(20px);
+            transition: transform 0.3s;
+        }
+        
+        .modal-overlay.show .modal-content {
+            transform: scale(1) translateY(0);
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            color: white;
+            padding: 20px 24px;
+            border-radius: 20px 20px 0 0;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .modal-header p {
+            margin: 8px 0 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .guide-step {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .guide-step:last-child {
+            margin-bottom: 0;
+        }
+        
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: #1F1F2E;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+        
+        .step-desc {
+            font-size: 13px;
+            color: #7C7C8A;
+            line-height: 1.5;
+        }
+        
+        .modal-footer {
+            padding: 16px 24px;
+            background: #FAFAFF;
+            border-top: 1px solid #F0EEFF;
+            border-radius: 0 0 20px 20px;
+        }
+        
+        .btn-start {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* 右上角帮助按钮 */
+        .help-btn {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: 2px solid #667EEA;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transition: all 0.2s;
+        }
+        
+        .help-btn:hover {
+            background: #667EEA;
+            color: white;
+        }
+        
+        .help-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .help-btn span {
+            font-size: 18px;
+        }
+</style>
+</head>
+<body>
+        <!-- 实验指导弹窗 -->
+        <div class="modal-overlay show" id="guideModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🧪 实验说明</h2>
+                    <p>请模拟真实的旅行规划对话体验</p>
+                </div>
+                <div class="modal-body">
+                    <div class="guide-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <div class="step-title">告知出行目的</div>
+                            <div class="step-desc">告诉AI是出差还是休闲游玩</div>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <div class="step-title">提供旅行信息</div>
+                            <div class="step-desc">目的地、日期天数、酒店预算、出行方式</div>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <div class="step-title">确认出行班次</div>
+                            <div class="step-desc">选择具体的飞机航班或高铁班次</div>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <div class="step-title">查看推荐并选择</div>
+                            <div class="step-desc">AI推荐酒店和景点，可进一步了解或调整</div>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <div class="step-title">确认并下单</div>
+                            <div class="step-desc">满意后回复「确认」，AI将模拟下单</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%); border-radius: 12px; color: white;">
+                        <div style="font-weight: 600; margin-bottom: 8px;">📋 本次出行目标</div>
+                        <div style="font-size: 13px; line-height: 1.8;">
+                            <div>📍 <strong>目的地：</strong>北京（商务会议）</div>
+                            <div>🏢 <strong>会议地点：</strong>国贸三期</div>
+                            <div>✈️ <strong>出发：</strong>上海 → 北京，5月10日</div>
+                            <div>🏠 <strong>返程：</strong>北京 → 上海，5月12日晚</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; padding: 12px; background: #FFF9E6; border-radius: 10px; font-size: 13px; color: #996600;">
+                        <strong>💡 小贴士：</strong>不需要等待AI问完所有问题，可以直接说出您的完整需求！
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-start" onclick="closeGuideModal()">开始对话</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右上角帮助按钮 -->
+        <div class="help-btn" onclick="showGuideModal()" title="实验说明">
+            <span>❓</span>
+        </div>
+        
+        <script>
+        function showGuideModal() {
+            document.getElementById('guideModal').classList.add('show');
+        }
+        
+        function closeGuideModal() {
+            document.getElementById('guideModal').classList.remove('show');
+            
+            // 关闭弹窗后，显示初始AI引导消息
+            setTimeout(() => {
+                addMessage('👋 你好呀！我是AI助手，您的专属行程顾问～<br>最近有出差计划吗？告诉我你的目的地和时间，我来帮你安排得妥妥的！😊', 'ai');
+                }, 500);
+                // 预设对话示例2：用户输入
+                setTimeout(() => {
+                    addMessage('我要去北京参加商务会议，帮我规划行程，地点在国贸三期', 'user');
+                }, 2000);
+                // 预设对话示例3：AI回应
+                setTimeout(() => {
+                    addMessage('好的！国贸三期那边交通很方便，地铁1号线或10号线都能到～ 🚇<br><br>请告诉我：<br>· 出发城市是哪里？<br>· 计划什么时候出发？<br>· 计划哪天返回？<br>· 有没有酒店偏好？', 'ai');
+                }, 3500);
+                // 分隔符
+                setTimeout(() => {
+                    addMessage('<div style="text-align: center; color: #999; font-size: 12px; margin: 15px 0; border-top: 1px dashed #ddd; padding-top: 15px;">———— 以上为案例对话 ————</div>', 'ai');
+            }, 300);
+        }
+        </script>
+
+    <div class="chat-container">
+        <div class="chat-header">
+</html>
+        
