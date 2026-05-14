@@ -325,6 +325,82 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
 
+    .option-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .option-label-input {
+      flex: 1;
+      border: none;
+      border-bottom: 1.5px solid #e0e0e0;
+      outline: none;
+      font-size: 13px;
+      color: #555;
+      background: transparent;
+      padding: 2px 0;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .option-label-input:focus {
+      border-color: var(--current-color);
+    }
+
+    .option-remove-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: none;
+      background: #f0f0f0;
+      color: #bbb;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .option-remove-btn:hover {
+      background: #ffe0e0;
+      color: #ff6060;
+    }
+
+    .add-option-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 4px;
+    }
+
+    .add-option-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: 1.5px dashed #ccc;
+      background: transparent;
+      color: #aaa;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .add-option-btn:hover {
+      border-color: var(--current-color);
+      color: var(--current-color);
+    }
+
+    .options-footer {
+      padding: 6px 4px 4px;
+    }
+
     /* ── Result View ── */
     #view-result {
       flex: 1;
@@ -590,6 +666,9 @@
           </div>
         </div>
         <div class="options-section" id="optionsSection"></div>
+        <div class="options-footer" id="optionsFooter">
+          <button class="add-option-btn" onclick="addOption()">+ 添加选项</button>
+        </div>
       </div>
 
       <!-- View: Result -->
@@ -866,11 +945,17 @@
         row.className = 'option-row';
         row.innerHTML = `
           <div class="option-header">
-            <span class="option-label" style="color:${opt.color}">${opt.label}</span>
+            <span class="option-label-dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${opt.color};margin-right:6px;flex-shrink:0"></span>
+            <input class="option-label-input" type="text" value="${opt.label}"
+              onblur="updateOptionLabel(${i}, this.value)"
+              onkeydown="if(event.key==='Enter')this.blur()">
             <span class="option-pct">${opt.weight}%</span>
+            ${decisionOptions.length > 2
+              ? `<button class="option-remove-btn" onclick="removeOption(${i})" title="删除此选项">×</button>`
+              : '<span style="width:24px"></span>'}
           </div>
           <input type="range" class="option-slider"
-            min="5" max="90" value="${opt.weight}"
+            min="5" max="95" value="${opt.weight}"
             oninput="updateOption(${i}, this.value)">
         `;
         section.appendChild(row);
@@ -897,7 +982,48 @@
       const total = decisionOptions.reduce((s, o) => s + o.weight, 0);
       if (total !== 100) {
         decisionOptions[0].weight += (100 - total);
+        decisionOptions[0].weight = Math.max(5, decisionOptions[0].weight);
       }
+
+      renderOptions();
+      renderPieChart();
+    }
+
+    function updateOptionLabel(index, value) {
+      decisionOptions[index].label = value.trim() || ('选项 ' + String.fromCharCode(65 + index));
+      renderPieChart();
+    }
+
+    function removeOption(index) {
+      if (decisionOptions.length <= 2) return;
+      decisionOptions.splice(index, 1);
+
+      // Reassign colors from PIE_COLORS
+      decisionOptions.forEach((opt, i) => {
+        opt.color = PIE_COLORS[i % PIE_COLORS.length];
+      });
+
+      renderOptions();
+      renderPieChart();
+    }
+
+    function addOption() {
+      if (decisionOptions.length >= 8) return;
+      const id = decisionOptions.length;
+      const label = '选项 ' + String.fromCharCode(65 + id);
+      const weight = 0;
+      const color = PIE_COLORS[id % PIE_COLORS.length];
+      decisionOptions.push({ id, label, weight, color });
+
+      // Redistribute: give new option 15%, scale others down
+      const redistribution = 15;
+      const others = decisionOptions.filter((_, i) => i !== id);
+      const scale = (100 - redistribution) / others.reduce((s, o) => s + o.weight, 0);
+      others.forEach(o => { o.weight = Math.round(o.weight * scale); });
+
+      // Fix rounding
+      const total = decisionOptions.reduce((s, o) => s + o.weight, 0);
+      decisionOptions[0].weight += (100 - total);
 
       renderOptions();
       renderPieChart();
@@ -908,6 +1034,7 @@
     // ═══════════════════════════════════════════════
     function renderPieChart() {
       const canvas = document.getElementById('wheelCanvas');
+      if (!canvas) return;
       const ctx = canvas.getContext('2d');
       const cx = canvas.width / 2;
       const cy = canvas.height / 2;
@@ -916,21 +1043,38 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const total = decisionOptions.reduce((s, o) => s + o.weight, 0);
-      if (total === 0) return;
+
+      // Empty / zero state: draw dashed circle outline
+      if (total === 0 || decisionOptions.length === 0) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 0.32, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        document.getElementById('wheelCenterBtn').disabled = true;
+        return;
+      }
+
+      document.getElementById('wheelCenterBtn').disabled = false;
 
       let startAngle = -Math.PI / 2;
 
       decisionOptions.forEach(opt => {
         const sliceAngle = (opt.weight / total) * Math.PI * 2;
 
+        // Slice
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
         ctx.closePath();
         ctx.fillStyle = opt.color;
         ctx.fill();
-
-        // Border
         ctx.strokeStyle = 'rgba(255,255,255,0.6)';
         ctx.lineWidth = 3;
         ctx.stroke();
@@ -951,7 +1095,7 @@
         startAngle += sliceAngle;
       });
 
-      // Center circle (donut hole)
+      // Center donut hole
       ctx.beginPath();
       ctx.arc(cx, cy, radius * 0.32, 0, Math.PI * 2);
       ctx.fillStyle = 'white';
