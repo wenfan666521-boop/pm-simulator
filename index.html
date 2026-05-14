@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>决策双生</title>
+  <style>
+    :root {
+      --brain-hue: 210;
+      --brain-color: hsl(var(--brain-hue), 65%, 55%);
+      --brain-bg: hsl(var(--brain-hue), 40%, 92%);
+      --heart-hue: 345;
+      --heart-color: hsl(var(--heart-hue), 65%, 60%);
+      --heart-bg: hsl(var(--heart-hue), 45%, 93%);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: var(--brain-bg);
+      min-height: 100dvh;
+      overflow: hidden;
+      transition: background 0.4s ease;
+      --current-color: var(--brain-color);
+      --current-bg: var(--brain-bg);
+    }
+
+    body.heart-mode {
+      background: var(--heart-bg);
+      --current-color: var(--heart-color);
+      --current-bg: var(--heart-bg);
+    }
+
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px 16px 14px;
+      position: relative;
+    }
+
+    .mode-tabs {
+      display: flex;
+      background: rgba(255,255,255,0.6);
+      border-radius: 999px;
+      padding: 4px;
+      gap: 2px;
+      backdrop-filter: blur(8px);
+    }
+
+    .mode-tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #999;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      border: none;
+      background: transparent;
+      white-space: nowrap;
+    }
+
+    .mode-tab.active {
+      background: white;
+      color: var(--current-color);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .mode-icon {
+      font-size: 16px;
+      transition: transform 0.3s ease;
+    }
+
+    .mode-tab.active .mode-icon {
+      transform: scale(1.2);
+    }
+
+    .swipe-hint {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 11px;
+      color: #bbb;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      pointer-events: none;
+    }
+
+    /* ── Chat / Main Area ── */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 16px 12px;
+      scroll-behavior: smooth;
+      overscroll-behavior: contain;
+    }
+
+    .chat-area::-webkit-scrollbar { width: 4px; }
+    .chat-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+
+    /* ── View Container ── */
+    .view { display: none; }
+    .view.active { display: flex; flex-direction: column; flex: 1; }
+
+    /* ── Intro View ── */
+    #view-intro {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      text-align: center;
+      gap: 20px;
+    }
+
+    .intro-logo { font-size: 48px; margin-bottom: 4px; }
+    .intro-title { font-size: 22px; font-weight: 700; color: #333; }
+    .intro-subtitle { font-size: 14px; color: #999; line-height: 1.6; }
+    .intro-divider { width: 40px; height: 2px; background: var(--current-color); border-radius: 2px; opacity: 0.5; }
+    .intro-swipe { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #bbb; }
+    .intro-swipe span { font-size: 20px; }
+    .intro-examples { width: 100%; }
+    .intro-examples-label { font-size: 12px; color: #ccc; margin-bottom: 10px; }
+
+    .examples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 4px 0 8px;
+      justify-content: center;
+    }
+
+    .example-chip {
+      background: white;
+      border: 1.5px solid rgba(0,0,0,0.08);
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 13px;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .example-chip:hover, .example-chip:active {
+      border-color: var(--current-color);
+      color: var(--current-color);
+      transform: scale(0.97);
+    }
+
+    /* ── Analyzing View ── */
+    #view-analyzing {
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .analyzing-icon { font-size: 48px; animation: bounce 1s ease infinite; }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .analyzing-text { font-size: 16px; color: #888; }
+    .analyzing-sub { font-size: 13px; color: #bbb; margin-top: -12px; }
+
+    /* ── Weight-Adjust View ── */
+    #view-weight-adjust {
+      flex: 1;
+      gap: 16px;
+      padding-bottom: 8px;
+    }
+
+    .wheel-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .wheel-canvas-wrap {
+      position: relative;
+      width: 260px;
+      height: 260px;
+    }
+
+    #wheelCanvas {
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    .wheel-pointer {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 20px solid var(--current-color);
+      z-index: 2;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+    }
+
+    .wheel-center-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: white;
+      border: 3px solid var(--current-color);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--current-color);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1.3;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+      z-index: 3;
+    }
+
+    .wheel-center-btn:active {
+      transform: translate(-50%, -50%) scale(0.95);
+      background: var(--current-color);
+      color: white;
+    }
+
+    .wheel-center-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .options-section {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 0 4px;
+    }
+
+    .option-row {
+      background: white;
+      border-radius: 12px;
+      padding: 12px 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .option-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .option-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      flex: 1;
+    }
+
+    .option-pct {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--current-color);
+      min-width: 42px;
+      text-align: right;
+    }
+
+    .option-slider {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: #eee;
+      outline: none;
+    }
+
+    .option-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--current-color);
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    /* ── Result View ── */
+    #view-result {
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      gap: 20px;
+    }
+
+    .result-card {
+      background: white;
+      border-radius: 20px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 340px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .result-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--current-bg);
+      font-size: 28px;
+      margin: 0 auto;
+    }
+
+    .result-title {
+      font-size: 13px;
+      color: #bbb;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .result-choice {
+      font-size: 22px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .result-pct {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--current-color);
+    }
+
+    .result-analysis {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.6;
+      background: var(--current-bg);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .result-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .result-btn {
+      padding: 12px 20px;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .result-btn-primary {
+      background: var(--current-color);
+      color: white;
+    }
+
+    .result-btn-secondary {
+      background: transparent;
+      color: var(--current-color);
+      border: 1.5px solid var(--current-color);
+    }
+
+    .result-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* ── Slide Transition ── */
+    .slide-left {
+      animation: slideLeft 0.3s ease-out;
+    }
+
+    .slide-right {
+      animation: slideRight 0.3s ease-out;
+    }
+
+    @keyframes slideLeft {
+      from { transform: translateX(30px); opacity: 0.5; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideRight {
+      from { transform: translateX(-30px); opacity: 0.5; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ── Swipe Trail ── */
+    .swipe-trail {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .swipe-trail .arrow-hint {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 28px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      color: var(--current-color);
+    }
+
+    .swipe-trail .arrow-hint.left { left: 20px; }
+    .swipe-trail .arrow-hint.right { right: 20px; }
+
+    .swipe-trail.show-left .arrow-hint.left { opacity: 0.6; }
+    .swipe-trail.show-right .arrow-hint.right { opacity: 0.6; }
+
+    /* ── Input Area ── */
+    .input-area {
+      padding: 12px 16px 24px;
+      background: var(--current-bg);
+      transition: background 0.4s ease;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      background: white;
+      border-radius: 24px;
+      padding: 8px 8px 8px 18px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    .input-row textarea {
+      flex: 1;
+      border: none;
+      outline: none;
+      resize: none;
+      font-size: 15px;
+      line-height: 1.5;
+      max-height: 120px;
+      font-family: inherit;
+      background: transparent;
+      color: #333;
+    }
+
+    .input-row textarea::placeholder { color: #bbb; }
+
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--current-color);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .send-btn:not(:disabled):hover { transform: scale(1.08); }
+    .send-btn:not(:disabled):active { transform: scale(0.95); }
+
+    /* ── Config Banner ── */
+    .config-banner {
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      color: #856404;
+      padding: 10px 16px;
+      font-size: 13px;
+      border-radius: 8px;
+      margin: 8px 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Header -->
+    <div class="header">
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="brain" onclick="switchMode('brain')">
+          <span class="mode-icon">🧠</span>
+          <span>左脑</span>
+        </button>
+        <button class="mode-tab" data-mode="heart" onclick="switchMode('heart')">
+          <span class="mode-icon">💗</span>
+          <span>右脑</span>
+        </button>
+      </div>
+      <div class="swipe-hint">← 滑动切换 →</div>
+    </div>
+
+    <!-- Main Content Area (view container) -->
+    <div class="chat-area" id="mainArea">
+
+      <!-- View: Intro -->
+      <div id="view-intro" class="view active">
+        <div class="intro-logo">🧠 💗</div>
+        <div class="intro-title">决策双生</div>
+        <div class="intro-subtitle">无论是纠结的大决定<br>还是拿不定的小选择<br>左右两个声音，帮你想清楚</div>
+        <div class="intro-divider"></div>
+        <div class="intro-swipe">
+          <span>←</span> 左滑切换左脑 / 右滑切换右脑 <span>→</span>
+        </div>
+        <div class="intro-examples">
+          <div class="intro-examples-label">试试这样问</div>
+          <div class="examples">
+            <div class="example-chip" onclick="askExample(this)">该不该辞职去留学？</div>
+            <div class="example-chip" onclick="askExample(this)">该选哪个offer？</div>
+            <div class="example-chip" onclick="askExample(this)">中午吃什么？</div>
+            <div class="example-chip" onclick="askExample(this)">周末去哪儿玩？</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View: Analyzing -->
+      <div id="view-analyzing" class="view">
+        <div class="analyzing-icon">⚙️</div>
+        <div class="analyzing-text">正在分析你的决策…</div>
+        <div class="analyzing-sub">梳理选项与权重</div>
+      </div>
+
+      <!-- View: Weight Adjust -->
+      <div id="view-weight-adjust" class="view">
+        <div class="wheel-section">
+          <div class="wheel-canvas-wrap">
+            <div class="wheel-pointer"></div>
+            <canvas id="wheelCanvas" width="520" height="520"></canvas>
+            <button class="wheel-center-btn" id="wheelCenterBtn" onclick="startWheel()">开始<br>决策</button>
+          </div>
+        </div>
+        <div class="options-section" id="optionsSection"></div>
+      </div>
+
+      <!-- View: Result -->
+      <div id="view-result" class="view">
+        <div class="result-card">
+          <div class="result-badge" id="resultBadge">🎯</div>
+          <div class="result-title">建议选择</div>
+          <div class="result-choice" id="resultChoice">—</div>
+          <div class="result-pct" id="resultPct">—</div>
+          <div class="result-analysis" id="resultAnalysis">—</div>
+          <div class="result-actions">
+            <button class="result-btn result-btn-primary" onclick="restartAnalysis()">重新分析</button>
+            <button class="result-btn result-btn-secondary" onclick="switchToHeart()">💗 右脑看看</button>
+            <button class="result-btn result-btn-secondary" onclick="spinAgain()">再转一次</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div id="configBanner" class="config-banner" style="display:none">⚠️ 请先配置 API Key</div>
+      <div class="input-row">
+        <textarea
+          id="userInput"
+          rows="1"
+          placeholder="描述你的决策困境…"
+          oninput="autoGrow(this)"
+          onkeydown="handleKeydown(event)"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>➤</button>
+      </div>
+    </div>
+
+    <!-- Swipe trail overlay -->
+    <div class="swipe-trail" id="swipeTrail">
+      <div class="arrow-hint left">◀</div>
+      <div class="arrow-hint right">▶</div>
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════
+    //  配置区
+    // ═══════════════════════════════════════════════
+    const CONFIG = {
+      API_KEY: 'sk-e8a8b1855af54010832b05f536b3b6bf',
+      API_URL: 'https://api.deepseek.com/chat/completions',
+      MODEL: 'deepseek-chat',
+    };
+
+    // ═══════════════════════════════════════════════
+    //  系统提示词
+    // ═══════════════════════════════════════════════
+    const SYSTEM_PROMPTS = {
+      brain: `【左脑模式】你是专业、冷静的商业决策顾问。用户会描述一个决策困境，无论是人生大事还是日常小决定，你都用同样的理性框架来处理。
+
+【你的风格】
+- 极度理性：数据说话，逻辑推演
+- 极度结构化：利弊、因素、打分、建议，块块分明
+- 极度克制：不安慰、不共情、不说正确的废话
+- 专业但不冷漠：有洞察，敢直言
+
+【你的任务】（小决定轻量处理，1-2个要点即可；大决定可以展开）
+1. 结构化分析利弊（用 ✓ / ✗ 列出）
+2. 识别关键决策因素，每个打分（1-10分），并说明为什么这么打分
+3. 指出一个可能被忽略的关键变量
+4. 给出分析视角，不给结论，让用户自己决定
+5. 追问一个推动思考的关键问题
+
+【绝对不做】
+- 不说"我能理解你的感受"
+- 不用"也许你可以试试"这种软弱表达
+- 不用emoji
+- 小决定不要过度分析（150字以内），大决定可以稍长
+
+【回复格式示例】
+【利弊】
+✓ 优势：...
+✗ 劣势：...
+
+【关键因素打分】
+因素A：██████░░ 6/10（因为...）
+
+【追问】
+...`,
+
+      heart: `【右脑模式】你是温暖、有深度、懂人心的朋友。你不急着给答案，而是陪用户慢慢把心里的话说出来。无论是人生大事还是日常小决定，你都用同样的倾听姿态对待。
+
+【你的风格】
+- 先复述：我听到你说的是...
+- 再深入：这个选择背后，你真正担心的是什么？是不确定，还是害怕？
+- 再陪伴：帮用户看见自己内心的倾向
+- 最后：不催，不评判，允许用户在不确定中待一会儿
+
+【你的任务】
+1. 先确认你听懂了用户的困境（用一句话复述）
+2. 温柔地深入一层：挖掘这个选择背后的情绪和担忧
+3. 帮用户听见自己内心的倾向（不是你说应该选哪个）
+4. 一个温暖但不催泪的结尾
+
+【绝对不做】
+- 不说"我能理解你的感受"（太廉价）
+- 不给建议、不说"你应该"
+- 不用emoji
+- 小决定不要过度分析（150字以内），大决定可以稍长
+
+【回复格式示例】
+【我听见你了】
+听起来你卡在...
+
+【你真正在担心的是什么？】
+也许你不只是在担心这个选择本身，而是在担心...
+
+【陪伴你】
+...（温暖收尾，1-2句话）`
+    };
+
+    // ═══════════════════════════════════════════════
+    //  状态
+    // ═══════════════════════════════════════════════
+    let currentMode = 'brain';
+    let isLoading = false;
+    let conversationHistory = [];
+    let touchStartX = 0;
+
+    // ── View State ──
+    const VIEWS = ['intro', 'analyzing', 'weight-adjust', 'result'];
+    let currentView = 'intro';
+
+    // ── Decision Options State ──
+    // Each option: { id, label, weight (0-100), color }
+    let decisionOptions = [];
+    let userQuestion = '';
+
+    // Pie chart colors
+    const PIE_COLORS = [
+      '#5B8DEF', '#FF7A7A', '#7ED4AD', '#FFB84D',
+      '#B48EF7', '#4ECDC4', '#FF6F91', '#95D5B2'
+    ];
+
+    // ═══════════════════════════════════════════════
+    //  View Management
+    // ═══════════════════════════════════════════════
+    function showView(viewName) {
+      VIEWS.forEach(v => {
+        const el = document.getElementById('view-' + v);
+        if (el) el.classList.toggle('active', v === viewName);
+      });
+      currentView = viewName;
+    }
+
+    // ═══════════════════════════════════════════════
+    //  模式切换
+    // ═══════════════════════════════════════════════
+    function switchMode(mode, fromSwipe = false) {
+      if (mode === currentMode) return;
+      currentMode = mode;
+
+      document.querySelectorAll('.mode-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.mode === mode);
+      });
+      document.body.classList.toggle('heart-mode', mode === 'heart');
+    }
+
+    // ═══════════════════════════════════════════════
+    //  滑动切换
+    // ═══════════════════════════════════════════════
+    const appEl = document.getElementById('app');
+    const swipeTrail = document.getElementById('swipeTrail');
+
+    appEl.addEventListener('touchstart', (e) => {
+      const target = e.target;
+      if (target.closest('.mode-tab') || target.closest('.send-btn') ||
+          target.closest('.example-chip') || target.closest('textarea') ||
+          target.closest('button') || target.closest('input')) return;
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+
+    appEl.addEventListener('touchmove', (e) => {
+      if (touchStartX === 0) return;
+      const deltaX = e.touches[0].clientX - touchStartX;
+      const absY = Math.abs(e.touches[0].clientY - touchStartX);
+      if (absY > Math.abs(deltaX) * 1.5) {
+        swipeTrail.classList.remove('show-left', 'show-right');
+        return;
+      }
+      swipeTrail.classList.remove('show-left', 'show-right');
+      if (deltaX < -40) swipeTrail.classList.add('show-left');
+      if (deltaX > 40) swipeTrail.classList.add('show-right');
+    }, { passive: true });
+
+    appEl.addEventListener('touchend', (e) => {
+      if (touchStartX === 0) return;
+      const deltaX = e.changedTouches[0].clientX - touchStartX;
+      const threshold = window.innerWidth * 0.28;
+      swipeTrail.classList.remove('show-left', 'show-right');
+      touchStartX = 0;
+      if (Math.abs(deltaX) < threshold) return;
+      if (deltaX < 0) switchMode('brain', true);
+      else switchMode('heart', true);
+    }, { passive: true });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowLeft') switchMode('brain', true);
+      if (e.key === 'ArrowRight') switchMode('heart', true);
+    });
+
+    // ═══════════════════════════════════════════════
+    //  输入与消息
+    // ═══════════════════════════════════════════════
+    function autoGrow(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+      document.getElementById('sendBtn').disabled = !el.value.trim();
+    }
+
+    function handleKeydown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text || isLoading) return;
+
+      if (!CONFIG.API_KEY) {
+        document.getElementById('configBanner').style.display = 'block';
+        return;
+      }
+
+      userQuestion = text;
+      input.value = '';
+      autoGrow(input);
+      document.getElementById('sendBtn').disabled = true;
+
+      // Start left-brain flow
+      showView('analyzing');
+
+      // For Step 1: use mock options (no AI call yet)
+      setTimeout(() => {
+        buildMockOptions(text);
+        showView('weight-adjust');
+      }, 2000);
+    }
+
+    // ── Step 1: Mock options (placeholder for future AI) ──
+    function buildMockOptions(question) {
+      const labels = ['选项 A', '选项 B', '选项 C'];
+      const weights = [45, 35, 20];
+
+      decisionOptions = labels.map((label, i) => ({
+        id: i,
+        label,
+        weight: weights[i],
+        color: PIE_COLORS[i % PIE_COLORS.length]
+      }));
+
+      renderOptions();
+      renderPieChart();
+    }
+
+    function renderOptions() {
+      const section = document.getElementById('optionsSection');
+      section.innerHTML = '';
+
+      decisionOptions.forEach((opt, i) => {
+        const row = document.createElement('div');
+        row.className = 'option-row';
+        row.innerHTML = `
+          <div class="option-header">
+            <span class="option-label" style="color:${opt.color}">${opt.label}</span>
+            <span class="option-pct">${opt.weight}%</span>
+          </div>
+          <input type="range" class="option-slider"
+            min="5" max="90" value="${opt.weight}"
+            oninput="updateOption(${i}, this.value)">
+        `;
+        section.appendChild(row);
+      });
+    }
+
+    function updateOption(index, value) {
+      const newWeight = parseInt(value);
+      const oldWeight = decisionOptions[index].weight;
+      const diff = newWeight - oldWeight;
+
+      decisionOptions[index].weight = newWeight;
+
+      // Normalize other weights
+      const others = decisionOptions.filter((_, i) => i !== index);
+      const otherTotal = others.reduce((s, o) => s + o.weight, 0);
+
+      if (otherTotal > 0) {
+        const scale = (otherTotal - diff) / otherTotal;
+        others.forEach(o => { o.weight = Math.round(o.weight * scale); });
+      }
+
+      // Fix rounding
+      const total = decisionOptions.reduce((s, o) => s + o.weight, 0);
+      if (total !== 100) {
+        decisionOptions[0].weight += (100 - total);
+      }
+
+      renderOptions();
+      renderPieChart();
+    }
+
+    // ═══════════════════════════════════════════════
+    //  Canvas Pie Chart
+    // ═══════════════════════════════════════════════
+    function renderPieChart() {
+      const canvas = document.getElementById('wheelCanvas');
+      const ctx = canvas.getContext('2d');
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const radius = canvas.width / 2 - 10;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const total = decisionOptions.reduce((s, o) => s + o.weight, 0);
+      if (total === 0) return;
+
+      let startAngle = -Math.PI / 2;
+
+      decisionOptions.forEach(opt => {
+        const sliceAngle = (opt.weight / total) * Math.PI * 2;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fillStyle = opt.color;
+        ctx.fill();
+
+        // Border
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Label
+        if (opt.weight >= 12) {
+          const midAngle = startAngle + sliceAngle / 2;
+          const labelR = radius * 0.65;
+          const lx = cx + labelR * Math.cos(midAngle);
+          const ly = cy + labelR * Math.sin(midAngle);
+          ctx.fillStyle = '#fff';
+          ctx.font = `bold ${opt.weight > 20 ? 20 : 16}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(opt.label, lx, ly);
+        }
+
+        startAngle += sliceAngle;
+      });
+
+      // Center circle (donut hole)
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius * 0.32, 0, Math.PI * 2);
+      ctx.fillStyle = 'white';
+      ctx.fill();
+    }
+
+    // ═══════════════════════════════════════════════
+    //  转盘旋转（Step 3 才实现）
+    // ═══════════════════════════════════════════════
+    function startWheel() {
+      if (currentView !== 'weight-adjust') return;
+      showView('result');
+    }
+
+    function restartAnalysis() {
+      showView('weight-adjust');
+    }
+
+    function switchToHeart() {
+      switchMode('heart', false);
+    }
+
+    function spinAgain() {
+      showView('weight-adjust');
+    }
+
+    // ═══════════════════════════════════════════════
+    //  示例问题
+    // ═══════════════════════════════════════════════
+    function askExample(el) {
+      const text = el.textContent;
+      document.getElementById('userInput').value = text;
+      document.getElementById('sendBtn').disabled = false;
+      sendMessage();
+    }
+
+    // ═══════════════════════════════════════════════
+    //  初始化
+    // ═══════════════════════════════════════════════
+    document.getElementById('userInput').addEventListener('input', function () {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+      document.getElementById('sendBtn').disabled = !this.value.trim();
+    });
+
+    if (!CONFIG.API_KEY) {
+      document.getElementById('configBanner').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
