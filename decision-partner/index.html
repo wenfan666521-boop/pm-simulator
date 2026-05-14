@@ -791,11 +791,11 @@
         if (animated) {
           typeWriter(bubble, content);
         } else {
-          bubble.textContent = content;
+          renderContent(bubble, content);
         }
       } else {
         div.appendChild(bubble);
-        bubble.textContent = content;
+        renderContent(bubble, content);
         container.appendChild(div);
       }
 
@@ -815,20 +815,29 @@
     }
 
     function typeWriter(el, text, speed = 18) {
-      el.textContent = '';
+      el.innerHTML = '';
       let i = 0;
+      // Cursor as a vertical bar span
       const cursor = document.createElement('span');
       cursor.className = 'cursor';
+      cursor.style.cssText = 'display:inline-block;width:2px;height:1em;background:var(--current-color);margin-left:2px;vertical-align:text-bottom;animation:blink .8s step-end infinite;';
       el.appendChild(cursor);
 
       function type() {
         if (i < text.length) {
-          el.insertBefore(document.createTextNode(text.charAt(i)), cursor);
+          // Render characters 0..i-1 into innerHTML (newlines as <br>), keep cursor at end
+          const segment = text.substring(0, i + 1)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>');
+          el.innerHTML = segment;
+          el.appendChild(cursor);
           i++;
           scrollToBottom();
-          // Slightly variable speed for more natural feel
-          const delay = text.charAt(i-1) === ' ' ? speed * 1.5 :
-                        text.charAt(i-1) === '\n' ? speed * 3 :
+          const ch = text.charAt(i - 1);
+          const delay = ch === ' ' ? speed * 1.5 :
+                        ch === '\n' ? speed * 3 :
                         speed * (0.8 + Math.random() * 0.4);
           setTimeout(type, delay);
         } else {
@@ -841,6 +850,17 @@
     function scrollToBottom() {
       const area = document.getElementById('chatArea');
       area.scrollTop = area.scrollHeight;
+    }
+
+    // ═══════════════════════════════════════════════
+    //  渲染消息（非打字机）
+    // ═══════════════════════════════════════════════
+    function renderContent(el, content) {
+      el.innerHTML = content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
     }
 
     // ═══════════════════════════════════════════════
