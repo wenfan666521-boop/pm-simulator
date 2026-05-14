@@ -725,37 +725,60 @@
     //  系统提示词
     // ═══════════════════════════════════════════════
     const SYSTEM_PROMPTS = {
-      brain: `【左脑模式】你是专业、冷静的商业决策顾问。用户会描述一个决策困境，无论是人生大事还是日常小决定，你都用同样的理性框架来处理。
+      brain: `【左脑模式】你是专业、冷静的商业决策顾问，擅长把模糊的纠结拆解成清晰的结构化分析。
 
 【你的风格】
 - 极度理性：数据说话，逻辑推演
-- 极度结构化：利弊、因素、打分、建议，块块分明
-- 极度克制：不安慰、不共情、不说正确的废话
+- 极度结构化：选项、利弊、权重，块块分明
+- 极度克制：不安抚、不共情、不说正确的废话
 - 专业但不冷漠：有洞察，敢直言
 
-【你的任务】（小决定轻量处理，1-2个要点即可；大决定可以展开）
-1. 结构化分析利弊（用 ✓ / ✗ 列出）
-2. 识别关键决策因素，每个打分（1-10分），并说明为什么这么打分
-3. 指出一个可能被忽略的关键变量
-4. 给出分析视角，不给结论，让用户自己决定
-5. 追问一个推动思考的关键问题
+【你的输出格式】
+你的回复必须同时包含「分析文本」和「结构化JSON数据」，格式如下：
+
+【分析】
+（你的结构化文字分析，1-4段）
+
+【选项权重JSON】
+\`\`\`json
+{
+  "analysis": "一句话概括这个决策的本质",
+  "options": [
+    {"label": "选项A的名称", "weight": 45, "reason": "简短发散原因"},
+    {"label": "选项B的名称", "weight": 30, "reason": "简短发散原因"},
+    {"label": "选项C的名称", "weight": 25, "reason": "简短发散原因"}
+  ],
+  "keyVariable": "你描述中提到的某个关键变量，以及它的重要性",
+  "followUp": "追问一个推动用户深入思考的关键问题"
+}
+\`\`\`
 
 【绝对不做】
 - 不说"我能理解你的感受"
-- 不用"也许你可以试试"这种软弱表达
+- 不用"也许你可以试试"
 - 不用emoji
-- 小决定不要过度分析（150字以内），大决定可以稍长
+- 不省略JSON区块（即使是小决定也必须返回options数组）
 
-【回复格式示例】
-【利弊】
-✓ 优势：...
-✗ 劣势：...
+【选项数量规则】
+- 日常小决定（吃饭/周末等）：2-3个选项
+- 中型决策（offer/城市等）：3-4个选项
+- 人生重大决定：3-5个选项
 
-【关键因素打分】
-因素A：██████░░ 6/10（因为...）
+【权重分配】
+- 权重必须是正整数，总和为100
+- 反映你对这个选项综合评分的相对高低
+- 最优选项可以高出第二名10-20个百分点，不要平均分配
 
-【追问】
-...`,
+【回复示例】
+【分析】
+这个决策的本质是...（1-2句）
+
+你描述中提到...（关键变量分析，1-2句）
+
+【选项权重JSON】
+\`\`\`json
+{...}
+\`\`\``,
 
       heart: `【右脑模式】你是温暖、有深度、懂人心的朋友。你不急着给答案，而是陪用户慢慢把心里的话说出来。无论是人生大事还是日常小决定，你都用同样的倾听姿态对待。
 
@@ -910,27 +933,153 @@
       autoGrow(input);
       document.getElementById('sendBtn').disabled = true;
 
-      // Start left-brain flow
       showView('analyzing');
+      isLoading = true;
 
-      // For Step 1: use mock options (no AI call yet)
-      setTimeout(() => {
-        buildMockOptions(text);
+      try {
+        const result = await callBrainAPI(text);
+        const parsed = parseAIResponse(result.content);
+        buildOptionsFromAI(parsed);
         showView('weight-adjust');
-      }, 2000);
+      } catch (err) {
+        console.error('AI分析失败:', err);
+        showView('weight-adjust');
+        buildMockOptions(text);
+      }
+
+      isLoading = false;
     }
 
-    // ── Step 1: Mock options (placeholder for future AI) ──
-    function buildMockOptions(question) {
-      const labels = ['选项 A', '选项 B', '选项 C'];
-      const weights = [45, 35, 20];
+    // ── Call DeepSeek Brain API ──
+    async function callBrainAPI(userText) {
+      const messages = [
+        { role: 'system', content: SYSTEM_PROMPTS.brain },
+        { role: 'user', content: userText }
+      ];
 
-      decisionOptions = labels.map((label, i) => ({
-        id: i,
-        label,
-        weight: weights[i],
-        color: PIE_COLORS[i % PIE_COLORS.length]
-      }));
+      const response = await fetch(CONFIG.API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + CONFIG.API_KEY
+        },
+        body: JSON.stringify({
+          model: CONFIG.MODEL,
+          messages,
+          temperature: 0.3,
+          max_tokens: 1200
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error?.message || '请求失败 (' + response.status + ')');
+      }
+
+      const data = await response.json();
+      return { content: data.choices[0].message.content };
+    }
+
+    // ── Parse AI JSON Response ──
+    function parseAIResponse(content) {
+      let jsonStr = '';
+      const codeBlockMatch = content.match(/```jsons*([sS]*?)s*```/);
+      const rawJsonMatch = content.match(/{[sS]*?}/);
+
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1];
+      } else if (rawJsonMatch) {
+        jsonStr = rawJsonMatch[0];
+      }
+
+      try {
+        const data = JSON.parse(jsonStr);
+        if (!data.options || !Array.isArray(data.options) || data.options.length < 2) {
+          throw new Error('Invalid options structure');
+        }
+        return {
+          analysis: data.analysis || '',
+          options: data.options.filter(function(o) { return o.label && o.weight > 0; }),
+          keyVariable: data.keyVariable || '',
+          followUp: data.followUp || ''
+        };
+      } catch (e) {
+        console.warn('JSON解析失败，尝试文本解析:', e.message);
+        return parseAIFallback(content);
+      }
+    }
+
+    // ── Fallback: parse options from plain text ──
+    function parseAIFallback(content) {
+      var lines = content.split('
+');
+      var options = [];
+      var weightRe = /(d+)s*%/;
+
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        var wm = line.match(weightRe);
+        if (wm && options.length < 8) {
+          var label = line.replace(/d+[%％].*/, '').replace(/^[A-D][.、)]s*/, '').trim();
+          if (!label) label = '选项 ' + String.fromCharCode(65 + options.length);
+          options.push({
+            label: label,
+            weight: parseInt(wm[1]),
+            reason: ''
+          });
+        }
+      }
+
+      if (options.length >= 2) {
+        return { analysis: '', options: options, keyVariable: '', followUp: '' };
+      }
+
+      return {
+        analysis: '（AI解析失败，使用默认选项）',
+        options: [
+          { label: '选项 A', weight: 40, reason: '' },
+          { label: '选项 B', weight: 35, reason: '' },
+          { label: '选项 C', weight: 25, reason: '' }
+        ],
+        keyVariable: '',
+        followUp: ''
+      };
+    }
+
+    // ── Build decision options from AI result ──
+    function buildOptionsFromAI(parsed) {
+      var total = parsed.options.reduce(function(s, o) { return s + o.weight; }, 0);
+
+      decisionOptions = parsed.options.map(function(opt, i) {
+        return {
+          id: i,
+          label: opt.label || ('选项 ' + String.fromCharCode(65 + i)),
+          weight: total > 0 ? Math.round((opt.weight / total) * 100) : Math.floor(100 / parsed.options.length),
+          color: PIE_COLORS[i % PIE_COLORS.length]
+        };
+      });
+
+      // Fix rounding
+      var got = decisionOptions.reduce(function(s, o) { return s + o.weight; }, 0);
+      if (got !== 100) decisionOptions[0].weight += (100 - got);
+
+      renderOptions();
+      renderPieChart();
+    }
+
+    // ── Mock options (fallback) ──
+    function buildMockOptions(question) {
+      var labels = ['选项 A', '选项 B', '选项 C'];
+      var weights = [45, 35, 20];
+
+      decisionOptions = labels.map(function(label, i) {
+        return {
+          id: i,
+          label: label,
+          weight: weights[i],
+          color: PIE_COLORS[i % PIE_COLORS.length]
+        };
+      });
 
       renderOptions();
       renderPieChart();
