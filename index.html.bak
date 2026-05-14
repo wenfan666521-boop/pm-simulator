@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>决策双生</title>
+  <style>
+    :root {
+      --brain-hue: 210;
+      --brain-color: hsl(var(--brain-hue), 65%, 55%);
+      --brain-bg: hsl(var(--brain-hue), 40%, 92%);
+      --heart-hue: 345;
+      --heart-color: hsl(var(--heart-hue), 65%, 60%);
+      --heart-bg: hsl(var(--heart-hue), 45%, 93%);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: var(--brain-bg);
+      min-height: 100dvh;
+      overflow: hidden;
+      transition: background 0.4s ease;
+      --current-color: var(--brain-color);
+      --current-bg: var(--brain-bg);
+    }
+
+    body.heart-mode {
+      background: var(--heart-bg);
+      --current-color: var(--heart-color);
+      --current-bg: var(--heart-bg);
+    }
+
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px 16px 14px;
+      position: relative;
+    }
+
+    .mode-tabs {
+      display: flex;
+      background: rgba(255,255,255,0.6);
+      border-radius: 999px;
+      padding: 4px;
+      gap: 2px;
+      backdrop-filter: blur(8px);
+    }
+
+    .mode-tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #999;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      border: none;
+      background: transparent;
+      white-space: nowrap;
+    }
+
+    .mode-tab.active {
+      background: white;
+      color: var(--current-color);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .mode-icon {
+      font-size: 16px;
+      transition: transform 0.3s ease;
+    }
+
+    .mode-tab.active .mode-icon {
+      transform: scale(1.2);
+    }
+
+    /* ── Swipe Hint ── */
+    .swipe-hint {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 11px;
+      color: #bbb;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      pointer-events: none;
+    }
+
+    /* ── Chat Area ── */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 16px 12px;
+      scroll-behavior: smooth;
+      overscroll-behavior: contain;
+    }
+
+    .chat-area::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .chat-area::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.1);
+      border-radius: 4px;
+    }
+
+    /* Message bubble */
+    .message {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 16px;
+      animation: fadeUp 0.3s ease;
+    }
+
+    .message.user {
+      align-items: flex-end;
+    }
+
+    .message.assistant {
+      align-items: flex-start;
+    }
+
+    .bubble {
+      max-width: 82%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 15px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .message.user .bubble {
+      background: var(--current-color);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant .bubble {
+      background: white;
+      color: #333;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .message.assistant .bubble.thinking {
+      color: #aaa;
+      font-style: italic;
+      font-size: 14px;
+    }
+
+    /* Typing cursor */
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: var(--current-color);
+      margin-left: 2px;
+      vertical-align: text-bottom;
+      animation: blink 0.8s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Thinking dots */
+    .thinking-dots {
+      display: flex;
+      gap: 5px;
+      padding: 14px 18px;
+    }
+
+    .thinking-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--current-color);
+      opacity: 0.4;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.1); }
+    }
+
+    /* ── Quick Examples ── */
+    .examples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 4px 0 8px;
+    }
+
+    .example-chip {
+      background: white;
+      border: 1.5px solid rgba(0,0,0,0.08);
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 13px;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .example-chip:hover, .example-chip:active {
+      border-color: var(--current-color);
+      color: var(--current-color);
+      transform: scale(0.97);
+    }
+
+    /* ── Input Area ── */
+    .input-area {
+      padding: 12px 16px 24px;
+      background: var(--current-bg);
+      transition: background 0.4s ease;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      background: white;
+      border-radius: 24px;
+      padding: 8px 8px 8px 18px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    .input-row textarea {
+      flex: 1;
+      border: none;
+      outline: none;
+      resize: none;
+      font-size: 15px;
+      line-height: 1.5;
+      max-height: 120px;
+      font-family: inherit;
+      background: transparent;
+      color: #333;
+    }
+
+    .input-row textarea::placeholder {
+      color: #bbb;
+    }
+
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--current-color);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .send-btn:not(:disabled):hover {
+      transform: scale(1.08);
+    }
+
+    .send-btn:not(:disabled):active {
+      transform: scale(0.95);
+    }
+
+    /* ── Slide Transition ── */
+    .slide-left {
+      animation: slideLeft 0.3s ease-out;
+    }
+
+    .slide-right {
+      animation: slideRight 0.3s ease-out;
+    }
+
+    @keyframes slideLeft {
+      from { transform: translateX(30px); opacity: 0.5; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideRight {
+      from { transform: translateX(-30px); opacity: 0.5; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ── Swipe Trail ── */
+    .swipe-trail {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .swipe-trail .arrow-hint {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 28px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      color: var(--current-color);
+    }
+
+    .swipe-trail .arrow-hint.left { left: 20px; }
+    .swipe-trail .arrow-hint.right { right: 20px; }
+
+    .swipe-trail.show-left .arrow-hint.left { opacity: 0.6; }
+    .swipe-trail.show-right .arrow-hint.right { opacity: 0.6; }
+
+    /* ── Config Banner ── */
+    .config-banner {
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      color: #856404;
+      padding: 10px 16px;
+      font-size: 13px;
+      border-radius: 8px;
+      margin: 8px 16px 0;
+    }
+
+    /* ── Intro State ── */
+    .intro {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      text-align: center;
+      gap: 20px;
+    }
+
+    .intro-logo {
+      font-size: 48px;
+      margin-bottom: 4px;
+    }
+
+    .intro-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .intro-subtitle {
+      font-size: 14px;
+      color: #999;
+      line-height: 1.6;
+    }
+
+    .intro-divider {
+      width: 40px;
+      height: 2px;
+      background: var(--current-color);
+      border-radius: 2px;
+      opacity: 0.5;
+    }
+
+    .intro-swipe {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #bbb;
+    }
+
+    .intro-swipe span {
+      font-size: 20px;
+    }
+
+    .intro-examples {
+      width: 100%;
+    }
+
+    .intro-examples-label {
+      font-size: 12px;
+      color: #ccc;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Header -->
+    <div class="header">
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="brain" onclick="switchMode('brain')">
+          <span class="mode-icon">🧠</span>
+          <span>左脑</span>
+        </button>
+        <button class="mode-tab" data-mode="heart" onclick="switchMode('heart')">
+          <span class="mode-icon">💗</span>
+          <span>右脑</span>
+        </button>
+      </div>
+      <div class="swipe-hint">
+        ← 滑动切换 →
+      </div>
+    </div>
+
+    <!-- Chat / Intro Area -->
+    <div class="chat-area" id="chatArea">
+      <div class="intro" id="intro">
+        <div class="intro-logo">🧠 💗</div>
+        <div class="intro-title">决策双生</div>
+        <div class="intro-subtitle">无论是纠结的大决定<br>还是拿不定的小选择<br>左右两个声音，帮你想清楚</div>
+        <div class="intro-divider"></div>
+        <div class="intro-swipe">
+          <span>←</span> 左滑切换左脑 / 右滑切换右脑 <span>→</span>
+        </div>
+        <div class="intro-examples">
+          <div class="intro-examples-label">试试这样问</div>
+          <div class="examples">
+            <div class="example-chip" onclick="askExample(this)">该不该辞职去留学？</div>
+            <div class="example-chip" onclick="askExample(this)">该选哪个offer？</div>
+            <div class="example-chip" onclick="askExample(this)">中午吃什么？</div>
+            <div class="example-chip" onclick="askExample(this)">周末去哪儿玩？</div>
+          </div>
+        </div>
+      </div>
+      <div id="messages"></div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div id="configBanner" class="config-banner" style="display:none">
+        ⚠️ 请先配置 API Key
+      </div>
+      <div class="input-row">
+        <textarea
+          id="userInput"
+          rows="1"
+          placeholder="描述你的决策困境..."
+          oninput="autoGrow(this)"
+          onkeydown="handleKeydown(event)"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>➤</button>
+      </div>
+    </div>
+
+    <!-- Swipe trail overlay -->
+    <div class="swipe-trail" id="swipeTrail">
+      <div class="arrow-hint left">◀</div>
+      <div class="arrow-hint right">▶</div>
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════
+    //  配置区 — 等伙伴提供后填写
+    // ═══════════════════════════════════════════════
+    const CONFIG = {
+      API_KEY: 'sk-e8a8b1855af54010832b05f536b3b6bf',
+      API_URL: 'https://api.deepseek.com/chat/completions',
+      MODEL: 'deepseek-chat',
+    };
+
+    // ═══════════════════════════════════════════════
+    //  系统提示词
+    // ═══════════════════════════════════════════════
+    const SYSTEM_PROMPTS = {
+      brain: `【左脑模式】你是专业、冷静的商业决策顾问。用户会描述一个决策困境，无论是人生大事还是日常小决定，你都用同样的理性框架来处理。
+
+【你的风格】
+- 极度理性：数据说话，逻辑推演
+- 极度结构化：利弊、因素、打分、建议，块块分明
+- 极度克制：不安慰、不共情、不说正确的废话
+- 专业但不冷漠：有洞察，敢直言
+
+【你的任务】（小决定轻量处理，1-2个要点即可；大决定可以展开）
+1. 结构化分析利弊（用 ✓ / ✗ 列出）
+2. 识别关键决策因素，每个打分（1-10分），并说明为什么这么打分
+3. 指出一个可能被忽略的关键变量
+4. 给出分析视角，不给结论，让用户自己决定
+5. 追问一个推动思考的关键问题
+
+【绝对不做】
+- 不说"我能理解你的感受"
+- 不用"也许你可以试试"这种软弱表达
+- 不用emoji
+- 小决定不要过度分析（150字以内），大决定可以稍长
+
+【回复格式示例】
+【利弊】
+✓ 优势：...
+✗ 劣势：...
+
+【关键因素打分】
+因素A：██████░░ 6/10（因为...）
+
+【追问】
+...`,
+
+      heart: `【右脑模式】你是温暖、有深度、懂人心的朋友。你不急着给答案，而是陪用户慢慢把心里的话说出来。无论是人生大事还是日常小决定，你都用同样的倾听姿态对待。
+
+【你的风格】
+- 先复述：我听到你说的是...
+- 再深入：这个选择背后，你真正担心的是什么？是不确定，还是害怕？
+- 再陪伴：帮用户看见自己内心的倾向
+- 最后：不催，不评判，允许用户在不确定中待一会儿
+
+【你的任务】
+1. 先确认你听懂了用户的困境（用一句话复述）
+2. 温柔地深入一层：挖掘这个选择背后的情绪和担忧
+3. 帮用户听见自己内心的倾向（不是你说应该选哪个）
+4. 一个温暖但不催泪的结尾
+
+【绝对不做】
+- 不说"我能理解你的感受"（太廉价）
+- 不给建议、不说"你应该"
+- 不用emoji
+- 小决定不要过度分析（150字以内），大决定可以稍长
+
+【回复格式示例】
+【我听见你了】
+听起来你卡在...
+
+【你真正在担心的是什么？】
+也许你不只是在担心这个选择本身，而是在担心...
+
+【陪伴你】
+...（温暖收尾，1-2句话）`
+    };
+
+    // ═══════════════════════════════════════════════
+    //  状态
+    // ═══════════════════════════════════════════════
+    let currentMode = 'brain'; // 'brain' | 'heart'
+    let isLoading = false;
+    let conversationHistory = [];
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let slideDirection = null;
+
+    // ═══════════════════════════════════════════════
+    //  模式切换
+    // ═══════════════════════════════════════════════
+    function switchMode(mode, fromSwipe = false) {
+      if (mode === currentMode) return;
+
+      const oldMode = currentMode;
+      currentMode = mode;
+      const chatArea = document.getElementById('chatArea');
+
+      // Update tabs
+      document.querySelectorAll('.mode-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.mode === mode);
+      });
+
+      // Update body class
+      document.body.classList.toggle('heart-mode', mode === 'heart');
+
+      // Animate chat content
+      if (fromSwipe) {
+        chatArea.classList.remove('slide-left', 'slide-right');
+        void chatArea.offsetWidth; // reflow
+        chatArea.classList.add(mode === 'brain' ? 'slide-left' : 'slide-right');
+        setTimeout(() => chatArea.classList.remove('slide-left', 'slide-right'), 300);
+      }
+
+      // Update send button color (CSS variable already handles this via body class)
+    }
+
+    // ═══════════════════════════════════════════════
+    //  滑动切换
+    // ═══════════════════════════════════════════════
+    const appEl = document.getElementById('app');
+    const swipeTrail = document.getElementById('swipeTrail');
+
+    appEl.addEventListener('touchstart', (e) => {
+      // Only track if touch starts on main area, not on interactive elements
+      const target = e.target;
+      if (target.closest('.mode-tab') || target.closest('.send-btn') ||
+          target.closest('.example-chip') || target.closest('textarea') ||
+          target.closest('button')) return;
+
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    appEl.addEventListener('touchmove', (e) => {
+      if (touchStartX === 0) return;
+
+      const deltaX = e.touches[0].clientX - touchStartX;
+      const deltaY = e.touches[0].clientY - (e.touches[0].clientY);
+      const absY = Math.abs(e.touches[0].clientY - touchStartY);
+
+      // Only track as swipe if horizontal movement dominates
+      if (absY > Math.abs(deltaX) * 1.5) {
+        swipeTrail.classList.remove('show-left', 'show-right');
+        return;
+      }
+
+      swipeTrail.classList.remove('show-left', 'show-right');
+      if (deltaX < -40) swipeTrail.classList.add('show-left');
+      if (deltaX > 40) swipeTrail.classList.add('show-right');
+    }, { passive: true });
+
+    appEl.addEventListener('touchend', (e) => {
+      if (touchStartX === 0) return;
+
+      const deltaX = e.changedTouches[0].clientX - touchStartX;
+      const screenW = window.innerWidth;
+      const threshold = screenW * 0.28;
+
+      swipeTrail.classList.remove('show-left', 'show-right');
+      touchStartX = 0;
+
+      if (Math.abs(deltaX) < threshold) return;
+
+      if (deltaX < 0) {
+        // Swipe left → brain mode
+        switchMode('brain', true);
+      } else {
+        // Swipe right → heart mode
+        switchMode('heart', true);
+      }
+    }, { passive: true });
+
+    // Mouse swipe support for desktop testing
+    let mouseStartX = 0;
+    appEl.addEventListener('mousedown', (e) => {
+      const target = e.target;
+      if (target.closest('.mode-tab') || target.closest('.send-btn') ||
+          target.closest('.example-chip') || target.closest('textarea') ||
+          target.closest('button')) return;
+      mouseStartX = e.clientX;
+    });
+
+    appEl.addEventListener('mouseup', (e) => {
+      if (mouseStartX === 0) return;
+      const deltaX = e.clientX - mouseStartX;
+      mouseStartX = 0;
+      const threshold = window.innerWidth * 0.28;
+      if (Math.abs(deltaX) < threshold) return;
+      if (deltaX < 0) {
+        switchMode('brain', true);
+      } else {
+        switchMode('heart', true);
+      }
+    });
+
+    // Keyboard shortcut
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowLeft') switchMode('brain', true);
+      if (e.key === 'ArrowRight') switchMode('heart', true);
+    });
+
+    // ═══════════════════════════════════════════════
+    //  发送消息
+    // ═══════════════════════════════════════════════
+    function autoGrow(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+      document.getElementById('sendBtn').disabled = !el.value.trim();
+    }
+
+    function handleKeydown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text || isLoading) return;
+
+      if (!CONFIG.API_KEY) {
+        document.getElementById('configBanner').style.display = 'block';
+        return;
+      }
+
+      // Hide intro if first message
+      const intro = document.getElementById('intro');
+      if (intro) intro.style.display = 'none';
+
+      // Add user message
+      addMessage('user', text);
+      input.value = '';
+      autoGrow(input);
+      document.getElementById('sendBtn').disabled = true;
+
+      // Build history
+      conversationHistory.push({ role: 'user', content: text });
+
+      // Show thinking
+      isLoading = true;
+      const thinkingEl = addThinkingIndicator();
+
+      try {
+        const reply = await callAPI(text);
+        conversationHistory.push({ role: 'assistant', content: reply });
+        thinkingEl.remove();
+        addMessage('assistant', reply, true);
+      } catch (err) {
+        thinkingEl.remove();
+        addMessage('assistant', '网络开小差了，请稍后重试～ ' + err.message, false);
+        conversationHistory.pop(); // remove failed user msg from history
+      }
+
+      isLoading = false;
+    }
+
+    async function callAPI(userText) {
+      const messages = [
+        { role: 'system', content: SYSTEM_PROMPTS[currentMode] },
+        ...conversationHistory.slice(-10) // 保留最近10轮
+      ];
+
+      const response = await fetch(CONFIG.API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${CONFIG.API_KEY}`
+        },
+        body: JSON.stringify({
+          model: CONFIG.MODEL,
+          messages,
+          temperature: currentMode === 'brain' ? 0.3 : 0.9,
+          max_tokens: 800
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error?.message || `请求失败 (${response.status})`);
+      }
+
+      const data = await response.json();
+      return data.choices[0].message.content;
+    }
+
+    // ═══════════════════════════════════════════════
+    //  渲染消息
+    // ═══════════════════════════════════════════════
+    function addMessage(role, content, animated = false) {
+      const container = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      if (role === 'assistant') {
+        div.appendChild(bubble);
+        container.appendChild(div);
+
+        if (animated) {
+          typeWriter(bubble, content);
+        } else {
+          renderContent(bubble, content);
+        }
+      } else {
+        div.appendChild(bubble);
+        renderContent(bubble, content);
+        container.appendChild(div);
+      }
+
+      scrollToBottom();
+      return div;
+    }
+
+    function addThinkingIndicator() {
+      const container = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'message assistant';
+      div.id = 'thinking-' + Date.now();
+      div.innerHTML = `<div class="bubble thinking"><div class="thinking-dots"><span></span><span></span><span></span></div></div>`;
+      container.appendChild(div);
+      scrollToBottom();
+      return div;
+    }
+
+    function typeWriter(el, text, speed = 18) {
+      el.innerHTML = '';
+      let i = 0;
+      // Cursor as a vertical bar span
+      const cursor = document.createElement('span');
+      cursor.className = 'cursor';
+      cursor.style.cssText = 'display:inline-block;width:2px;height:1em;background:var(--current-color);margin-left:2px;vertical-align:text-bottom;animation:blink .8s step-end infinite;';
+      el.appendChild(cursor);
+
+      function type() {
+        if (i < text.length) {
+          // Render characters 0..i-1 into innerHTML (newlines as <br>), keep cursor at end
+          const segment = text.substring(0, i + 1)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>');
+          el.innerHTML = segment;
+          el.appendChild(cursor);
+          i++;
+          scrollToBottom();
+          const ch = text.charAt(i - 1);
+          const delay = ch === ' ' ? speed * 1.5 :
+                        ch === '\n' ? speed * 3 :
+                        speed * (0.8 + Math.random() * 0.4);
+          setTimeout(type, delay);
+        } else {
+          cursor.remove();
+        }
+      }
+      type();
+    }
+
+    function scrollToBottom() {
+      const area = document.getElementById('chatArea');
+      area.scrollTop = area.scrollHeight;
+    }
+
+    // ═══════════════════════════════════════════════
+    //  渲染消息（非打字机）
+    // ═══════════════════════════════════════════════
+    function renderContent(el, content) {
+      el.innerHTML = content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    }
+
+    // ═══════════════════════════════════════════════
+    //  示例问题
+    // ═══════════════════════════════════════════════
+    function askExample(el) {
+      const text = el.textContent;
+      document.getElementById('userInput').value = text;
+      document.getElementById('sendBtn').disabled = false;
+      sendMessage();
+    }
+
+    // ═══════════════════════════════════════════════
+    //  初始化
+    // ═══════════════════════════════════════════════
+    document.getElementById('userInput').addEventListener('input', function () {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+      document.getElementById('sendBtn').disabled = !this.value.trim();
+    });
+
+    // Check API config
+    if (!CONFIG.API_KEY) {
+      document.getElementById('configBanner').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
