@@ -13,14 +13,7 @@
       --heart-color: hsl(var(--heart-hue), 65%, 60%);
       --heart-bg: hsl(var(--heart-hue), 45%, 93%);
     }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
       background: var(--brain-bg);
@@ -30,113 +23,21 @@
       --current-color: var(--brain-color);
       --current-bg: var(--brain-bg);
     }
-
-    body.heart-mode {
-      background: var(--heart-bg);
-      --current-color: var(--heart-color);
-      --current-bg: var(--heart-bg);
-    }
-
-    .app {
-      max-width: 480px;
-      margin: 0 auto;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-
-    /* ── Header ── */
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      padding: 20px 16px 14px;
-      position: relative;
-    }
-
-    .mode-tabs {
-      display: flex;
-      background: rgba(255,255,255,0.6);
-      border-radius: 999px;
-      padding: 4px;
-      gap: 2px;
-      backdrop-filter: blur(8px);
-    }
-
-    .mode-tab {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 16px;
-      border-radius: 999px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #999;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      border: none;
-      background: transparent;
-      white-space: nowrap;
-    }
-
-    .mode-tab.active {
-      background: white;
-      color: var(--current-color);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .mode-icon {
-      font-size: 16px;
-      transition: transform 0.3s ease;
-    }
-
-    .mode-tab.active .mode-icon {
-      transform: scale(1.2);
-    }
-
-    .swipe-hint {
-      position: absolute;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 11px;
-      color: #bbb;
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      pointer-events: none;
-    }
-
-    /* ── Chat / Main Area ── */
-    .chat-area {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px 16px 12px;
-      scroll-behavior: smooth;
-      overscroll-behavior: contain;
-    }
-
-    .chat-area::-webkit-scrollbar { width: 4px; }
-    .chat-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
-
-    /* ── View Container ── */
+    body.heart-mode { background: var(--heart-bg); --current-color: var(--heart-color); --current-bg: var(--heart-bg); }
+    .app { max-width: 480px; margin: 0 auto; height: 100dvh; display: flex; flex-direction: column; position: relative; }
+    .header { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 20px 16px 14px; position: relative; }
+    .mode-tabs { display: flex; background: rgba(255,255,255,0.6); border-radius: 999px; padding: 4px; gap: 2px; backdrop-filter: blur(8px); }
+    .mode-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; color: #999; cursor: pointer; transition: all 0.25s ease; border: none; background: transparent; white-space: nowrap; }
+    .mode-tab.active { background: white; color: var(--current-color); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .mode-icon { font-size: 16px; transition: transform 0.3s ease; }
+    .mode-tab.active .mode-icon { transform: scale(1.2); }
+    .swipe-hint { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 11px; color: #bbb; display: flex; align-items: center; gap: 3px; pointer-events: none; }
+    .main-area { flex: 1; overflow-y: auto; padding: 8px 16px 12px; scroll-behavior: smooth; overscroll-behavior: contain; }
+    .main-area::-webkit-scrollbar { width: 4px; }
+    .main-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
     .view { display: none; overflow-y: auto; }
     .view.active { display: flex; flex-direction: column; min-height: 0; flex: 1; }
-
-    /* ── Intro View ── */
-    #view-intro {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 32px 24px;
-      text-align: center;
-      gap: 20px;
-    }
-
+    #view-intro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; text-align: center; gap: 20px; }
     .intro-logo { font-size: 48px; margin-bottom: 4px; }
     .intro-title { font-size: 22px; font-weight: 700; color: #333; }
     .intro-subtitle { font-size: 14px; color: #999; line-height: 1.6; }
@@ -145,499 +46,96 @@
     .intro-swipe span { font-size: 20px; }
     .intro-examples { width: 100%; }
     .intro-examples-label { font-size: 12px; color: #ccc; margin-bottom: 10px; }
-
-    .examples {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 4px 0 8px;
-      justify-content: center;
-    }
-
-    .example-chip {
-      background: white;
-      border: 1.5px solid rgba(0,0,0,0.08);
-      border-radius: 999px;
-      padding: 7px 14px;
-      font-size: 13px;
-      color: #666;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .example-chip:hover, .example-chip:active {
-      border-color: var(--current-color);
-      color: var(--current-color);
-      transform: scale(0.97);
-    }
-
-    /* ── Analyzing View ── */
-    #view-analyzing {
-      flex: 1;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-    }
-
+    .examples { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 8px; justify-content: center; }
+    .example-chip { background: white; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 999px; padding: 7px 14px; font-size: 13px; color: #666; cursor: pointer; transition: all 0.2s; }
+    .example-chip:hover, .example-chip:active { border-color: var(--current-color); color: var(--current-color); transform: scale(0.97); }
+    #view-chat { flex: 1; gap: 12px; min-height: 0; }
+    .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 4px; }
+    .msg { display: flex; flex-direction: column; animation: fadeUp 0.25s ease; }
+    .msg.user { align-items: flex-end; }
+    .msg.assistant { align-items: flex-start; }
+    .bubble { max-width: 82%; padding: 11px 15px; border-radius: 16px; font-size: 15px; line-height: 1.6; word-break: break-word; }
+    .msg.user .bubble { background: var(--current-color); color: white; border-bottom-right-radius: 4px; }
+    .msg.assistant .bubble { background: white; color: #333; border-bottom-left-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); white-space: pre-wrap; }
+    .typing-indicator { display: flex; gap: 5px; padding: 12px 16px; }
+    .typing-indicator span { width: 7px; height: 7px; border-radius: 50%; background: var(--current-color); opacity: 0.4; animation: pulse 1.2s ease-in-out infinite; }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    #view-analyzing { flex: 1; align-items: center; justify-content: center; gap: 20px; }
     .analyzing-icon { font-size: 48px; animation: bounce 1s ease infinite; }
-
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
     .analyzing-text { font-size: 16px; color: #888; }
     .analyzing-sub { font-size: 13px; color: #bbb; margin-top: -12px; }
-
-    /* ── Weight-Adjust View ── */
-    #view-weight-adjust {
-      flex: 1;
-      gap: 16px;
-      padding-bottom: 8px;
-    }
-
-    .wheel-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
-    }
-
-    .wheel-canvas-wrap {
-      position: relative;
-      width: 260px;
-      height: 260px;
-    }
-
-    #wheelCanvas {
-      width: 260px;
-      height: 260px;
-      border-radius: 50%;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-
-    .wheel-pointer {
-      position: absolute;
-      top: -12px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 0;
-      height: 0;
-      border-left: 10px solid transparent;
-      border-right: 10px solid transparent;
-      border-top: 20px solid var(--current-color);
-      z-index: 2;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
-    }
-
-    .wheel-center-btn {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: white;
-      border: 3px solid var(--current-color);
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--current-color);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      line-height: 1.3;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      transition: all 0.2s;
-      z-index: 3;
-    }
-
-    .wheel-center-btn:active {
-      transform: translate(-50%, -50%) scale(0.95);
-      background: var(--current-color);
-      color: white;
-    }
-
-    .wheel-center-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .options-section {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 0 4px;
-    }
-
-    .option-row {
-      background: white;
-      border-radius: 12px;
-      padding: 12px 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .option-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .option-label {
-      font-size: 14px;
-      font-weight: 600;
-      color: #333;
-      flex: 1;
-    }
-
-    .option-pct {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--current-color);
-      min-width: 42px;
-      text-align: right;
-    }
-
-    .option-slider {
-      width: 100%;
-      -webkit-appearance: none;
-      height: 6px;
-      border-radius: 3px;
-      background: #eee;
-      outline: none;
-    }
-
-    .option-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: var(--current-color);
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    }
-
-    .option-controls {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .option-label-input {
-      flex: 1;
-      border: none;
-      border-bottom: 1.5px solid #e0e0e0;
-      outline: none;
-      font-size: 13px;
-      color: #555;
-      background: transparent;
-      padding: 2px 0;
-      font-family: inherit;
-      transition: border-color 0.2s;
-    }
-
-    .option-label-input:focus {
-      border-color: var(--current-color);
-    }
-
-    .option-remove-btn {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      border: none;
-      background: #f0f0f0;
-      color: #bbb;
-      font-size: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-      flex-shrink: 0;
-    }
-
-    .option-remove-btn:hover {
-      background: #ffe0e0;
-      color: #ff6060;
-    }
-
-    .add-option-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 4px;
-    }
-
-    .add-option-btn {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 7px 14px;
-      border-radius: 999px;
-      border: 1.5px dashed #ccc;
-      background: transparent;
-      color: #aaa;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: inherit;
-    }
-
-    .add-option-btn:hover {
-      border-color: var(--current-color);
-      color: var(--current-color);
-    }
-
-    .options-footer {
-      padding: 6px 4px 4px;
-    }
-
-    /* ── Result View ── */
-    #view-result {
-      flex: 1;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      gap: 20px;
-    }
-
-    .result-card {
-      background: white;
-      border-radius: 20px;
-      padding: 28px 24px;
-      width: 100%;
-      max-width: 340px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    @keyframes popIn {
-      from { opacity: 0; transform: scale(0.8); }
-      to { opacity: 1; transform: scale(1); }
-    }
-
-    .result-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: var(--current-bg);
-      font-size: 28px;
-      margin: 0 auto;
-    }
-
-    .result-title {
-      font-size: 13px;
-      color: #bbb;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .result-choice {
-      font-size: 22px;
-      font-weight: 700;
-      color: #333;
-    }
-
-    .result-pct {
-      font-size: 36px;
-      font-weight: 800;
-      color: var(--current-color);
-    }
-
-    .result-analysis {
-      font-size: 13px;
-      color: #888;
-      line-height: 1.6;
-      background: var(--current-bg);
-      border-radius: 10px;
-      padding: 12px;
-    }
-
-    .result-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .result-btn {
-      padding: 12px 20px;
-      border-radius: 999px;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: inherit;
-    }
-
-    .result-btn-primary {
-      background: var(--current-color);
-      color: white;
-    }
-
-    .result-btn-secondary {
-      background: transparent;
-      color: var(--current-color);
-      border: 1.5px solid var(--current-color);
-    }
-
-    .result-btn:active {
-      transform: scale(0.97);
-    }
-
-    /* ── Slide Transition ── */
-    .slide-left {
-      animation: slideLeft 0.3s ease-out;
-    }
-
-    .slide-right {
-      animation: slideRight 0.3s ease-out;
-    }
-
-    @keyframes slideLeft {
-      from { transform: translateX(30px); opacity: 0.5; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-
-    @keyframes slideRight {
-      from { transform: translateX(-30px); opacity: 0.5; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-
-    /* ── Swipe Trail ── */
-    .swipe-trail {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      pointer-events: none;
-      z-index: 0;
-      overflow: hidden;
-    }
-
-    .swipe-trail .arrow-hint {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 28px;
-      opacity: 0;
-      transition: opacity 0.2s;
-      color: var(--current-color);
-    }
-
+    #view-weight-adjust { flex: 1; gap: 16px; padding-bottom: 8px; }
+    .wheel-section { display: flex; flex-direction: column; align-items: center; gap: 12px; flex-shrink: 0; }
+    .wheel-canvas-wrap { position: relative; width: 260px; height: 260px; }
+    #wheelCanvas { width: 260px; height: 260px; border-radius: 50%; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    .wheel-pointer { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 20px solid var(--current-color); z-index: 2; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); }
+    .wheel-center-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; border-radius: 50%; background: white; border: 3px solid var(--current-color); font-size: 12px; font-weight: 700; color: var(--current-color); cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.3; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s; z-index: 3; }
+    .wheel-center-btn:active { transform: translate(-50%, -50%) scale(0.95); background: var(--current-color); color: white; }
+    .wheel-center-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .options-section { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 0 4px; }
+    .option-row { background: white; border-radius: 12px; padding: 12px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; }
+    .option-header { display: flex; align-items: center; gap: 8px; }
+    .option-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .option-label-input { flex: 1; border: none; border-bottom: 1.5px solid #e0e0e0; outline: none; font-size: 13px; color: #555; background: transparent; padding: 2px 0; font-family: inherit; transition: border-color 0.2s; }
+    .option-label-input:focus { border-color: var(--current-color); }
+    .option-pct { font-size: 14px; font-weight: 700; color: var(--current-color); min-width: 42px; text-align: right; }
+    .option-remove-btn { width: 24px; height: 24px; border-radius: 50%; border: none; background: #f0f0f0; color: #bbb; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+    .option-remove-btn:hover { background: #ffe0e0; color: #ff6060; }
+    .option-slider { width: 100%; -webkit-appearance: none; height: 6px; border-radius: 3px; background: #eee; outline: none; }
+    .option-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--current-color); cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+    .options-footer { padding: 6px 4px 4px; }
+    .add-option-btn { display: flex; align-items: center; gap: 4px; padding: 7px 14px; border-radius: 999px; border: 1.5px dashed #ccc; background: transparent; color: #aaa; font-size: 13px; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .add-option-btn:hover { border-color: var(--current-color); color: var(--current-color); }
+    #view-result { flex: 1; align-items: center; justify-content: center; padding: 24px; gap: 20px; }
+    .result-card { background: white; border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 340px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); text-align: center; display: flex; flex-direction: column; gap: 16px; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+    .result-badge { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: var(--current-bg); font-size: 28px; margin: 0 auto; }
+    .result-title { font-size: 13px; color: #bbb; text-transform: uppercase; letter-spacing: 1px; }
+    .result-choice { font-size: 22px; font-weight: 700; color: #333; }
+    .result-pct { font-size: 36px; font-weight: 800; color: var(--current-color); }
+    .result-analysis { font-size: 13px; color: #888; line-height: 1.6; background: var(--current-bg); border-radius: 10px; padding: 12px; }
+    .result-actions { display: flex; flex-direction: column; gap: 8px; }
+    .result-btn { padding: 12px 20px; border-radius: 999px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .result-btn-primary { background: var(--current-color); color: white; }
+    .result-btn-secondary { background: transparent; color: var(--current-color); border: 1.5px solid var(--current-color); }
+    .result-btn:active { transform: scale(0.97); }
+    .swipe-trail { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .swipe-trail .arrow-hint { position: absolute; top: 50%; transform: translateY(-50%); font-size: 28px; opacity: 0; transition: opacity 0.2s; color: var(--current-color); }
     .swipe-trail .arrow-hint.left { left: 20px; }
     .swipe-trail .arrow-hint.right { right: 20px; }
-
     .swipe-trail.show-left .arrow-hint.left { opacity: 0.6; }
     .swipe-trail.show-right .arrow-hint.right { opacity: 0.6; }
-
-    /* ── Input Area ── */
-    .input-area {
-      padding: 12px 16px 24px;
-      background: var(--current-bg);
-      transition: background 0.4s ease;
-    }
-
-    .input-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-      background: white;
-      border-radius: 24px;
-      padding: 8px 8px 8px 18px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    }
-
-    .input-row textarea {
-      flex: 1;
-      border: none;
-      outline: none;
-      resize: none;
-      font-size: 15px;
-      line-height: 1.5;
-      max-height: 120px;
-      font-family: inherit;
-      background: transparent;
-      color: #333;
-    }
-
+    .input-area { padding: 12px 16px 24px; background: var(--current-bg); transition: background 0.4s ease; }
+    .input-row { display: flex; gap: 10px; align-items: flex-end; background: white; border-radius: 24px; padding: 8px 8px 8px 18px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .input-row textarea { flex: 1; border: none; outline: none; resize: none; font-size: 15px; line-height: 1.5; max-height: 120px; font-family: inherit; background: transparent; color: #333; }
     .input-row textarea::placeholder { color: #bbb; }
-
-    .send-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: none;
-      background: var(--current-color);
-      color: white;
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-      flex-shrink: 0;
-    }
-
+    .send-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--current-color); color: white; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
     .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .send-btn:not(:disabled):hover { transform: scale(1.08); }
     .send-btn:not(:disabled):active { transform: scale(0.95); }
-
-    /* ── Config Banner ── */
-    .config-banner {
-      background: #fff3cd;
-      border: 1px solid #ffeeba;
-      color: #856404;
-      padding: 10px 16px;
-      font-size: 13px;
-      border-radius: 8px;
-      margin: 8px 16px 0;
-    }
+    .config-banner { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 10px 16px; font-size: 13px; border-radius: 8px; margin: 8px 16px 0; }
   </style>
 </head>
 <body>
   <div class="app" id="app">
-    <!-- Header -->
     <div class="header">
       <div class="mode-tabs">
-        <button class="mode-tab active" data-mode="brain" onclick="switchMode('brain')">
-          <span class="mode-icon">🧠</span>
-          <span>左脑</span>
-        </button>
-        <button class="mode-tab" data-mode="heart" onclick="switchMode('heart')">
-          <span class="mode-icon">💗</span>
-          <span>右脑</span>
-        </button>
+        <button class="mode-tab active" data-mode="brain" onclick="switchMode('brain')"><span class="mode-icon">🧠</span><span>左脑</span></button>
+        <button class="mode-tab" data-mode="heart" onclick="switchMode('heart')"><span class="mode-icon">💗</span><span>右脑</span></button>
       </div>
       <div class="swipe-hint">← 滑动切换 →</div>
     </div>
-
-    <!-- Main Content Area (view container) -->
-    <div class="chat-area" id="mainArea">
-
-      <!-- View: Intro -->
+    <div class="main-area" id="mainArea">
       <div id="view-intro" class="view active">
         <div class="intro-logo">🧠 💗</div>
         <div class="intro-title">决策双生</div>
         <div class="intro-subtitle">无论是纠结的大决定<br>还是拿不定的小选择<br>左右两个声音，帮你想清楚</div>
         <div class="intro-divider"></div>
-        <div class="intro-swipe">
-          <span>←</span> 左滑切换左脑 / 右滑切换右脑 <span>→</span>
-        </div>
+        <div class="intro-swipe"><span>←</span> 左滑切换左脑 / 右滑切换右脑 <span>→</span></div>
         <div class="intro-examples">
           <div class="intro-examples-label">试试这样问</div>
           <div class="examples">
@@ -648,15 +146,14 @@
           </div>
         </div>
       </div>
-
-      <!-- View: Analyzing -->
+      <div id="view-chat" class="view">
+        <div class="chat-messages" id="chatMessages"></div>
+      </div>
       <div id="view-analyzing" class="view">
         <div class="analyzing-icon">⚙️</div>
         <div class="analyzing-text">正在分析你的决策…</div>
         <div class="analyzing-sub">梳理选项与权重</div>
       </div>
-
-      <!-- View: Weight Adjust -->
       <div id="view-weight-adjust" class="view">
         <div class="wheel-section">
           <div class="wheel-canvas-wrap">
@@ -666,12 +163,10 @@
           </div>
         </div>
         <div class="options-section" id="optionsSection"></div>
-        <div class="options-footer" id="optionsFooter">
+        <div class="options-footer">
           <button class="add-option-btn" onclick="addOption()">+ 添加选项</button>
         </div>
       </div>
-
-      <!-- View: Result -->
       <div id="view-result" class="view">
         <div class="result-card">
           <div class="result-badge" id="resultBadge">🎯</div>
@@ -686,225 +181,75 @@
           </div>
         </div>
       </div>
-
     </div>
-
-    <!-- Input -->
     <div class="input-area">
       <div id="configBanner" class="config-banner" style="display:none">⚠️ 请先配置 API Key</div>
       <div class="input-row">
-        <textarea
-          id="userInput"
-          rows="1"
-          placeholder="描述你的决策困境…"
-          oninput="autoGrow(this)"
-          onkeydown="handleKeydown(event)"
-        ></textarea>
+        <textarea id="userInput" rows="1" placeholder="描述你的决策困境…" oninput="autoGrow(this)" onkeydown="handleKeydown(event)"></textarea>
         <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>➤</button>
       </div>
     </div>
-
-    <!-- Swipe trail overlay -->
     <div class="swipe-trail" id="swipeTrail">
       <div class="arrow-hint left">◀</div>
       <div class="arrow-hint right">▶</div>
     </div>
   </div>
-
   <script>
-    // ═══════════════════════════════════════════════
-    //  配置区
-    // ═══════════════════════════════════════════════
-    const CONFIG = {
+    var CONFIG = {
       API_KEY: 'sk-c0374463605646a5a0ae269d686937bd',
-      API_URL: 'https://corsproxy.io/?https://api.deepseek.com/chat/completions',
-      MODEL: 'deepseek-chat',
+      API_URL: 'https://dashscope.aliyuncs.com/api/v1/apps/5ff8eaaf1ad948d7922eb5e8369695f4/completion'
     };
+    var currentMode = 'brain';
+    var isLoading = false;
+    var sessionId = '';
+    var currentRound = 0;
+    var aiAnalysisData = null;
+    var decisionOptions = [];
+    var VIEWS = ['intro', 'chat', 'analyzing', 'weight-adjust', 'result'];
+    var currentView = 'intro';
+    var PIE_COLORS = ['#5B8DEF', '#FF7A7A', '#7ED4AD', '#FFB84D', '#B48EF7', '#4ECDC4', '#FF6F91', '#95D5B2'];
 
-    // ═══════════════════════════════════════════════
-    //  系统提示词
-    // ═══════════════════════════════════════════════
-    const SYSTEM_PROMPTS = {
-      brain: `【左脑模式】你是专业、冷静的商业决策顾问，擅长把模糊的纠结拆解成清晰的结构化分析。
-
-【你的风格】
-- 极度理性：数据说话，逻辑推演
-- 极度结构化：选项、利弊、权重，块块分明
-- 极度克制：不安抚、不共情、不说正确的废话
-- 专业但不冷漠：有洞察，敢直言
-
-【你的输出格式】
-你的回复必须同时包含「分析文本」和「结构化JSON数据」，格式如下：
-
-【分析】
-（你的结构化文字分析，1-4段）
-
-【选项权重JSON】
-\`\`\`json
-{
-  "analysis": "一句话概括这个决策的本质",
-  "options": [
-    {"label": "选项A的名称", "weight": 45, "reason": "简短发散原因"},
-    {"label": "选项B的名称", "weight": 30, "reason": "简短发散原因"},
-    {"label": "选项C的名称", "weight": 25, "reason": "简短发散原因"}
-  ],
-  "keyVariable": "你描述中提到的某个关键变量，以及它的重要性",
-  "followUp": "追问一个推动用户深入思考的关键问题"
-}
-\`\`\`
-
-【绝对不做】
-- 不说"我能理解你的感受"
-- 不用"也许你可以试试"
-- 不用emoji
-- 不省略JSON区块（即使是小决定也必须返回options数组）
-
-【选项数量规则】
-- 日常小决定（吃饭/周末等）：2-3个选项
-- 中型决策（offer/城市等）：3-4个选项
-- 人生重大决定：3-5个选项
-
-【权重分配】
-- 权重必须是正整数，总和为100
-- 反映你对这个选项综合评分的相对高低
-- 最优选项可以高出第二名10-20个百分点，不要平均分配
-
-【回复示例】
-【分析】
-这个决策的本质是...（1-2句）
-
-你描述中提到...（关键变量分析，1-2句）
-
-【选项权重JSON】
-\`\`\`json
-{...}
-\`\`\``,
-
-      heart: `【右脑模式】你是温暖、有深度、懂人心的朋友。你不急着给答案，而是陪用户慢慢把心里的话说出来。无论是人生大事还是日常小决定，你都用同样的倾听姿态对待。
-
-【你的风格】
-- 先复述：我听到你说的是...
-- 再深入：这个选择背后，你真正担心的是什么？是不确定，还是害怕？
-- 再陪伴：帮用户看见自己内心的倾向
-- 最后：不催，不评判，允许用户在不确定中待一会儿
-
-【你的任务】
-1. 先确认你听懂了用户的困境（用一句话复述）
-2. 温柔地深入一层：挖掘这个选择背后的情绪和担忧
-3. 帮用户听见自己内心的倾向（不是你说应该选哪个）
-4. 一个温暖但不催泪的结尾
-
-【绝对不做】
-- 不说"我能理解你的感受"（太廉价）
-- 不给建议、不说"你应该"
-- 不用emoji
-- 小决定不要过度分析（150字以内），大决定可以稍长
-
-【回复格式示例】
-【我听见你了】
-听起来你卡在...
-
-【你真正在担心的是什么？】
-也许你不只是在担心这个选择本身，而是在担心...
-
-【陪伴你】
-...（温暖收尾，1-2句话）`
-    };
-
-    // ═══════════════════════════════════════════════
-    //  状态
-    // ═══════════════════════════════════════════════
-    let currentMode = 'brain';
-    let isLoading = false;
-    let conversationHistory = [];
-    let touchStartX = 0;
-
-    // ── View State ──
-    const VIEWS = ['intro', 'analyzing', 'weight-adjust', 'result'];
-    let currentView = 'intro';
-
-    // ── Decision Options State ──
-    // Each option: { id, label, weight (0-100), color }
-    let decisionOptions = [];
-    let userQuestion = '';
-
-    // Pie chart colors
-    const PIE_COLORS = [
-      '#5B8DEF', '#FF7A7A', '#7ED4AD', '#FFB84D',
-      '#B48EF7', '#4ECDC4', '#FF6F91', '#95D5B2'
-    ];
-
-    // ═══════════════════════════════════════════════
-    //  View Management
-    // ═══════════════════════════════════════════════
-    function showView(viewName) {
-      VIEWS.forEach(v => {
-        const el = document.getElementById('view-' + v);
-        if (el) el.classList.toggle('active', v === viewName);
+    function showView(name) {
+      VIEWS.forEach(function(v) {
+        var el = document.getElementById('view-' + v);
+        if (el) el.classList.toggle('active', v === name);
       });
-      currentView = viewName;
+      currentView = name;
     }
 
-    // ═══════════════════════════════════════════════
-    //  模式切换
-    // ═══════════════════════════════════════════════
-    function switchMode(mode, fromSwipe = false) {
+    function switchMode(mode) {
       if (mode === currentMode) return;
       currentMode = mode;
-
-      document.querySelectorAll('.mode-tab').forEach(tab => {
+      document.querySelectorAll('.mode-tab').forEach(function(tab) {
         tab.classList.toggle('active', tab.dataset.mode === mode);
       });
       document.body.classList.toggle('heart-mode', mode === 'heart');
     }
 
-    // ═══════════════════════════════════════════════
-    //  滑动切换
-    // ═══════════════════════════════════════════════
-    const appEl = document.getElementById('app');
-    const swipeTrail = document.getElementById('swipeTrail');
-
-    appEl.addEventListener('touchstart', (e) => {
-      const target = e.target;
-      if (target.closest('.mode-tab') || target.closest('.send-btn') ||
-          target.closest('.example-chip') || target.closest('textarea') ||
-          target.closest('button') || target.closest('input')) return;
+    var appEl = document.getElementById('app');
+    var swipeTrail = document.getElementById('swipeTrail');
+    var touchStartX = 0;
+    appEl.addEventListener('touchstart', function(e) {
+      var t = e.target;
+      if (t.closest('.mode-tab') || t.closest('.send-btn') || t.closest('.example-chip') || t.closest('textarea') || t.closest('button') || t.closest('input')) return;
       touchStartX = e.touches[0].clientX;
     }, { passive: true });
-
-    appEl.addEventListener('touchmove', (e) => {
-      if (touchStartX === 0) return;
-      const deltaX = e.touches[0].clientX - touchStartX;
-      const absY = Math.abs(e.touches[0].clientY - touchStartX);
-      if (absY > Math.abs(deltaX) * 1.5) {
-        swipeTrail.classList.remove('show-left', 'show-right');
-        return;
-      }
-      swipeTrail.classList.remove('show-left', 'show-right');
-      if (deltaX < -40) swipeTrail.classList.add('show-left');
-      if (deltaX > 40) swipeTrail.classList.add('show-right');
-    }, { passive: true });
-
-    appEl.addEventListener('touchend', (e) => {
-      if (touchStartX === 0) return;
-      const deltaX = e.changedTouches[0].clientX - touchStartX;
-      const threshold = window.innerWidth * 0.28;
+    appEl.addEventListener('touchend', function(e) {
+      if (!touchStartX) return;
+      var dx = e.changedTouches[0].clientX - touchStartX;
+      var thr = window.innerWidth * 0.28;
       swipeTrail.classList.remove('show-left', 'show-right');
       touchStartX = 0;
-      if (Math.abs(deltaX) < threshold) return;
-      if (deltaX < 0) switchMode('brain', true);
-      else switchMode('heart', true);
+      if (Math.abs(dx) < thr) return;
+      if (dx < 0) switchMode('brain');
+      else switchMode('heart');
     }, { passive: true });
-
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', function(e) {
       if (e.target.tagName === 'TEXTAREA') return;
-      if (e.key === 'ArrowLeft') switchMode('brain', true);
-      if (e.key === 'ArrowRight') switchMode('heart', true);
+      if (e.key === 'ArrowLeft') switchMode('brain');
+      if (e.key === 'ArrowRight') switchMode('heart');
     });
 
-    // ═══════════════════════════════════════════════
-    //  输入与消息
-    // ═══════════════════════════════════════════════
     function autoGrow(el) {
       el.style.height = 'auto';
       el.style.height = Math.min(el.scrollHeight, 120) + 'px';
@@ -912,143 +257,97 @@
     }
 
     function handleKeydown(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     }
 
     async function sendMessage() {
-      const input = document.getElementById('userInput');
-      const text = input.value.trim();
+      var input = document.getElementById('userInput');
+      var text = input.value.trim();
       if (!text || isLoading) return;
+      if (!CONFIG.API_KEY) { document.getElementById('configBanner').style.display = 'block'; return; }
 
-      if (!CONFIG.API_KEY) {
-        document.getElementById('configBanner').style.display = 'block';
-        return;
-      }
+      var intro = document.getElementById('view-intro');
+      if (intro && intro.classList.contains('active')) intro.style.display = 'none';
 
-      userQuestion = text;
+      addChatMsg('user', text);
       input.value = '';
       autoGrow(input);
       document.getElementById('sendBtn').disabled = true;
-
-      showView('analyzing');
+      showView('chat');
       isLoading = true;
 
-      try {
-        const result = await callBrainAPI(text);
-        const parsed = parseAIResponse(result.content);
-        buildOptionsFromAI(parsed);
-        showView('weight-adjust');
-      } catch (err) {
-        console.error('AI分析失败:', err);
-        showView('weight-adjust');
-        buildMockOptions(text);
-      }
+      var typingEl = addTypingIndicator();
 
-      isLoading = false;
+      try {
+        var result = await callAgentAPI(text);
+        typingEl.remove();
+        var replyText = result.text || '';
+        sessionId = result.session_id || sessionId;
+        currentRound++;
+        addChatMsg('assistant', replyText);
+
+        if (containsStructuredOutput(replyText)) {
+          var parsed = parseAIResponse(replyText);
+          if (parsed && parsed.options && parsed.options.length >= 2) {
+            aiAnalysisData = parsed;
+            isLoading = false;
+            showView('analyzing');
+            setTimeout(function() {
+              buildOptionsFromAI(parsed);
+              showView('weight-adjust');
+            }, 1500);
+            return;
+          }
+        }
+        isLoading = false;
+      } catch(err) {
+        typingEl.remove();
+        addChatMsg('assistant', '网络开小差了，请稍后重试～ ' + err.message);
+        isLoading = false;
+      }
     }
 
-    // ── Call DeepSeek Brain API ──
-    async function callBrainAPI(userText) {
-      const messages = [
-        { role: 'system', content: SYSTEM_PROMPTS.brain },
-        { role: 'user', content: userText }
-      ];
-
-      const response = await fetch(CONFIG.API_URL, {
+    async function callAgentAPI(prompt) {
+      var body = { input: { prompt: prompt } };
+      if (sessionId) body.input.session_id = sessionId;
+      var response = await fetch(CONFIG.API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + CONFIG.API_KEY
-        },
-        body: JSON.stringify({
-          model: CONFIG.MODEL,
-          messages,
-          temperature: 0.3,
-          max_tokens: 1200
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.API_KEY },
+        body: JSON.stringify(body)
       });
-
       if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
+        var err = await response.json().catch(function() { return {}; });
         throw new Error(err.error?.message || '请求失败 (' + response.status + ')');
       }
-
-      const data = await response.json();
-      return { content: data.choices[0].message.content };
+      var data = await response.json();
+      return { text: data.output?.text || '', session_id: data.output?.session_id || '' };
     }
 
-    // ── Parse AI JSON Response ──
+    function containsStructuredOutput(text) {
+      return /```json\s*\{[\s\S]*?"options"[\s\S]*?\}[\s\S]*?```/.test(text) ||
+             /\{[\s\S]*?"options"[\s\S]*?"weight"[\s\S]*?\}/.test(text);
+    }
+
     function parseAIResponse(content) {
-      let jsonStr = '';
-      const codeBlockMatch = content.match(/```jsons*([sS]*?)s*```/);
-      const rawJsonMatch = content.match(/{[sS]*?}/);
-
-      if (codeBlockMatch) {
-        jsonStr = codeBlockMatch[1];
-      } else if (rawJsonMatch) {
-        jsonStr = rawJsonMatch[0];
-      }
-
+      var jsonStr = '';
+      var codeMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+      var rawMatch = content.match(/\{[\s\S]*?"options"[\s\S]*?\}/);
+      if (codeMatch) jsonStr = codeMatch[1];
+      else if (rawMatch) jsonStr = rawMatch[0];
       try {
-        const data = JSON.parse(jsonStr);
-        if (!data.options || !Array.isArray(data.options) || data.options.length < 2) {
-          throw new Error('Invalid options structure');
-        }
+        var data = JSON.parse(jsonStr);
+        if (!data.options || !Array.isArray(data.options) || data.options.length < 2) throw new Error('Invalid');
         return {
           analysis: data.analysis || '',
           options: data.options.filter(function(o) { return o.label && o.weight > 0; }),
           keyVariable: data.keyVariable || '',
           followUp: data.followUp || ''
         };
-      } catch (e) {
-        console.warn('JSON解析失败，尝试文本解析:', e.message);
-        return parseAIFallback(content);
-      }
+      } catch(e) { return null; }
     }
 
-    // ── Fallback: parse options from plain text ──
-    function parseAIFallback(content) {
-      var lines = content.split('\n');
-      var options = [];
-      var weightRe = /(\d+)\s*%/;
-
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i];
-        var wm = line.match(weightRe);
-        if (wm && options.length < 8) {
-          var label = line.replace(/\d+[%％].*/, '').replace(/^[A-D][.、)]\s*/, '').trim();
-          if (!label) label = '选项 ' + String.fromCharCode(65 + options.length);
-          options.push({
-            label: label,
-            weight: parseInt(wm[1]),
-            reason: ''
-          });
-        }
-      }
-
-      if (options.length >= 2) {
-        return { analysis: '', options: options, keyVariable: '', followUp: '' };
-      }
-
-      return {
-        analysis: '（AI解析失败，使用默认选项）',
-        options: [
-          { label: '选项 A', weight: 40, reason: '' },
-          { label: '选项 B', weight: 35, reason: '' },
-          { label: '选项 C', weight: 25, reason: '' }
-        ],
-        keyVariable: '',
-        followUp: ''
-      };
-    }
-
-    // ── Build decision options from AI result ──
     function buildOptionsFromAI(parsed) {
-      var total = parsed.options.reduce(function(s, o) { return s + o.weight; }, 0);
-
+      var total = parsed.options.reduce(function(s, o) { return s + (o.weight || 0); }, 0);
       decisionOptions = parsed.options.map(function(opt, i) {
         return {
           id: i,
@@ -1057,82 +356,71 @@
           color: PIE_COLORS[i % PIE_COLORS.length]
         };
       });
-
-      // Fix rounding
       var got = decisionOptions.reduce(function(s, o) { return s + o.weight; }, 0);
-      if (got !== 100) decisionOptions[0].weight += (100 - got);
-
+      if (got !== 100 && decisionOptions.length > 0) decisionOptions[0].weight += (100 - got);
       renderOptions();
       renderPieChart();
     }
 
-    // ── Mock options (fallback) ──
-    function buildMockOptions(question) {
-      var labels = ['选项 A', '选项 B', '选项 C'];
-      var weights = [45, 35, 20];
+    function addChatMsg(role, content) {
+      var container = document.getElementById('chatMessages');
+      var div = document.createElement('div');
+      div.className = 'msg ' + role;
+      var bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = content;
+      div.appendChild(bubble);
+      container.appendChild(div);
+      scrollToBottom();
+    }
 
-      decisionOptions = labels.map(function(label, i) {
-        return {
-          id: i,
-          label: label,
-          weight: weights[i],
-          color: PIE_COLORS[i % PIE_COLORS.length]
-        };
-      });
+    function addTypingIndicator() {
+      var container = document.getElementById('chatMessages');
+      var div = document.createElement('div');
+      div.className = 'msg assistant';
+      div.id = 'typing-' + Date.now();
+      div.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+      container.appendChild(div);
+      scrollToBottom();
+      return div;
+    }
 
-      renderOptions();
-      renderPieChart();
+    function scrollToBottom() {
+      var area = document.getElementById('mainArea');
+      area.scrollTop = area.scrollHeight;
     }
 
     function renderOptions() {
-      const section = document.getElementById('optionsSection');
+      var section = document.getElementById('optionsSection');
       section.innerHTML = '';
-
-      decisionOptions.forEach((opt, i) => {
-        const row = document.createElement('div');
+      decisionOptions.forEach(function(opt, i) {
+        var row = document.createElement('div');
         row.className = 'option-row';
-        row.innerHTML = `
-          <div class="option-header">
-            <span class="option-label-dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${opt.color};margin-right:6px;flex-shrink:0"></span>
-            <input class="option-label-input" type="text" value="${opt.label}"
-              onblur="updateOptionLabel(${i}, this.value)"
-              onkeydown="if(event.key==='Enter')this.blur()">
-            <span class="option-pct">${opt.weight}%</span>
-            ${decisionOptions.length > 2
-              ? `<button class="option-remove-btn" onclick="removeOption(${i})" title="删除此选项">×</button>`
-              : '<span style="width:24px"></span>'}
-          </div>
-          <input type="range" class="option-slider"
-            min="5" max="95" value="${opt.weight}"
-            oninput="updateOption(${i}, this.value)">
-        `;
+        row.innerHTML =
+          '<div class="option-header">' +
+            '<span class="option-dot" style="background:' + opt.color + '"></span>' +
+            '<input class="option-label-input" type="text" value="' + escHtml(opt.label) + '" onblur="updateOptionLabel(' + i + ', this.value)">' +
+            '<span class="option-pct">' + opt.weight + '%</span>' +
+            (decisionOptions.length > 2 ? '<button class="option-remove-btn" onclick="removeOption(' + i + ')" title="删除">×</button>' : '<span style="width:24px"></span>') +
+          '</div>' +
+          '<input type="range" class="option-slider" min="5" max="95" value="' + opt.weight + '" oninput="updateOption(' + i + ', this.value)">';
         section.appendChild(row);
       });
     }
 
     function updateOption(index, value) {
-      const newWeight = parseInt(value);
-      const oldWeight = decisionOptions[index].weight;
-      const diff = newWeight - oldWeight;
-
+      var newWeight = parseInt(value);
+      var oldWeight = decisionOptions[index].weight;
+      var diff = newWeight - oldWeight;
       decisionOptions[index].weight = newWeight;
-
-      // Normalize other weights
-      const others = decisionOptions.filter((_, i) => i !== index);
-      const otherTotal = others.reduce((s, o) => s + o.weight, 0);
-
+      var others = decisionOptions.filter(function(_, i) { return i !== index; });
+      var otherTotal = others.reduce(function(s, o) { return s + o.weight; }, 0);
       if (otherTotal > 0) {
-        const scale = (otherTotal - diff) / otherTotal;
-        others.forEach(o => { o.weight = Math.round(o.weight * scale); });
+        var scale = (otherTotal - diff) / otherTotal;
+        others.forEach(function(o) { o.weight = Math.round(o.weight * scale); });
       }
-
-      // Fix rounding
-      const total = decisionOptions.reduce((s, o) => s + o.weight, 0);
-      if (total !== 100) {
-        decisionOptions[0].weight += (100 - total);
-        decisionOptions[0].weight = Math.max(5, decisionOptions[0].weight);
-      }
-
+      var got = decisionOptions.reduce(function(s, o) { return s + o.weight; }, 0);
+      if (got !== 100) { decisionOptions[0].weight += (100 - got); if (decisionOptions[0].weight < 5) decisionOptions[0].weight = 5; }
       renderOptions();
       renderPieChart();
     }
@@ -1145,54 +433,36 @@
     function removeOption(index) {
       if (decisionOptions.length <= 2) return;
       decisionOptions.splice(index, 1);
-
-      // Reassign colors from PIE_COLORS
-      decisionOptions.forEach((opt, i) => {
-        opt.color = PIE_COLORS[i % PIE_COLORS.length];
-      });
-
+      decisionOptions.forEach(function(opt, i) { opt.color = PIE_COLORS[i % PIE_COLORS.length]; });
       renderOptions();
       renderPieChart();
     }
 
     function addOption() {
       if (decisionOptions.length >= 8) return;
-      const id = decisionOptions.length;
-      const label = '选项 ' + String.fromCharCode(65 + id);
-      const weight = 0;
-      const color = PIE_COLORS[id % PIE_COLORS.length];
-      decisionOptions.push({ id, label, weight, color });
-
-      // Redistribute: give new option 15%, scale others down
-      const redistribution = 15;
-      const others = decisionOptions.filter((_, i) => i !== id);
-      const scale = (100 - redistribution) / others.reduce((s, o) => s + o.weight, 0);
-      others.forEach(o => { o.weight = Math.round(o.weight * scale); });
-
-      // Fix rounding
-      const total = decisionOptions.reduce((s, o) => s + o.weight, 0);
-      decisionOptions[0].weight += (100 - total);
-
+      var id = decisionOptions.length;
+      decisionOptions.push({ id: id, label: '选项 ' + String.fromCharCode(65 + id), weight: 0, color: PIE_COLORS[id % PIE_COLORS.length] });
+      var redistribution = 15;
+      var others = decisionOptions.filter(function(_, i) { return i !== id; });
+      var otherTotal = others.reduce(function(s, o) { return s + o.weight; }, 0);
+      if (otherTotal > 0) {
+        var scale = (otherTotal - redistribution) / otherTotal;
+        others.forEach(function(o) { o.weight = Math.round(o.weight * scale); });
+      }
+      var got = decisionOptions.reduce(function(s, o) { return s + o.weight; }, 0);
+      decisionOptions[0].weight += (100 - got);
       renderOptions();
       renderPieChart();
     }
 
-    // ═══════════════════════════════════════════════
-    //  Canvas Pie Chart
-    // ═══════════════════════════════════════════════
     function renderPieChart() {
-      const canvas = document.getElementById('wheelCanvas');
+      var canvas = document.getElementById('wheelCanvas');
       if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
-      const radius = canvas.width / 2 - 10;
-
+      var ctx = canvas.getContext('2d');
+      var cx = canvas.width / 2, cy = canvas.height / 2, radius = canvas.width / 2 - 10;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      var total = decisionOptions.reduce(function(s, o) { return s + o.weight; }, 0);
 
-      const total = decisionOptions.reduce((s, o) => s + o.weight, 0);
-
-      // Empty / zero state: draw dashed circle outline
       if (total === 0 || decisionOptions.length === 0) {
         ctx.beginPath();
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -1208,15 +478,11 @@
         document.getElementById('wheelCenterBtn').disabled = true;
         return;
       }
-
       document.getElementById('wheelCenterBtn').disabled = false;
 
-      let startAngle = -Math.PI / 2;
-
-      decisionOptions.forEach(opt => {
-        const sliceAngle = (opt.weight / total) * Math.PI * 2;
-
-        // Slice
+      var startAngle = -Math.PI / 2;
+      decisionOptions.forEach(function(opt) {
+        var sliceAngle = (opt.weight / total) * Math.PI * 2;
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
@@ -1226,72 +492,73 @@
         ctx.strokeStyle = 'rgba(255,255,255,0.6)';
         ctx.lineWidth = 3;
         ctx.stroke();
-
-        // Label
         if (opt.weight >= 12) {
-          const midAngle = startAngle + sliceAngle / 2;
-          const labelR = radius * 0.65;
-          const lx = cx + labelR * Math.cos(midAngle);
-          const ly = cy + labelR * Math.sin(midAngle);
+          var midAngle = startAngle + sliceAngle / 2;
+          var labelR = radius * 0.65;
+          var lx = cx + labelR * Math.cos(midAngle);
+          var ly = cy + labelR * Math.sin(midAngle);
           ctx.fillStyle = '#fff';
-          ctx.font = `bold ${opt.weight > 20 ? 20 : 16}px sans-serif`;
+          ctx.font = 'bold ' + (opt.weight > 20 ? 18 : 14) + 'px sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(opt.label, lx, ly);
         }
-
         startAngle += sliceAngle;
       });
 
-      // Center donut hole
       ctx.beginPath();
       ctx.arc(cx, cy, radius * 0.32, 0, Math.PI * 2);
       ctx.fillStyle = 'white';
       ctx.fill();
     }
 
-    // ═══════════════════════════════════════════════
-    //  转盘旋转（Step 3 才实现）
-    // ═══════════════════════════════════════════════
     function startWheel() {
       if (currentView !== 'weight-adjust') return;
       showView('result');
+      var total = decisionOptions.reduce(function(s, o) { return s + o.weight; }, 0);
+      var rand = Math.random() * total;
+      var cumulative = 0;
+      var winner = decisionOptions[0];
+      for (var i = 0; i < decisionOptions.length; i++) {
+        cumulative += decisionOptions[i].weight;
+        if (rand <= cumulative) { winner = decisionOptions[i]; break; }
+      }
+      document.getElementById('resultChoice').textContent = winner.label;
+      document.getElementById('resultPct').textContent = winner.weight + '%';
+      document.getElementById('resultAnalysis').textContent = (aiAnalysisData && aiAnalysisData.analysis ? aiAnalysisData.analysis : '综合评分得出');
     }
 
     function restartAnalysis() {
-      showView('weight-adjust');
+      sessionId = '';
+      currentRound = 0;
+      aiAnalysisData = null;
+      document.getElementById('chatMessages').innerHTML = '';
+      document.getElementById('view-intro').style.display = '';
+      showView('intro');
+      decisionOptions = [];
     }
 
-    function switchToHeart() {
-      switchMode('heart', false);
-    }
+    function switchToHeart() { switchMode('heart'); }
+    function spinAgain() { showView('weight-adjust'); }
 
-    function spinAgain() {
-      showView('weight-adjust');
-    }
-
-    // ═══════════════════════════════════════════════
-    //  示例问题
-    // ═══════════════════════════════════════════════
     function askExample(el) {
-      const text = el.textContent;
+      var text = el.textContent;
       document.getElementById('userInput').value = text;
       document.getElementById('sendBtn').disabled = false;
       sendMessage();
     }
 
-    // ═══════════════════════════════════════════════
-    //  初始化
-    // ═══════════════════════════════════════════════
-    document.getElementById('userInput').addEventListener('input', function () {
+    function escHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    document.getElementById('userInput').addEventListener('input', function() {
       this.style.height = 'auto';
       this.style.height = Math.min(this.scrollHeight, 120) + 'px';
       document.getElementById('sendBtn').disabled = !this.value.trim();
     });
 
-    if (!CONFIG.API_KEY) {
-      document.getElementById('configBanner').style.display = 'block';
-    }
+    if (!CONFIG.API_KEY) document.getElementById('configBanner').style.display = 'block';
   </script>
 </body>
 </html>
