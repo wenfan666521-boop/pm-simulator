@@ -1011,16 +1011,15 @@
 
     // ── Fallback: parse options from plain text ──
     function parseAIFallback(content) {
-      var lines = content.split('
-');
+      var lines = content.split('\n');
       var options = [];
-      var weightRe = /(d+)s*%/;
+      var weightRe = /(\d+)\s*%/;
 
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
         var wm = line.match(weightRe);
         if (wm && options.length < 8) {
-          var label = line.replace(/d+[%％].*/, '').replace(/^[A-D][.、)]s*/, '').trim();
+          var label = line.replace(/\d+[%％].*/, '').replace(/^[A-D][.、)]\s*/, '').trim();
           if (!label) label = '选项 ' + String.fromCharCode(65 + options.length);
           options.push({
             label: label,
