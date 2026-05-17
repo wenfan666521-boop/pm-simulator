@@ -61,7 +61,7 @@ const SECRET_ACHIEVEMENTS = [
     name: '一枪穿云',
     description: '枪声所响起的方向，周泽楷就是规则',
     giftReward: 0,
-    check: () => fishes.filter(f => f.type === '🔫').length >= 1 && fishes.filter(f => f.type === '☁').length >= 1
+    check: () => fishes.filter(f => f.type === '🎯').length >= 1 && fishes.filter(f => f.type === '☁️').length >= 1
   },
   {
     id: 'fan_hua_xue_jing',
