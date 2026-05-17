@@ -69,6 +69,13 @@ const SECRET_ACHIEVEMENTS = [
     description: '枪响，雷鸣，繁花血景',
     giftReward: 0,
     check: () => fishes.filter(f => f.type === '🩸').length >= 1 && fishes.filter(f => f.type === '🌸').length >= 1
+  },
+  {
+    id: 'bai_hua_liao_luan',
+    name: '百花缭乱',
+    description: '张佳乐，你为什么要走',
+    giftReward: 0,
+    check: () => fishes.filter(f => f.type === '💯').length >= 1 && fishes.filter(f => f.type === '🌸').length >= 1
   }
 ];
 
@@ -241,14 +248,6 @@ const ACHIEVEMENTS = [
     giftReward: 1,
     unlockHint: '获得✂️和🍁',
     check: () => fishes.filter(f => f.type === '✂️').length >= 1 && fishes.filter(f => f.type === '🍁').length >= 1
-  },
-  {
-    id: 'bai_hua_liao_luan',
-    name: '百花缭乱',
-    description: '张佳乐，你为什么要走',
-    giftReward: 1,
-    unlockHint: '拥有💯和🌸',
-    check: () => fishes.filter(f => f.type === '💯').length >= 1 && fishes.filter(f => f.type === '🌸').length >= 1
   }
 ];
 
