@@ -979,6 +979,9 @@
     tank.appendChild(fish);
     setTimeout(() => fish.classList.remove('fish-new'), 5000);
 
+    // 设置收藏长按触发
+    setupCollectionLongPress(fish, fish.id);
+
     // 注册到鱼群数组(驱动游动)
     fishes.push({
       id: fish.id,
@@ -987,7 +990,13 @@
       y: y,
       dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
       dy: (Math.random() - 0.5) * 3,
-      feedCount: 0
+      feedCount: 0,
+      collected: true,
+      collectedAt: Date.now(),
+      sender: currentReceivedGift.sender,
+      blessing: currentReceivedGift.blessing,
+      name: '',
+      description: ''
     });
 
     // 更新统计
