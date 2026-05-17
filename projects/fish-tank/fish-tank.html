@@ -1003,6 +1003,7 @@
     // 更新统计
     stats.giftsReceived++;
     saveFishToStorage();
+    checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)
 
     // 关闭弹窗
@@ -1136,7 +1137,8 @@
     // 更新统计
     stats.giftsReceived++;
     saveFishToStorage();
-    checkSecretAchievements();
+    checkAchievements(); // 检查普通成就
+    checkSecretAchievements(); // 检查隐藏成就
 
     // 关闭面板
     closeGiftPanel();
@@ -1286,6 +1288,7 @@
     // 更新统计
     stats.giftsReceived++;
     saveFishToStorage();
+    checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)
 
     // 显示祝福弹窗
