@@ -1624,39 +1624,53 @@
     document.body.appendChild(overlay);
   }
 
-
   // 确认收藏（弹出输入名字/描述的框）
   function confirmCollectFish(fishId) {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;';
 
-    overlay.innerHTML = `
-      <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:25px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">
-        <div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:15px;">⭐ 收藏这条鱼</div>
-        <input type="text" id="collectNameInput" placeholder="给鱼起个名字（选填）" maxlength="20" style="width:100%;padding:10px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none;">
-        <textarea id="collectDescInput" placeholder="描述（选填，最多100字）" maxlength="100" rows="2" style="width:100%;padding:10px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;resize:none;box-sizing:border-box;margin-bottom:15px;outline:none;"></textarea>
-        <div style="display:flex;gap:10px;">
-          <button onclick="this.parentNode.parentNode.parentNode.remove()" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:13px;">取消</button>
-          <button onclick="doCollectFish('\${fishId}');" style="flex:1;padding:10px;border:none;border-radius:10px;background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;cursor:pointer;font-size:13px;font-weight:bold;">确认</button>
-        </div>
-      </div>`;
+    var html = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:25px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">';
+    html += '<div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:15px;">⭐ 收藏这条鱼</div>';
+    html += '<input type="text" id="collectNameInput" placeholder="给鱼起个名字（选填）" maxlength="20" style="width:100%;padding:10px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none;">';
+    html += '<textarea id="collectDescInput" placeholder="描述（选填，最多100字）" maxlength="100" rows="2" style="width:100%;padding:10px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;resize:none;box-sizing:border-box;margin-bottom:15px;outline:none;"></textarea>';
+    html += '<div style="display:flex;gap:10px;">';
+    html += '<button id="cancelCollectBtn" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:13px;">取消</button>';
+    html += '<button id="confirmCollectBtn" style="flex:1;padding:10px;border:none;border-radius:10px;background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;cursor:pointer;font-size:13px;font-weight:bold;">确认</button>';
+    html += '</div></div>';
+    overlay.innerHTML = html;
 
     document.body.appendChild(overlay);
     document.getElementById('collectNameInput').focus();
+
+    // 用闭包绑定，不依赖 onclick 字符串
+    document.getElementById('cancelCollectBtn').addEventListener('click', function() {
+      overlay.remove();
+    });
+    document.getElementById('confirmCollectBtn').addEventListener('click', function() {
+      var name = document.getElementById('collectNameInput').value.trim();
+      var desc = document.getElementById('collectDescInput').value.trim();
+      var fishData = fishes.find(function(f) { return f.id === fishId; });
+      if (!fishData) return;
+      fishData.collected = true;
+      fishData.name = name;
+      fishData.description = desc;
+      fishData.collectedAt = Date.now();
+      overlay.remove();
+      saveFishToStorage();
+      showToast('⭐ 收藏成功');
+    });
   }
 
-  // 执行收藏
+  // 执行收藏（已由 confirmCollectFish 的闭包处理，此函数保留作备用）
   function doCollectFish(fishId) {
-    const fishData = fishes.find(f => f.id === fishId);
+    var fishData = fishes.find(function(f) { return f.id === fishId; });
     if (!fishData) return;
-    const overlay = document.querySelector('div[style*="z-index:1001"]');
-    const name = document.getElementById('collectNameInput').value.trim();
-    const desc = document.getElementById('collectDescInput').value.trim();
+    var name = (document.getElementById('collectNameInput') || {value: ''}).value.trim();
+    var desc = (document.getElementById('collectDescInput') || {value: ''}).value.trim();
     fishData.collected = true;
     fishData.name = name;
     fishData.description = desc;
     fishData.collectedAt = Date.now();
-    if (overlay) overlay.remove();
     saveFishToStorage();
     showToast('⭐ 收藏成功');
   }
