@@ -2351,7 +2351,7 @@
         }
 
         tank.appendChild(fish);
-        fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount, isSpecial: isSpecialFish, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null });
+        fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount, isSpecial: isSpecialFish, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null, sender: f.sender || '', blessing: f.blessing || '' });
 
         // 恢复收藏长按触发
         setupCollectionLongPress(fish, fish.id);
