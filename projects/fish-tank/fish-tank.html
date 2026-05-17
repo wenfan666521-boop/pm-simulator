@@ -1590,96 +1590,116 @@
   }
 
   // 显示收藏菜单
+  // 长按菜单（收藏/取消收藏/删除）
   function showCollectionMenu(fishId) {
     const fishData = fishes.find(f => f.id === fishId);
     if (!fishData) return;
-    const fishEl = document.getElementById(fishId);
-
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
-    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
 
     const isCollected = fishData.collected;
-    const starIcon = isCollected ? '⭐' : '☆';
+    const isGift = !!fishData.sender;
 
-    overlay.innerHTML = `
-      <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:300px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">
-        <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">
-          ${starIcon} ${isCollected ? '已收藏鱼' : '收藏这条鱼'}
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    overlay.innerHTML = \`
+      <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:25px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">
+        <div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:20px;">
+          \${fishData.type.startsWith('assets/') ? \`<img src="\${fishData.type}" style="width:36px;height:36px;vertical-align:middle;">\` : fishData.type}
+          \${isGift ? '<span style="margin-left:8px;font-size:12px;opacity:0.6;">🎁礼物鱼</span>' : ''}
         </div>
-        ${isCollected ? `
-          <div style="margin-bottom:15px;padding:10px;background:rgba(255,255,255,0.1);border-radius:10px;text-align:center;font-size:16px;">
-            ${fishData.type.startsWith('assets/') ? `<img src="${fishData.type}" style="width:40px;height:40px;vertical-align:middle;">` : fishData.type}
-            <span style="margin-left:8px;">${fishData.name || '(无名字)'}</span>
-          </div>
-        ` : ''}
-        ${!isCollected ? `
-          <div style="margin-bottom:15px;">
-            <input type="text" id="collectNameInput" placeholder="给鱼起个名字（选填）" maxlength="20" style="width:100%;padding:12px 15px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;box-sizing:border-box;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2);transition:all 0.2s ease;outline:none;">
-          </div>
-          <div style="margin-bottom:15px;">
-            <textarea id="collectDescInput" placeholder="描述（选填，最多100字）" maxlength="100" rows="2" style="width:100%;padding:12px 15px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;resize:none;box-sizing:border-box;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2);transition:all 0.2s ease;outline:none;"></textarea>
-          </div>
-        ` : `
-          <div style="margin-bottom:15px;">
-            <input type="text" id="collectNameInput" placeholder="修改名字" value="${fishData.name || ''}" maxlength="20" style="width:100%;padding:12px 15px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;box-sizing:border-box;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2);transition:all 0.2s ease;outline:none;">
-          </div>
-          <div style="margin-bottom:15px;">
-            <textarea id="collectDescInput" placeholder="修改描述" maxlength="100" rows="2" style="width:100%;padding:12px 15px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;resize:none;box-sizing:border-box;box-shadow:inset 0 2px 4px rgba(0,0,0,0.2);transition:all 0.2s ease;outline:none;">${fishData.description || ''}</textarea>
-          </div>
-        `}
         <div style="display:flex;flex-direction:column;gap:10px;">
-          <button id="confirmCollectBtn" onclick="this.style.transform='scale(0.95)';setTimeout(()=>{this.style.transform=''},100)" onmouseenter="this.style.boxShadow='0 0 20px rgba(102,126,234,0.8)';this.style.filter='brightness(1.1)'" onmouseleave="this.style.boxShadow='';this.style.filter=''" style="padding:12px 20px;border:none;border-radius:12px;background:${isCollected ? 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' : 'linear-gradient(135deg,#f093fb 0%,#f5576c 100%)'};color:#fff;cursor:pointer;font-size:15px;font-weight:bold;box-shadow:0 4px 15px rgba(0,0,0,0.3);transition:all 0.2s ease;text-shadow:0 1px 2px rgba(0,0,0,0.3);">
-            ${isCollected ? '✏️ 保存修改' : '⭐ 确认收藏'}
-          </button>
-          ${isCollected ? `
-            <button id="cancelCollectBtn" onclick="this.style.transform='scale(0.95)';setTimeout(()=>{this.style.transform=''},100)" onmouseenter="this.style.boxShadow='0 0 20px rgba(255,100,100,0.6)';this.style.filter='brightness(1.1)'" onmouseleave="this.style.boxShadow='';this.style.filter=''" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b 0%,#ee5a5a 100%);color:#fff;cursor:pointer;font-size:15px;box-shadow:0 4px 15px rgba(255,100,100,0.3);transition:all 0.2s ease;text-shadow:0 1px 2px rgba(0,0,0,0.3);">💔 取消收藏</button>
-          ` : ''}
-          <button onclick="this.style.transform='scale(0.95)';setTimeout(()=>{this.style.transform='';this.parentNode.parentNode.parentNode.remove()},100)" onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='rgba(255,255,255,0.08)'" style="padding:12px 20px;border:none;border-radius:12px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.7);cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.2);transition:all 0.2s ease;">关闭</button>
+          \${isCollected ? \`
+            <button onclick="uncollectFish('\${fishId}');this.parentNode.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;font-weight:bold;">⭐ 取消收藏</button>
+          \` : \`
+            <button onclick="confirmCollectFish('\${fishId}');this.parentNode.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;cursor:pointer;font-size:14px;font-weight:bold;">⭐ 收藏</button>
+          \`}
+          <button onclick="confirmDeleteFish('\${fishId}');this.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b 0%,#ee5a5a 100%);color:#fff;cursor:pointer;font-size:14px;">🗑️ 删除</button>
+          <button onclick="this.parentNode.parentNode.parentNode.remove()" style="padding:10px 20px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);cursor:pointer;font-size:13px;">关闭</button>
         </div>
-      </div>
-    `;
+      </div>\`;
 
     document.body.appendChild(overlay);
+  }
 
-    // 绑定按钮事件
-    if (isCollected) {
-      overlay.querySelector('#cancelCollectBtn').onclick = () => {
-        fishData.collected = false;
-        fishData.name = '';
-        fishData.description = '';
-        fishData.collectedAt = null;
-        saveFishToStorage();
-        overlay.remove();
-      };
-    }
+  // 确认收藏（弹出输入名字/描述的框）
+  function confirmCollectFish(fishId) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;';
 
-    overlay.querySelector('#confirmCollectBtn').onclick = () => {
-      if (!isCollected) {
-        const name = overlay.querySelector('#collectNameInput').value.trim();
-        fishData.collected = true;
-        fishData.name = name;
-        fishData.description = overlay.querySelector('#collectDescInput').value.trim();
-        fishData.collectedAt = Date.now();
-        overlay.remove();
-        // 显示toast提示
-        const toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;';
-        toast.innerHTML = '收藏成功～';
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 2500);
-      } else {
-        const name = overlay.querySelector('#collectNameInput').value.trim();
-        if (!name) {
-          alert('名字不能为空');
-          return;
-        }
-        fishData.name = name;
-        fishData.description = overlay.querySelector('#collectDescInput').value.trim();
-        saveFishToStorage();
-        overlay.remove();
-      }
-    };
+    overlay.innerHTML = \`
+      <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:25px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">
+        <div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:15px;">⭐ 收藏这条鱼</div>
+        <input type="text" id="collectNameInput" placeholder="给鱼起个名字（选填）" maxlength="20" style="width:100%;padding:10px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none;">
+        <textarea id="collectDescInput" placeholder="描述（选填，最多100字）" maxlength="100" rows="2" style="width:100%;padding:10px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;resize:none;box-sizing:border-box;margin-bottom:15px;outline:none;"></textarea>
+        <div style="display:flex;gap:10px;">
+          <button onclick="this.parentNode.parentNode.parentNode.remove()" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:13px;">取消</button>
+          <button onclick="doCollectFish('\${fishId}');" style="flex:1;padding:10px;border:none;border-radius:10px;background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;cursor:pointer;font-size:13px;font-weight:bold;">确认</button>
+        </div>
+      </div>\`;
+
+    document.body.appendChild(overlay);
+    document.getElementById('collectNameInput').focus();
+  }
+
+  // 执行收藏
+  function doCollectFish(fishId) {
+    const fishData = fishes.find(f => f.id === fishId);
+    if (!fishData) return;
+    const overlay = document.querySelector('div[style*="z-index:1001"]');
+    const name = document.getElementById('collectNameInput').value.trim();
+    const desc = document.getElementById('collectDescInput').value.trim();
+    fishData.collected = true;
+    fishData.name = name;
+    fishData.description = desc;
+    fishData.collectedAt = Date.now();
+    if (overlay) overlay.remove();
+    saveFishToStorage();
+    showToast('⭐ 收藏成功');
+  }
+
+  // 取消收藏
+  function uncollectFish(fishId) {
+    const fishData = fishes.find(f => f.id === fishId);
+    if (!fishData) return;
+    fishData.collected = false;
+    fishData.name = '';
+    fishData.description = '';
+    fishData.collectedAt = null;
+    saveFishToStorage();
+    showToast('☆ 已取消收藏');
+  }
+
+  // 确认删除鱼
+  function confirmDeleteFish(fishId) {
+    const fishData = fishes.find(f => f.id === fishId);
+    if (!fishData) return;
+    const isGift = !!fishData.sender;
+    const msg = isGift
+      ? '🎁 放生后祝福语将丢失，确定要删除这条礼物鱼吗？'
+      : '确定要放生这条鱼吗？';
+    if (!confirm(msg)) return;
+    deleteFish(fishId);
+  }
+
+  // 删除鱼（实际执行）
+  function deleteFish(fishId) {
+    const fishEl = document.getElementById(fishId);
+    if (fishEl) fishEl.remove();
+    fishes = fishes.filter(f => f.id !== fishId);
+    saveFishToStorage();
+    updateFishCount();
+    checkSecretAchievements();
+    showToast('🗑️ 鱼已放生');
+  }
+
+  // Toast提示
+  function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.85);color:#fff;padding:15px 25px;border-radius:12px;font-size:15px;z-index:9999;text-align:center;pointer-events:none;';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
   }
 
   // 添加特殊SVG鱼到鱼缸
