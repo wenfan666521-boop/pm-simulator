@@ -1597,30 +1597,33 @@
 
     const isCollected = fishData.collected;
     const isGift = !!fishData.sender;
+    const fishIcon = fishData.type.startsWith('assets/')
+      ? '<img src="' + fishData.type + '" style="width:36px;height:36px;vertical-align:middle;">'
+      : fishData.type;
+    const giftTag = isGift ? '<span style="margin-left:8px;font-size:12px;opacity:0.6;">🎁礼物鱼</span>' : '';
 
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;';
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
 
-    overlay.innerHTML = `
-      <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:25px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">
-        <div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:20px;">
-          \${fishData.type.startsWith('assets/') ? `<img src="\${fishData.type}" style="width:36px;height:36px;vertical-align:middle;">` : fishData.type}
-          \${isGift ? '<span style="margin-left:8px;font-size:12px;opacity:0.6;">🎁礼物鱼</span>' : ''}
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          \${isCollected ? `
-            <button onclick="uncollectFish('\${fishId}');this.parentNode.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;font-weight:bold;">⭐ 取消收藏</button>
-          ` : `
-            <button onclick="confirmCollectFish('\${fishId}');this.parentNode.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;cursor:pointer;font-size:14px;font-weight:bold;">⭐ 收藏</button>
-          `}
-          <button onclick="confirmDeleteFish('\${fishId}');this.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b 0%,#ee5a5a 100%);color:#fff;cursor:pointer;font-size:14px;">🗑️ 删除</button>
-          <button onclick="this.parentNode.parentNode.parentNode.remove()" style="padding:10px 20px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);cursor:pointer;font-size:13px;">关闭</button>
-        </div>
-      </div>`;
+    var btn1, btn2;
+    if (isCollected) {
+      btn1 = '<button onclick="uncollectFish(\'' + fishId + '\');this.parentNode.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;font-weight:bold;">⭐ 取消收藏</button>';
+    } else {
+      btn1 = '<button onclick="confirmCollectFish(\'' + fishId + '\');this.parentNode.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;cursor:pointer;font-size:14px;font-weight:bold;">⭐ 收藏</button>';
+    }
+    btn2 = '<button onclick="confirmDeleteFish(\'' + fishId + '\');this.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b 0%,#ee5a5a 100%);color:#fff;cursor:pointer;font-size:14px;">🗑️ 删除</button>';
+
+    var html = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:25px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">';
+    html += '<div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:20px;">' + fishIcon + giftTag + '</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:10px;">' + btn1 + btn2;
+    html += '<button onclick="this.parentNode.parentNode.parentNode.remove()" style="padding:10px 20px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);cursor:pointer;font-size:13px;">关闭</button>';
+    html += '</div></div>';
+    overlay.innerHTML = html;
 
     document.body.appendChild(overlay);
   }
+
 
   // 确认收藏（弹出输入名字/描述的框）
   function confirmCollectFish(fishId) {
