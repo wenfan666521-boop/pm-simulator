@@ -739,7 +739,7 @@
       <div id="giftCountDisplay" style="text-align:center;margin-bottom:15px;padding:8px;background:rgba(255,255,255,0.1);border-radius:10px;font-size:12px;color:rgba(255,255,255,0.8);">剩余礼物:${giftCount} 个</div>
       <div class="gift-section">
         <input type="text" id="giftSenderName" placeholder="你的名字">
-        <textarea id="giftBlessing" placeholder="输入祝福语"></textarea>
+        <textarea id="giftBlessing" placeholder="输入祝福语" maxlength="200"></textarea>
         <button id="confirmGiftBtn">生成礼物</button>
       </div>
       <div id="giftLoading" class="gift-section" style="display:none;">
@@ -1012,8 +1012,8 @@
     const senderName = document.getElementById('giftSenderName').value;
     const blessing = document.getElementById('giftBlessing').value.trim();
 
-    if (blessing.length > 50) {
-      alert('祝福语不能超过50字');
+    if (blessing.length > 200) {
+      alert('祝福语不能超过200字');
       return;
     }
 
