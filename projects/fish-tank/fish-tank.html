@@ -1264,7 +1264,13 @@
       y: y,
       dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
       dy: (Math.random() - 0.5) * 3,
-      feedCount: 0
+      feedCount: 0,
+      collected: true,
+      collectedAt: Date.now(),
+      sender: sender,
+      blessing: blessing,
+      name: '',
+      description: ''
     });
 
     // 更新统计
@@ -1340,6 +1346,8 @@
             <span style="font-size:16px;font-weight:bold;">⭐ ${f.name || ('鱼 #' + f.id.split('-')[1])}</span>
           </div>
           ${f.description ? '<div style="font-size:12px;opacity:0.7;margin-left:38px;">' + f.description + '</div>' : ''}
+          ${f.sender ? '<div style="font-size:10px;opacity:0.6;margin-left:38px;margin-top:4px;">来自: ' + f.sender + '</div>' : ''}
+          ${f.blessing ? '<div style="font-size:11px;opacity:0.85;margin-left:38px;margin-top:3px;color:#F7DC6F;font-style:italic;">💬 "' + f.blessing + '"</div>' : ''}
           <div style="font-size:10px;opacity:0.5;margin-left:38px;">收藏于 ${new Date(f.collectedAt).toLocaleDateString()}</div>
         </div>`;
       });
@@ -2223,7 +2231,7 @@
 
   // 保存鱼到localStorage
   function saveFishToStorage() {
-    const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0, isSpecial: f.isSpecial || false, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null }));
+    const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0, isSpecial: f.isSpecial || false, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null, sender: f.sender || '', blessing: f.blessing || '' }));
     const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
     const data = {
       fishes: fishData,
