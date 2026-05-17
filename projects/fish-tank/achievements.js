@@ -55,6 +55,20 @@ const SECRET_ACHIEVEMENTS = [
       const purpleCount = fishes.filter(f => f.type === '🟣').length;
       return snakeCount >= 1 && purpleCount >= 1;
     }
+  },
+  {
+    id: 'yi_qiang_chuan_yun',
+    name: '一枪穿云',
+    description: '枪声所响起的方向，周泽楷就是规则',
+    giftReward: 0,
+    check: () => fishes.filter(f => f.type === '🔫').length >= 1 && fishes.filter(f => f.type === '☁').length >= 1
+  },
+  {
+    id: 'fan_hua_xue_jing',
+    name: '繁花血景',
+    description: '枪响，雷鸣，繁花血景',
+    giftReward: 0,
+    check: () => fishes.filter(f => f.type === '🩸').length >= 1 && fishes.filter(f => f.type === '🌸').length >= 1
   }
 ];
 
@@ -211,6 +225,30 @@ const ACHIEVEMENTS = [
     giftReward: 1,
     unlockHint: '使用还原鱼饵',
     check: () => stats.restoreBaitUsed >= 1
+  },
+  {
+    id: 'zhen_mo_yu',
+    name: '真·摸鱼',
+    description: '难道摸鱼这件事也可以用别人的手替自己摸了吗？',
+    giftReward: 1,
+    unlockHint: '获得🐟️和✋️',
+    check: () => fishes.filter(f => f.type === '🐟️').length >= 1 && fishes.filter(f => f.type === '✋️').length >= 1
+  },
+  {
+    id: 'jian_qiu',
+    name: '剪秋',
+    description: '剪秋，本宫的头好痛',
+    giftReward: 1,
+    unlockHint: '获得✂️和🍁',
+    check: () => fishes.filter(f => f.type === '✂️').length >= 1 && fishes.filter(f => f.type === '🍁').length >= 1
+  },
+  {
+    id: 'bai_hua_liao_luan',
+    name: '百花缭乱',
+    description: '张佳乐，你为什么要走',
+    giftReward: 1,
+    unlockHint: '拥有💯和🌸',
+    check: () => fishes.filter(f => f.type === '💯').length >= 1 && fishes.filter(f => f.type === '🌸').length >= 1
   }
 ];
 
