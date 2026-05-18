@@ -43,18 +43,53 @@
       }
     }
 
-    /* 鱼饵从顶部落下动画 */
-    .food-falling {
+    /* 鱼饵样式（手动投喂） */
+    .bait {
       position: absolute;
-      font-size: 20px;
+      font-size: 24px;
       z-index: 12;
       pointer-events: none;
-      filter: drop-shadow(0 0 10px #ffffff);
-      animation: food-fall 10s ease-in forwards;
+      filter: drop-shadow(0 0 8px rgba(255,200,100,0.8));
+      animation: bait-float 2s ease-in-out infinite;
     }
-    @keyframes food-fall {
-      0% { top: -30px; left: 50%; transform: translateX(-50%); opacity: 1; }
-      100% { top: var(--target-y, 50%); left: var(--target-x, 50%); transform: translateX(-50%); opacity: 1; }
+    @keyframes bait-float {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-8px); }
+    }
+    .bait-eaten {
+      animation: bait-eaten 0.3s ease-out forwards;
+    }
+    @keyframes bait-eaten {
+      0% { transform: translateX(-50%) scale(1); opacity: 1; }
+      100% { transform: translateX(-50%) scale(0); opacity: 0; }
+    }
+    /* 投喂模式提示条 */
+    .feeding-hint {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      z-index: 15;
+      animation: hint-pulse 1.5s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes hint-pulse {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 1; }
+    }
+    /* 鱼吃到鱼饵变大的动画 */
+    .fish-eating {
+      animation: fish-eat 0.4s ease-out forwards;
+    }
+    @keyframes fish-eat {
+      0% { transform: scale(1); filter: drop-shadow(0 0 5px #fff); }
+      50% { transform: scale(1.3); filter: drop-shadow(0 0 20px #ff0); }
+      100% { transform: scale(1.1); filter: drop-shadow(0 0 10px rgba(255,255,255,0.5)); }
     }
     .plant { position: absolute; z-index: 11; }
 
@@ -123,6 +158,7 @@
   <div class="fish-tank" id="fishTank">
     <div class="tank-water" id="tankWater">
       <div class="fish-counter">鱼的数量: <span id="fishCount">0</span></div>
+      <div class="feeding-hint" id="feedingHint" style="display:none;">🍽️ 点击鱼缸任意位置放置鱼饵</div>
     </div>
   </div>
 
@@ -148,6 +184,11 @@
   const ADD_FISH_COOLDOWN = 30 * 60 * 1000; // 30分钟冷却时间
   let lastFeedFishTime = 0; // 上次喂鱼的时间
   const FEED_FISH_COOLDOWN = 15 * 60 * 1000; // 15分钟喂鱼冷却时间
+
+  // 手动投喂模式状态
+  let isFeedingMode = false;
+  let currentBait = null;
+  let baitCheckInterval = null;
   // 背景音乐
   let bgAudio = null;
   let bgMusicEnabled = localStorage.getItem('bgMusicEnabled') === 'true';
@@ -1802,160 +1843,149 @@
     }
   }
 
+  // 退出投喂模式
+  function exitFeedingMode() {
+    isFeedingMode = false;
+    document.getElementById('feedingHint').style.display = 'none';
+    document.getElementById('fishTank').style.cursor = 'default';
+    // 移除点击事件监听
+    const tank = document.getElementById('tankWater');
+    tank.removeEventListener('click', handleTankClick);
+    // 清理碰撞检测
+    if (baitCheckInterval) {
+      clearInterval(baitCheckInterval);
+      baitCheckInterval = null;
+    }
+    // 清理鱼饵
+    if (currentBait) {
+      if (currentBait.parentNode) currentBait.remove();
+      currentBait = null;
+    }
+  }
+
+  // 处理鱼缸点击（放置鱼饵）
+  function handleTankClick(e) {
+    if (!isFeedingMode) return;
+
+    // 获取点击位置（相对于 tankWater）
+    const tank = document.getElementById('tankWater');
+    const rect = tank.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // 防止点击到其他元素
+    if (e.target !== tank && !e.target.classList.contains('fish-counter') && !e.target.classList.contains('feeding-hint')) {
+      // 点击的是鱼或其他元素，可能不是用户想要的，忽略
+      if (e.target.classList.contains('fish')) return;
+    }
+
+    // 创建鱼饵
+    const bait = document.createElement('div');
+    bait.className = 'bait';
+    bait.textContent = '🍎';
+    bait.style.left = x + 'px';
+    bait.style.top = y + 'px';
+    tank.appendChild(bait);
+    currentBait = bait;
+
+    // 鱼饵轻微下沉动画（用 CSS 动画模拟漂浮，同时往下慢慢移）
+    let baitY = y;
+    const sinkSpeed = 0.5; // 每帧下沉速度（像素）
+
+    // 碰撞检测循环
+    if (baitCheckInterval) clearInterval(baitCheckInterval);
+    baitCheckInterval = setInterval(() => {
+      if (!currentBait || !currentBait.parentNode) {
+        clearInterval(baitCheckInterval);
+        return;
+      }
+
+      // 鱼饵缓慢下沉
+      baitY += sinkSpeed;
+      currentBait.style.top = baitY + 'px';
+
+      // 边界检测：鱼饵沉到底部或超出范围就消失
+      if (baitY > tank.offsetHeight - 30 || baitY < -30) {
+        exitFeedingMode();
+        return;
+      }
+
+      // 碰撞检测：鱼饵和每条鱼
+      for (const fish of fishes) {
+        const fishEl = document.getElementById(fish.id);
+        if (!fishEl || !fishEl.parentNode) continue;
+
+        const fishRect = fishEl.getBoundingClientRect();
+        const baitRect = currentBait.getBoundingClientRect();
+
+        // 检测重叠
+        if (!(fishRect.right < baitRect.left ||
+              fishRect.left > baitRect.right ||
+              fishRect.bottom < baitRect.top ||
+              fishRect.top > baitRect.bottom)) {
+          // 碰撞了！
+          clearInterval(baitCheckInterval);
+
+          // 鱼饵消失动画
+          currentBait.classList.add('bait-eaten');
+          setTimeout(() => {
+            if (currentBait && currentBait.parentNode) currentBait.remove();
+            currentBait = null;
+          }, 300);
+
+          // 鱼变大动画
+          fishEl.classList.add('fish-eating');
+          fish.feedCount++;
+          const scale = 1 + fish.feedCount * 0.15;
+          fishEl.style.transform = `scale(${scale})`;
+          setTimeout(() => {
+            fishEl.classList.remove('fish-eating');
+          }, 400);
+
+          // 更新统计
+          stats.successfulFeeds++;
+          saveFishToStorage();
+          checkAchievements();
+
+          // 退出投喂模式
+          setTimeout(() => exitFeedingMode(), 350);
+          return;
+        }
+      }
+    }, 16); // ~60fps
+  }
+
   // 喂鱼
   function feedFish() {
     stats.feedFishClicks++; // 记录点击喂鱼按钮
     checkAchievements(); // 检查成就
+
+    // 如果已经在投喂模式，退出
+    if (isFeedingMode) {
+      exitFeedingMode();
+      return;
+    }
+
     if (!canFeedFish()) {
       saveFishToStorage();
       return;
     }
 
-    const tank = document.getElementById('tankWater');
-    const tankWidth = tank.offsetWidth;
-    const tankHeight = tank.offsetHeight;
     lastFeedFishTime = Date.now();
     updateFeedFishButton();
 
-    // 检查是否有特殊鱼饵触发
-    let specialBaitType = null;
-    let specialBaitEmoji = null;
-    let specialBaitMultiplier = null;
+    // 进入投喂模式
+    isFeedingMode = true;
+    document.getElementById('feedingHint').style.display = 'block';
+    document.getElementById('fishTank').style.cursor = 'crosshair';
 
-    if (nextFeedLegendBait) {
-      // 传说鱼饵优先
-      specialBaitType = 'legend';
-      specialBaitEmoji = '🍰';
-      specialBaitMultiplier = 10;
-      nextFeedLegendBait = false;
-    } else if (nextFeedMagicBait) {
-      // 神奇鱼饵
-      specialBaitType = 'magic';
-      specialBaitEmoji = '🍬';
-      specialBaitMultiplier = 2;
-      nextFeedMagicBait = false;
-    } else if (nextFeedShrinkBait) {
-      // 缩小鱼饵
-      specialBaitType = 'shrink';
-      specialBaitEmoji = '🍸';
-      specialBaitMultiplier = 0.5;
-      nextFeedShrinkBait = false;
-    } else if (nextFeedRestoreBait) {
-      // 还原鱼饵
-      specialBaitType = 'restore';
-      specialBaitEmoji = '🧃';
-      specialBaitMultiplier = 1;
-      nextFeedRestoreBait = false;
-    } else {
-      // 概率触发
-      const rand = Math.random();
-      if (rand < 0.0001) {
-        // 0.01% 传说鱼饵
-        specialBaitType = 'legend';
-        specialBaitEmoji = '🍰';
-        specialBaitMultiplier = 10;
-      } else if (rand < 0.0101) {
-        // 1% 神奇鱼饵（0.0001 ≤ rand < 1.01%）
-        specialBaitType = 'magic';
-        specialBaitEmoji = '🍬';
-        specialBaitMultiplier = 2;
-      } else if (rand < 0.0201) {
-        // 1% 缩小鱼饵（1.01% ≤ rand < 2.01%）
-        specialBaitType = 'shrink';
-        specialBaitEmoji = '🍸';
-        specialBaitMultiplier = 0.5;
-      } else if (rand < 0.0401) {
-        // 2% 还原鱼饵（2.01% ≤ rand < 4.01%）
-        specialBaitType = 'restore';
-        specialBaitEmoji = '🧃';
-        specialBaitMultiplier = 1;
-      }
-    }
+    // 添加点击事件监听
+    const tank = document.getElementById('tankWater');
+    tank.addEventListener('click', handleTankClick);
 
-    // 如果触发特殊鱼饵，显示选择弹窗
-    if (specialBaitType) {
-      showSpecialBaitPopup(specialBaitEmoji, specialBaitMultiplier, tank, tankWidth, tankHeight, specialBaitType);
-      saveFishToStorage();
-      return;
-    }
-
-    // 正常喂鱼流程
-    // 查找可以喂食的鱼（喂食次数 < 5）
-    const feedableFish = fishes.filter(f => f.feedCount < 5);
-
-    if (feedableFish.length === 0) {
-      // 没有可喂食的鱼，鱼饵保留在原位不消失
-      const food = document.createElement('div');
-      food.className = 'fish';
-      food.textContent = '🍎';
-      food.style.left = '50%';
-      food.style.top = '50%';
-      food.style.fontSize = '20px';
-      food.style.pointerEvents = 'none'; // 防止干扰
-      tank.appendChild(food);
-      return;
-    }
-
-    // 随机选择一条可喂食的鱼
-    const targetFish = feedableFish[Math.floor(Math.random() * feedableFish.length)];
-    const fishEl = document.getElementById(targetFish.id);
-
-    // 计算鱼前方位置（根据鱼的移动方向）
-    const distance = 60; // 鱼饵生成位置距离鱼的像素
-    const dx = targetFish.dx || (Math.random() > 0.5 ? 1 : -1);
-    const dy = targetFish.dy || (Math.random() - 0.5);
-    const magnitude = Math.sqrt(dx * dx + dy * dy) || 1;
-    const dirX = dx / magnitude;
-    const dirY = dy / magnitude;
-
-    // 鱼饵生成在鱼的前方
-    let foodX = targetFish.x + dirX * distance;
-    let foodY = targetFish.y + dirY * distance;
-
-    // 确保鱼饵在鱼缸范围内
-    foodX = Math.max(10, Math.min(tankWidth - 30, foodX));
-    foodY = Math.max(10, Math.min(tankHeight - 30, foodY));
-
-    // 创建鱼饵（从顶部落下动画）
-    const food = document.createElement('div');
-    food.className = 'fish';
-    food.textContent = '🍎';
-    food.style.fontSize = '20px';
-    food.style.pointerEvents = 'none';
-    food.style.zIndex = '12';
-    food.style.filter = 'drop-shadow(0 0 10px #ffffff)';
-    food.id = 'food-' + Date.now();
-
-    // 初始位置：顶部中央
-    food.style.left = (tankWidth / 2 - 15) + 'px';
-    food.style.top = '-30px';
-    food.style.transform = 'translateX(-50%)';
-
-    tank.appendChild(food);
-
-    // 强制渲染后，设置目标位置触发动画（用transition而非animation）
-    food.offsetHeight;
-    food.style.transition = 'top 10s linear, left 10s linear';
-    food.style.left = foodX + 'px';
-    food.style.top = foodY + 'px';
-    food.style.transform = 'translateX(-50%)';
-
-    if (fishEl) {
-      // 5秒后鱼饵消失的同时鱼变大
-      setTimeout(() => {
-        // 鱼饵消失
-        if (food.parentNode) {
-          food.parentNode.removeChild(food);
-        }
-        // 鱼变大
-        targetFish.feedCount++;
-        const scale = 1 + targetFish.feedCount * 0.15; // 每次喂食变大15%
-        fishEl.style.transform = `scale(${scale})`;
-        saveFishToStorage();
-        stats.successfulFeeds++; // 记录成功喂鱼次数
-        checkAchievements(); // 检查成就
-      }, 10000);
-    }
+    // 检查是否有特殊鱼饵（先显示提示，等用户放置后再检查）
+    // 这里简化处理：先进入普通投喂模式
+    saveFishToStorage();
   }
 
   // 显示特殊鱼饵选择弹窗
