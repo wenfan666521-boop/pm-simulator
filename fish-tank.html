@@ -394,23 +394,6 @@
 
   // ========== 送礼系统 ==========
 
-  // 生成礼物代码
-  function generateGiftCode(itemName, senderName, blessing) {
-    // 语义识别 - 尝试多种匹配方式
-    const emoji = recognizeItem(itemName);
-
-    // 构建礼物数据
-    const giftData = {
-      emoji: emoji,
-      sender: senderName || '神秘好友',
-      blessing: blessing || '祝你养鱼开心!',
-      timestamp: Date.now()
-    };
-
-    // 编码为 base64
-    return btoa(JSON.stringify(giftData));
-  }
-
   // 语义识别物品
   function recognizeItem(itemName) {
     // 本地映射表优先匹配
