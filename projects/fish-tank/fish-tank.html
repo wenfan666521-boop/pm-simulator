@@ -1846,6 +1846,29 @@
       const fishEl = document.getElementById(fish.id);
       if (!fishEl) return;
 
+      // === 鱼饵吸引逻辑 ===
+      const BAIT_DETECT_RANGE = 150; // 检测鱼饵的范围（像素）
+      if (currentBait && currentBait.parentNode) {
+        const baitRect = currentBait.getBoundingClientRect();
+        const fishRect = fishEl.getBoundingClientRect();
+        const fishCenterX = fishRect.left + fishRect.width / 2;
+        const fishCenterY = fishRect.top + fishRect.height / 2;
+        const baitCenterX = baitRect.left + baitRect.width / 2;
+        const baitCenterY = baitRect.top + baitRect.height / 2;
+
+        const dx = baitCenterX - fishCenterX;
+        const dy = baitCenterY - fishCenterY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // 在检测范围内，主动靠近鱼饵
+        if (distance < BAIT_DETECT_RANGE && distance > 5) {
+          const speed = 3; // 靠近速度
+          fish.dx += (dx / distance) * speed * 0.1;
+          fish.dy += (dy / distance) * speed * 0.1;
+        }
+      }
+      // =====================
+
       // 每100ms随机改变方向和速度,让游动更自然
       if (Math.random() < 0.2) {
         fish.dx += (Math.random() - 0.5) * 8; // 水平速度变化更大
