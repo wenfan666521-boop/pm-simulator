@@ -1953,6 +1953,17 @@
       if (e.target.classList.contains('fish')) return;
     }
 
+    // 如果已存在鱼饵，先删掉旧的
+    if (currentBait) {
+      if (currentBait.parentNode) currentBait.remove();
+      currentBait = null;
+    }
+    // 清理之前的碰撞检测循环
+    if (baitCheckInterval) {
+      clearInterval(baitCheckInterval);
+      baitCheckInterval = null;
+    }
+
     // 创建鱼饵
     const bait = document.createElement('div');
     bait.className = 'bait';
@@ -1967,7 +1978,6 @@
     const sinkSpeed = 0.5; // 每帧下沉速度（像素）
 
     // 碰撞检测循环
-    if (baitCheckInterval) clearInterval(baitCheckInterval);
     baitCheckInterval = setInterval(() => {
       if (!currentBait || !currentBait.parentNode) {
         clearInterval(baitCheckInterval);
@@ -1978,9 +1988,16 @@
       baitY += sinkSpeed;
       currentBait.style.top = baitY + 'px';
 
-      // 边界检测：鱼饵沉到底部或超出范围就消失
+      // 边界检测：鱼饵沉到底部或超出范围就消失（不退出投喂模式，用户可继续放）
       if (baitY > tank.offsetHeight - 30 || baitY < -30) {
-        exitFeedingMode();
+        if (currentBait) {
+          if (currentBait.parentNode) currentBait.remove();
+          currentBait = null;
+        }
+        if (baitCheckInterval) {
+          clearInterval(baitCheckInterval);
+          baitCheckInterval = null;
+        }
         return;
       }
 
@@ -1999,6 +2016,7 @@
               fishRect.top > baitRect.bottom)) {
           // 碰撞了！
           clearInterval(baitCheckInterval);
+          baitCheckInterval = null;
 
           // 鱼饵消失动画
           currentBait.classList.add('bait-eaten');
