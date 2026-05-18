@@ -241,12 +241,24 @@
   function saveBackgroundToDB(dataUrl) {
     return new Promise((resolve, reject) => {
       if (!db) { reject(new Error('DB not initialized')); return; }
-      fetch(dataUrl).then(res => res.blob()).then(blob => {
+      
+      // 直接解码 base64 转 blob，避免 fetch data URL 失败
+      try {
+        const base64 = dataUrl.split(',')[1];
+        const binary = atob(base64);
+        const array = [];
+        for (let i = 0; i < binary.length; i++) {
+          array.push(binary.charCodeAt(i));
+        }
+        const blob = new Blob([new Uint8Array(array)], { type: 'image/jpeg' });
+        
         const transaction = db.transaction(['background'], 'readwrite');
         const request = transaction.objectStore('background').put({ id: 'tankBackground', blob, timestamp: Date.now() });
         request.onsuccess = () => { console.log('背景图已保存到 IndexedDB'); resolve(); };
         request.onerror = () => { reject(request.error); };
-      }).catch(err => reject(err));
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 
