@@ -1847,7 +1847,7 @@
       if (!fishEl) return;
 
       // === 鱼饵吸引逻辑 ===
-      const BAIT_DETECT_RANGE = 150; // 检测鱼饵的范围（像素）
+      const BAIT_DETECT_RANGE = 400; // 检测鱼饵的范围（像素）
       if (currentBait && currentBait.parentNode) {
         const baitRect = currentBait.getBoundingClientRect();
         const fishRect = fishEl.getBoundingClientRect();
