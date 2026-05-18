@@ -190,6 +190,80 @@
   let isFeedingMode = false;
   let currentBait = null;
   let baitCheckInterval = null;
+
+  // ==================== IndexedDB 数据库 ====================
+  const DB_NAME = 'FishTankDB';
+  const DB_VERSION = 1;
+  let db = null;
+
+  // 初始化 IndexedDB 数据库
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = () => { console.error('IndexedDB 打开失败:', request.error); reject(request.error); };
+      request.onsuccess = () => { db = request.result; console.log('IndexedDB 数据库连接成功'); resolve(db); };
+      request.onupgradeneeded = (event) => {
+        const database = event.target.result;
+        if (!database.objectStoreNames.contains('fishTankData')) database.createObjectStore('fishTankData', { keyPath: 'id' });
+        if (!database.objectStoreNames.contains('background')) database.createObjectStore('background', { keyPath: 'id' });
+      };
+    });
+  }
+
+  // 保存游戏数据到 IndexedDB
+  function saveGameDataToDB() {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount||0, isSpecial: f.isSpecial||false, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' }));
+      const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
+      const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate } };
+      const transaction = db.transaction(['fishTankData'], 'readwrite');
+      const store = transaction.objectStore('fishTankData');
+      const request = store.put(data);
+      request.onsuccess = () => { console.log('游戏数据已保存到 IndexedDB'); resolve(); };
+      request.onerror = () => { console.error('保存失败:', request.error); reject(request.error); };
+    });
+  }
+
+  // 从 IndexedDB 加载游戏数据
+  function loadGameDataFromDB() {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const transaction = db.transaction(['fishTankData'], 'readonly');
+      const store = transaction.objectStore('fishTankData');
+      const request = store.get('gameData');
+      request.onsuccess = () => { resolve(request.result || null); };
+      request.onerror = () => { reject(request.error); };
+    });
+  }
+
+  // 保存背景图到 IndexedDB
+  function saveBackgroundToDB(dataUrl) {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      fetch(dataUrl).then(res => res.blob()).then(blob => {
+        const transaction = db.transaction(['background'], 'readwrite');
+        const request = transaction.objectStore('background').put({ id: 'tankBackground', blob, timestamp: Date.now() });
+        request.onsuccess = () => { console.log('背景图已保存到 IndexedDB'); resolve(); };
+        request.onerror = () => { reject(request.error); };
+      }).catch(err => reject(err));
+    });
+  }
+
+  // 从 IndexedDB 加载背景图
+  function loadBackgroundFromDB() {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const transaction = db.transaction(['background'], 'readonly');
+      const request = transaction.objectStore('background').get('tankBackground');
+      request.onsuccess = () => { resolve(request.result?.blob ? URL.createObjectURL(request.result.blob) : null); };
+      request.onerror = () => { reject(request.error); };
+    });
+  }
+
+  // 保存函数（IndexedDB + localStorage 兼容）
+  function saveFishToStorage() { saveGameDataToDB().catch(err => console.error('saveGameDataToDB 失败:', err)); }
+
   // 背景音乐
   let bgAudio = null;
   let bgMusicEnabled = localStorage.getItem('bgMusicEnabled') === 'true';
@@ -197,25 +271,12 @@
     bgAudio = new Audio('minimax-output/aquarium-piano-slow.mp3');
     bgAudio.loop = true;
     bgAudio.volume = 0.3;
-    if (bgMusicEnabled) {
-      bgAudio.muted = false;
-      bgAudio.play().catch(() => {});
-    } else {
-      bgAudio.muted = true;
-    }
+    if (bgMusicEnabled) { bgAudio.muted = false; bgAudio.play().catch(() => {}); } else { bgAudio.muted = true; }
   }
   function toggleBackgroundMusic() {
     bgMusicEnabled = !bgMusicEnabled;
     localStorage.setItem('bgMusicEnabled', bgMusicEnabled);
-    if (bgAudio) {
-      if (bgMusicEnabled) {
-        bgAudio.muted = false;
-        bgAudio.play().catch(() => {});
-      } else {
-        bgAudio.pause();
-      }
-    }
-    // 重新显示菜单以更新按钮文字
+    if (bgAudio) { bgMusicEnabled ? bgAudio.play().catch(() => {}) : bgAudio.pause(); }
     showMenu();
   }
   // 统计数据
@@ -348,19 +409,32 @@
   }
 
   // 初始化
-  function init() {
-    loadFishFromStorage();
+  async function init() {
+    try {
+      await initDB();
+      const dbData = await loadGameDataFromDB();
+      if (dbData) {
+        applyGameData(dbData);
+      } else {
+        loadFishFromStorage();
+      }
+      const bgUrl = await loadBackgroundFromDB();
+      if (bgUrl) setTankBackground(bgUrl, false);
+    } catch (err) {
+      console.error('IndexedDB 初始化失败，回退到 localStorage:', err);
+      loadFishFromStorage();
+    }
+
     setInterval(generateBubble, 2000);
-    setInterval(updateFishPositions, 100); // 每100ms更新,让游动更流畅
-    setInterval(updateAddFishButton, 1000); // 每秒更新添加按钮状态
-    setInterval(updateFeedFishButton, 1000); // 每秒更新喂鱼按钮状态
-    setInterval(schedulePlantGenerate, 1000); // 检查是否需要生成水草
+    setInterval(updateFishPositions, 100);
+    setInterval(updateAddFishButton, 1000);
+    setInterval(updateFeedFishButton, 1000);
+    setInterval(schedulePlantGenerate, 1000);
     updateAddFishButton();
     updateFeedFishButton();
-    schedulePlantGenerate(); // 立即执行一次
+    schedulePlantGenerate();
     initBackgroundMusic();
 
-    // 根据模式更新按钮文字
     const toggleBtn = document.getElementById('toggleBtn');
     if (toggleBtn) {
       toggleBtn.textContent = isInIframe ? '🖥️ 全屏' : '🌟小星';
@@ -667,19 +741,20 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      setTankBackground(e.target.result);
-      document.getElementById('backgroundPanelOverlay').remove();
+      setTankBackground(e.target.result, true);
+      document.getElementById('backgroundPanelOverlay')?.remove();
     };
     reader.readAsDataURL(file);
   }
 
-  // 设置鱼缸背景
-  function setTankBackground(url) {
+  // 设置鱼缸背景 (url: 图片URL, saveToDB: 是否保存到数据库)
+  function setTankBackground(url, saveToDB = false) {
     const tank = document.getElementById('fishTank');
     tank.style.backgroundImage = `url('${url}')`;
     tank.style.backgroundSize = 'cover';
     tank.style.backgroundPosition = 'center center';
     tank.style.backgroundRepeat = 'no-repeat';
+    if (saveToDB && url.startsWith('data:')) saveBackgroundToDB(url).catch(err => console.error('saveBackgroundToDB 失败:', err));
   }
 
   // 显示存档管理面板
@@ -2376,83 +2451,60 @@
   // 从localStorage加载鱼
   function loadFishFromStorage() {
     const savedData = localStorage.getItem('fishTankData');
-    if (savedData) {
-      const data = JSON.parse(savedData);
-      const fishData = data.fishes || [];
-      lastAddFishTime = data.lastAddFishTime || 0;
-      lastFeedFishTime = data.lastFeedFishTime || 0;
-      achievements = data.achievements || [];
-      nextPlantGenerateTime = data.nextPlantGenerateTime || 0;
-      stats = data.stats || { addFishClicks: 0, feedFishClicks: 0, successfulFeeds: 0, plantsCollected: 0, cleanCount: 0, petFishClicks: 0, giftsSent: 0, giftsReceived: 0, legendBaitUsed: 0, magicBaitUsed: 0, shrinkBaitUsed: 0, restoreBaitUsed: 0 };
+    if (savedData) applyGameData(JSON.parse(savedData));
+  }
 
-      // 加载礼物数据
-      if (data.giftData) {
-        giftCount = data.giftData.giftCount ?? INITIAL_GIFT_COUNT;
-        totalGiftsSent = data.giftData.totalGiftsSent || 0;
-        usedCodes = data.giftData.usedCodes || [];
-        devDailyUsage = data.giftData.devDailyUsage || 0;
-        devLastUsageDate = data.giftData.devLastUsageDate || '';
-      }
-
-      // 加载水草
-      const plantData = data.plants || [];
-      plantData.forEach(p => {
-        const tank = document.getElementById('tankWater');
-        const plant = document.createElement('div');
-        plant.className = 'plant';
-        plant.textContent = p.type;
-        plant.style.left = p.x + 'px';
-        plant.style.bottom = '10px';
-        plant.style.fontSize = '24px';
-        plant.style.position = 'absolute';
-        plant.style.cursor = 'pointer';
-        plant.id = 'plant-' + plantIdCounter++;
-        plant.onclick = () => collectPlant(plant.id);
-        tank.appendChild(plant);
-        plants.push({ id: plant.id, type: p.type, x: p.x, y: p.y });
-      });
-      const tank = document.getElementById('tankWater');
-
-      fishData.forEach(f => {
-        const fish = document.createElement('div');
-        fish.className = 'fish';
-        // 检查是否是特殊鱼(SVG)
-        const isSpecialFish = f.isSpecial || (f.type && f.type.startsWith('assets/'));
-        if (isSpecialFish) {
-          fish.style.width = '50px';
-          fish.style.height = '50px';
-          const img = document.createElement('img');
-          img.src = f.type;
-          img.style.width = '100%';
-          img.style.height = '100%';
-          img.style.pointerEvents = 'none';
-          fish.appendChild(img);
-        } else {
-          fish.textContent = f.type;
-        }
-        fish.style.left = f.x + 'px';
-        fish.style.top = f.y + 'px';
-        // 鱼的移动完全由JS控制,不再使用CSS动画
-        fish.style.cursor = 'pointer';
-        fish.id = 'fish-' + fishIdCounter++;
-        fish.onclick = () => petFish(fish.id);
-
-        // 恢复喂食次数和大小
-        const feedCount = f.feedCount || 0;
-        if (feedCount > 0) {
-          const scale = 1 + feedCount * 0.15;
-          fish.style.transform = `scale(${scale})`;
-        }
-
-        tank.appendChild(fish);
-        fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount, isSpecial: isSpecialFish, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null, sender: f.sender || '', blessing: f.blessing || '' });
-
-        // 恢复收藏长按触发
-        setupCollectionLongPress(fish, fish.id);
-      });
-
-      updateFishCount();
+  // 应用游戏数据（统一加载逻辑，IndexedDB 和 localStorage 共用）
+  function applyGameData(data) {
+    if (!data) return;
+    lastAddFishTime = data.lastAddFishTime || 0;
+    lastFeedFishTime = data.lastFeedFishTime || 0;
+    achievements = data.achievements || [];
+    nextPlantGenerateTime = data.nextPlantGenerateTime || 0;
+    stats = data.stats || { addFishClicks:0, feedFishClicks:0, successfulFeeds:0, plantsCollected:0, cleanCount:0, petFishClicks:0, giftsSent:0, giftsReceived:0, legendBaitUsed:0, magicBaitUsed:0, shrinkBaitUsed:0, restoreBaitUsed:0 };
+    if (data.giftData) {
+      giftCount = data.giftData.giftCount ?? INITIAL_GIFT_COUNT;
+      totalGiftsSent = data.giftData.totalGiftsSent || 0;
+      usedCodes = data.giftData.usedCodes || [];
+      devDailyUsage = data.giftData.devDailyUsage || 0;
+      devLastUsageDate = data.giftData.devLastUsageDate || '';
     }
+    const tank = document.getElementById('tankWater');
+    (data.plants || []).forEach(p => {
+      const plant = document.createElement('div');
+      plant.className = 'plant';
+      plant.textContent = p.type;
+      plant.style.cssText = 'position:absolute;left:' + p.x + 'px;bottom:10px;font-size:24px;cursor:pointer;';
+      plant.id = 'plant-' + plantIdCounter++;
+      plant.onclick = () => collectPlant(plant.id);
+      tank.appendChild(plant);
+      plants.push({ id: plant.id, type: p.type, x: p.x, y: p.y });
+    });
+    (data.fishes || []).forEach(f => {
+      const fish = document.createElement('div');
+      fish.className = 'fish';
+      const isSpecialFish = f.isSpecial || (f.type && f.type.startsWith('assets/'));
+      if (isSpecialFish) {
+        fish.style.cssText = 'position:absolute;left:' + f.x + 'px;top:' + f.y + 'px;width:50px;height:50px;cursor:pointer;z-index:10;';
+        const img = document.createElement('img');
+        img.src = f.type;
+        img.style.cssText = 'width:100%;height:100%;pointer-events:none;';
+        fish.appendChild(img);
+      } else {
+        fish.textContent = f.type;
+        fish.style.cssText = 'position:absolute;left:' + f.x + 'px;top:' + f.y + 'px;font-size:24px;cursor:pointer;z-index:10;';
+      }
+      fish.id = 'fish-' + fishIdCounter++;
+      fish.onclick = () => petFish(fish.id);
+      const feedCount = f.feedCount || 0;
+      fish.style.transform = 'scale(' + (1 + feedCount * 0.15) + ')';
+      setupCollectionLongPress(fish, fish.id);
+      if (f.collected) fish.style.filter = 'drop-shadow(0 0 10px gold)';
+      if (f.sender) { fish.dataset.sender = f.sender; fish.dataset.blessing = f.blessing; fish.dataset.name = f.name || ''; fish.dataset.description = f.description || ''; }
+      tank.appendChild(fish);
+      fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount, isSpecial: isSpecialFish, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' });
+    });
+    updateFishCount();
   }
 
   // 更新时间
