@@ -683,8 +683,8 @@
             </div>
             <div style="font-size:11px;opacity:0.5;margin-top:5px;margin-bottom:10px;">创建于 ${createdAt}</div>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-              <button onclick="event.stopPropagation();renameTank('${tank.id}')" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-size:12px;">✏️ 重命名</button>
-              ${tanks.length > 1 ? `<button onclick="event.stopPropagation();confirmDeleteTank('${tank.id}')" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,107,107,0.3);color:#ff6b6b;cursor:pointer;font-size:12px;">🗑️ 删除</button>` : ''}
+              <button onclick="event.stopPropagation();showRenameTankPanel('${tank.id}')" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-size:12px;">✏️ 重命名</button>
+              ${tanks.length > 1 ? `<button onclick="event.stopPropagation();showDeleteTankConfirm('${tank.id}')" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,107,107,0.3);color:#ff6b6b;cursor:pointer;font-size:12px;">🗑️ 删除</button>` : ''}
             </div>
           </div>
         `;
@@ -694,7 +694,7 @@
       
       panel.innerHTML = tankListHTML + `
         <div style="display:flex;gap:10px;">
-          <button onclick="createNewTank()" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">➕ 新建鱼缸</button>
+          <button onclick="showCreateTankPanel()" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">➕ 新建鱼缸</button>
           <button onclick="document.getElementById('tankSelectorOverlay').remove()" style="flex:1;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
         </div>
       `;
@@ -741,13 +741,46 @@
     document.getElementById('tankSelectorOverlay')?.remove();
   }
 
-  // 重命名鱼缸
-  async function renameTank(tankId) {
+  // 显示重命名鱼缸弹窗
+  function showRenameTankPanel(tankId) {
     const tank = tanks.find(t => t.id === tankId);
     if (!tank) return;
     
-    const newName = prompt('请输入新的鱼缸名称：', tank.name);
-    if (!newName || newName === tank.name) return;
+    document.getElementById('tankSelectorOverlay')?.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'renameTankOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:350px;';
+    
+    panel.innerHTML = `
+      <div style="font-size:20px;font-weight:bold;margin-bottom:20px;text-align:center;">✏️ 重命名鱼缸</div>
+      <div style="font-size:14px;opacity:0.7;margin-bottom:15px;text-align:center;">当前名称：${tank.name}</div>
+      <input type="text" id="renameTankName" placeholder="请输入新的鱼缸名称" value="${tank.name}" style="width:100%;padding:15px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;margin-bottom:20px;font-size:14px;" />
+      <div style="display:flex;gap:10px;">
+        <button onclick="renameTank('${tankId}')" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">确认</button>
+        <button onclick="document.getElementById('renameTankOverlay').remove();showTankSelector();" style="flex:1;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">取消</button>
+      </div>
+    `;
+    
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    document.getElementById('renameTankName').focus();
+    document.getElementById('renameTankName').select();
+  }
+
+  // 重命名鱼缸
+  async function renameTank(tankId) {
+    const newName = document.getElementById('renameTankName').value.trim();
+    if (!newName) return;
+    
+    document.getElementById('renameTankOverlay').remove();
+    
+    const tank = tanks.find(t => t.id === tankId);
+    if (!tank) return;
     
     tank.name = newName;
     await saveTankData(tankId, tank);
@@ -760,23 +793,48 @@
     
     // 刷新列表
     tanks = await loadAllTanks();
-    document.getElementById('tankSelectorOverlay')?.remove();
     showTankSelector();
   }
 
-  // 确认删除鱼缸
-  async function confirmDeleteTank(tankId) {
+  // 显示删除鱼缸确认弹窗
+  function showDeleteTankConfirm(tankId) {
     if (tanks.length <= 1) {
-      alert('至少需要保留一个鱼缸！');
+      showToast('至少需要保留一个鱼缸！');
       return;
     }
     
     const tank = tanks.find(t => t.id === tankId);
     if (!tank) return;
     
-    if (!confirm(`确定要删除鱼缸「${tank.name}」吗？\n该鱼缸中的 ${tank.fishes?.length || 0} 条鱼将永久丢失！`)) {
-      return;
-    }
+    document.getElementById('tankSelectorOverlay')?.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'deleteTankOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:350px;';
+    
+    panel.innerHTML = `
+      <div style="font-size:20px;font-weight:bold;margin-bottom:20px;text-align:center;">🗑️ 确认删除</div>
+      <div style="font-size:14px;text-align:center;margin-bottom:20px;line-height:1.6;">
+        确定要删除鱼缸「<span style="color:#667eea;font-weight:bold;">${tank.name}</span>」吗？<br>
+        <span style="color:#ff6b6b;opacity:0.8;">该鱼缸中的 ${tank.fishes?.length || 0} 条鱼将永久丢失！</span>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="executeDeleteTank('${tankId}')" style="flex:1;padding:12px;border:none;border-radius:10px;background:#ff6b6b;color:#fff;cursor:pointer;font-size:14px;">确认删除</button>
+        <button onclick="document.getElementById('deleteTankOverlay').remove();showTankSelector();" style="flex:1;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">取消</button>
+      </div>
+    `;
+    
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+  }
+
+  // 执行删除鱼缸
+  async function executeDeleteTank(tankId) {
+    document.getElementById('deleteTankOverlay').remove();
     
     await deleteTank(tankId);
     
@@ -791,14 +849,51 @@
     // 刷新列表
     tanks = await loadAllTanks();
     updateTankTitle();
-    document.getElementById('tankSelectorOverlay')?.remove();
     showTankSelector();
+  }
+
+  // 显示提示消息
+  function showToast(message, duration = 2000) {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:15px 25px;border-radius:10px;font-size:14px;z-index:9999;animation:fadeIn 0.2s;';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), duration);
+  }
+
+  // 显示新建鱼缸弹窗
+  function showCreateTankPanel() {
+    document.getElementById('tankSelectorOverlay')?.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'createTankOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:350px;';
+    
+    panel.innerHTML = `
+      <div style="font-size:20px;font-weight:bold;margin-bottom:20px;text-align:center;">🐠 新建鱼缸</div>
+      <input type="text" id="newTankName" placeholder="请输入鱼缸名称" value="鱼缸 ${tanks.length + 1}" style="width:100%;padding:15px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;margin-bottom:20px;font-size:14px;" />
+      <div style="display:flex;gap:10px;">
+        <button onclick="createNewTank()" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">创建</button>
+        <button onclick="document.getElementById('createTankOverlay').remove();showTankSelector();" style="flex:1;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">取消</button>
+      </div>
+    `;
+    
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    document.getElementById('newTankName').focus();
+    document.getElementById('newTankName').select();
   }
 
   // 创建新鱼缸
   async function createNewTank() {
-    const tankName = prompt('请输入新鱼缸名称：', `鱼缸 ${tanks.length + 1}`);
+    const tankName = document.getElementById('newTankName').value.trim();
     if (!tankName) return;
+    
+    document.getElementById('createTankOverlay').remove();
     
     const now = Date.now();
     const tankId = 'tank_' + now;
