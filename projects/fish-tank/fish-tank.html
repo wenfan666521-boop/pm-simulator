@@ -705,7 +705,7 @@
   }
 
   // 切换鱼缸
-  async function switchTank(tankId) {
+  async function switchTank(tankId, isNewTank = false) {
     if (tankId === currentTankId) return;
     
     // 保存当前鱼缸数据
@@ -732,9 +732,13 @@
       updateAddFishButton();
       updateFeedFishButton();
       
-      // 加载新鱼缸的背景
-      const bgUrl = await loadBackgroundFromDB();
-      setTankBackground(bgUrl, false);
+      // 新鱼缸使用默认背景，否则加载已保存的背景
+      if (isNewTank) {
+        resetTankBackground(); // 重置为默认深蓝色背景
+      } else {
+        const bgUrl = await loadBackgroundFromDB();
+        setTankBackground(bgUrl, false);
+      }
     }
     
     // 关闭选择器
@@ -911,7 +915,7 @@
     await saveTankData(tankId, newTank);
     
     // 切换到新鱼缸
-    await switchTank(tankId);
+    await switchTank(tankId, true); // true = 新鱼缸，重置背景为默认
     
     // 刷新列表
     tanks = await loadAllTanks();
