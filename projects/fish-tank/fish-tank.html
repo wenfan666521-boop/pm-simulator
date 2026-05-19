@@ -3031,12 +3031,7 @@
   // 应用游戏数据（统一加载逻辑，IndexedDB 和 localStorage 共用）
   function applyGameData(data, overwriteFishAndPlants = true) {
     if (!data) return;
-    if (overwriteFishAndPlants) {
-      fishes = data.fishes || [];
-      plants = data.plants || [];
-      // 重新渲染鱼和植物
-      setTimeout(() => renderFishesAndPlants(), 0);
-    }
+    
     lastAddFishTime = data.lastAddFishTime || 0;
     lastFeedFishTime = data.lastFeedFishTime || 0;
     achievements = data.achievements || [];
@@ -3049,41 +3044,15 @@
       devDailyUsage = data.giftData.devDailyUsage || 0;
       devLastUsageDate = data.giftData.devLastUsageDate || '';
     }
-    const tank = document.getElementById('tankWater');
-    (data.plants || []).forEach(p => {
-      const plant = document.createElement('div');
-      plant.className = 'plant';
-      plant.textContent = p.type;
-      plant.style.cssText = 'position:absolute;left:' + p.x + 'px;bottom:10px;font-size:24px;cursor:pointer;';
-      plant.id = 'plant-' + plantIdCounter++;
-      plant.onclick = () => collectPlant(plant.id);
-      tank.appendChild(plant);
-      plants.push({ id: plant.id, type: p.type, x: p.x, y: p.y });
-    });
-    (data.fishes || []).forEach(f => {
-      const fish = document.createElement('div');
-      fish.className = 'fish';
-      const isSpecialFish = f.isSpecial || (f.type && f.type.startsWith('assets/'));
-      if (isSpecialFish) {
-        fish.style.cssText = 'position:absolute;left:' + f.x + 'px;top:' + f.y + 'px;width:50px;height:50px;cursor:pointer;z-index:10;';
-        const img = document.createElement('img');
-        img.src = f.type;
-        img.style.cssText = 'width:100%;height:100%;pointer-events:none;';
-        fish.appendChild(img);
-      } else {
-        fish.textContent = f.type;
-        fish.style.cssText = 'position:absolute;left:' + f.x + 'px;top:' + f.y + 'px;font-size:24px;cursor:pointer;z-index:10;';
-      }
-      fish.id = 'fish-' + fishIdCounter++;
-      fish.onclick = () => petFish(fish.id);
-      const feedCount = f.feedCount || 0;
-      fish.style.transform = 'scale(' + (1 + feedCount * 0.15) + ')';
-      setupCollectionLongPress(fish, fish.id);
-      // 页面加载时不显示黄光，只在 focusOnFish 时临时高亮
-      if (f.sender) { fish.dataset.sender = f.sender; fish.dataset.blessing = f.blessing; fish.dataset.name = f.name || ''; fish.dataset.description = f.description || ''; }
-      tank.appendChild(fish);
-      fishes.push({ id: fish.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount, isSpecial: isSpecialFish, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' });
-    });
+    
+    // ⚠️ 只有当 overwriteFishAndPlants = true 时才重新渲染鱼和植物
+    // 否则只更新全局数据（成就、统计、礼物等），不碰鱼和植物
+    if (overwriteFishAndPlants) {
+      fishes = data.fishes || [];
+      plants = data.plants || [];
+      renderFishesAndPlants();
+    }
+    
     updateFishCount();
   }
 
