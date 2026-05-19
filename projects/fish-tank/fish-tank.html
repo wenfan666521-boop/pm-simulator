@@ -230,7 +230,7 @@
   function saveGameDataToDB() {
     return new Promise((resolve, reject) => {
       if (!db) { reject(new Error('DB not initialized')); return; }
-      const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount||0, isSpecial: f.isSpecial||false, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' }));
+      const fishData = fishes.map(f => ({ id: f.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount||0, isSpecial: f.isSpecial||false, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' }));
       const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
       const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate } };
       // 同时保存到旧位置和当前鱼缸
@@ -3003,8 +3003,8 @@
 
   // 保存鱼到localStorage
   function saveFishToStorage() {
-    const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0, isSpecial: f.isSpecial || false, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null, sender: f.sender || '', blessing: f.blessing || '' }));
-    const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
+    const fishData = fishes.map(f => ({ id: f.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0, isSpecial: f.isSpecial || false, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null, sender: f.sender || '', blessing: f.blessing || '' }));
+    const plantData = plants.map(p => ({ id: p.id, type: p.type, x: p.x, y: p.y }));
     const data = {
       fishes: fishData,
       plants: plantData,
