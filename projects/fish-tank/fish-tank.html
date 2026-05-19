@@ -2059,16 +2059,19 @@
       }
       // =====================
 
-      // 每100ms随机改变方向和速度,让游动更自然
-      if (Math.random() < 0.2) {
-        fish.dx += (Math.random() - 0.5) * 8; // 水平速度变化更大
-        fish.dy += (Math.random() - 0.5) * 1; // 垂直速度变化很小
+      // 重力感应开启时，禁用鱼的自主随机移动，只受重力和鱼饵影响
+      if (!gravityEnabled) {
+        // 每100ms随机改变方向和速度,让游动更自然
+        if (Math.random() < 0.2) {
+          fish.dx += (Math.random() - 0.5) * 8; // 水平速度变化更大
+          fish.dy += (Math.random() - 0.5) * 1; // 垂直速度变化很小
 
-        // 限制最大速度:水平快,垂直慢
-        const maxSpeedX = 25;
-        const maxSpeedY = 5;
-        fish.dx = Math.max(-maxSpeedX, Math.min(maxSpeedX, fish.dx));
-        fish.dy = Math.max(-maxSpeedY, Math.min(maxSpeedY, fish.dy));
+          // 限制最大速度:水平快,垂直慢
+          const maxSpeedX = 25;
+          const maxSpeedY = 5;
+          fish.dx = Math.max(-maxSpeedX, Math.min(maxSpeedX, fish.dx));
+          fish.dy = Math.max(-maxSpeedY, Math.min(maxSpeedY, fish.dy));
+        }
       }
 
       // 更新位置
