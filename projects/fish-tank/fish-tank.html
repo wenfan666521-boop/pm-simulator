@@ -17,7 +17,8 @@
     .tank-title { font-size: 20px; font-weight: 700; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.5); }
 
     .fish-tank { flex: 1; background: linear-gradient(180deg, #001f3f 0%, #003366 50%, #002244 100%); position: relative; overflow: hidden; }
-    .fish-tank::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,31,63,0.5) 0%, rgba(0,51,102,0.2) 50%, rgba(0,34,68,0.8) 100%); z-index: 0; pointer-events: none; }
+    .fish-tank.has-background::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,31,63,0.3) 0%, rgba(0,51,102,0.1) 50%, rgba(0,34,68,0.5) 100%); z-index: 0; pointer-events: none; }
+    .fish-tank:not(.has-background)::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,31,63,0.5) 0%, rgba(0,51,102,0.2) 50%, rgba(0,34,68,0.8) 100%); z-index: 0; pointer-events: none; }
     .tank-water { position: relative; z-index: 1; }
     .tank-water { position: relative; width: 100%; height: 100%; }
 
@@ -250,7 +251,9 @@
         for (let i = 0; i < binary.length; i++) {
           array.push(binary.charCodeAt(i));
         }
-        const blob = new Blob([new Uint8Array(array)], { type: 'image/jpeg' });
+        // 从 data URL 中提取图片类型，默认 jpeg
+        const mimeType = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+        const blob = new Blob([new Uint8Array(array)], { type: mimeType });
         
         const transaction = db.transaction(['background'], 'readwrite');
         const request = transaction.objectStore('background').put({ id: 'tankBackground', blob, timestamp: Date.now() });
@@ -752,6 +755,7 @@
       <div style="font-size:24px;margin-bottom:20px;">🖼️ 鱼缸背景</div>
       <input type="file" id="bgFileInput" accept="image/*" style="display:none;" onchange="handleBackgroundUpload(this.files[0])">
       <button onclick="document.getElementById('bgFileInput').click()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;margin-bottom:10px;">📤 上传背景图片</button>
+      <button onclick="resetTankBackground()" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;margin-bottom:10px;">🔄 恢复默认背景</button>
       <button onclick="document.getElementById('backgroundPanelOverlay').remove()" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
     `;
 
@@ -773,11 +777,30 @@
   // 设置鱼缸背景 (url: 图片URL, saveToDB: 是否保存到数据库)
   function setTankBackground(url, saveToDB = false) {
     const tank = document.getElementById('fishTank');
-    tank.style.backgroundImage = `url('${url}')`;
-    tank.style.backgroundSize = 'cover';
-    tank.style.backgroundPosition = 'center center';
-    tank.style.backgroundRepeat = 'no-repeat';
-    if (saveToDB && url.startsWith('data:')) saveBackgroundToDB(url).catch(err => console.error('saveBackgroundToDB 失败:', err));
+    if (url) {
+      tank.style.backgroundImage = `url('${url}')`;
+      tank.style.backgroundSize = 'cover';
+      tank.style.backgroundPosition = 'center center';
+      tank.style.backgroundRepeat = 'no-repeat';
+      tank.classList.add('has-background');
+      if (saveToDB && url.startsWith('data:')) saveBackgroundToDB(url).catch(err => console.error('saveBackgroundToDB 失败:', err));
+    } else {
+      // 重置为默认背景
+      tank.style.backgroundImage = '';
+      tank.classList.remove('has-background');
+    }
+  }
+
+  // 重置鱼缸背景为默认
+  function resetTankBackground() {
+    setTankBackground(null);
+    // 从数据库删除背景
+    if (db) {
+      const transaction = db.transaction(['background'], 'readwrite');
+      transaction.objectStore('background').delete('tankBackground');
+    }
+    document.getElementById('backgroundPanelOverlay')?.remove();
+    showToast('🔄 已恢复默认背景');
   }
 
   // 显示存档管理面板
