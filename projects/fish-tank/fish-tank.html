@@ -734,7 +734,7 @@
       
       // 新鱼缸使用默认背景，否则加载已保存的背景
       if (isNewTank) {
-        resetTankBackground(); // 重置为默认深蓝色背景
+        resetTankBackground(false); // 重置为默认深蓝色背景，不显示Toast
       } else {
         const bgUrl = await loadBackgroundFromDB();
         setTankBackground(bgUrl, false);
@@ -1247,15 +1247,18 @@
   }
 
   // 重置鱼缸背景为默认
-  function resetTankBackground() {
-    setTankBackground(null);
-    // 从数据库删除背景
+  function resetTankBackground(showMessage = true) {
+    setTankBackground(null, false); // 不保存到DB，保存操作下面单独处理
+    // 从数据库删除当前鱼缸的背景
     if (db) {
-      const transaction = db.transaction(['background'], 'readwrite');
+      const transaction = db.transaction(['background', 'tankBackgrounds'], 'readwrite');
       transaction.objectStore('background').delete('tankBackground');
+      transaction.objectStore('tankBackgrounds').delete(currentTankId);
     }
     document.getElementById('backgroundPanelOverlay')?.remove();
-    showToast('🔄 已恢复默认背景');
+    if (showMessage) {
+      showToast('🔄 已恢复默认背景');
+    }
   }
 
   // 显示存档管理面板
