@@ -245,7 +245,8 @@
         lastAddFishTime,
         lastFeedFishTime,
         nextPlantGenerateTime,
-        createdAt: currentTankCreatedAt
+        createdAt: currentTankCreatedAt,
+        lastFishId: fishIdCounter  // ✅ 保存该鱼缸的鱼ID计数器
       };
       transaction.objectStore('tanks').put(tankData);
       transaction.oncomplete = () => { console.log('游戏数据已保存到 IndexedDB'); resolve(); };
@@ -541,7 +542,8 @@
           lastAddFishTime: 0,
           lastFeedFishTime: 0,
           nextPlantGenerateTime: now + Math.random() * 20 * 1000,
-          createdAt: now
+          createdAt: now,
+          lastFishId: 0  // ✅ 新鱼缸ID计数器从0开始
         };
         await saveTankData('default', defaultTank);
         tanks = [defaultTank];
@@ -560,6 +562,16 @@
         lastAddFishTime = currentTankData.lastAddFishTime || 0;
         lastFeedFishTime = currentTankData.lastFeedFishTime || 0;
         nextPlantGenerateTime = currentTankData.nextPlantGenerateTime || Date.now();
+        // ✅ 恢复该鱼缸的鱼ID计数器
+        fishIdCounter = currentTankData.lastFishId || 0;
+        // 如果有鱼但没存lastFishId，从现有鱼的ID里推算
+        if (fishes.length > 0 && fishIdCounter === 0) {
+          const maxId = Math.max(...fishes.map(f => {
+            const match = String(f.id).match(/fish-(\d+)/);
+            return match ? parseInt(match[1]) + 1 : 0;
+          }));
+          fishIdCounter = Math.max(fishIdCounter, maxId);
+        }
         // 重新渲染鱼和植物
         renderFishesAndPlants();
       }
@@ -790,6 +802,16 @@
       lastAddFishTime = tankData.lastAddFishTime || 0;
       lastFeedFishTime = tankData.lastFeedFishTime || 0;
       nextPlantGenerateTime = tankData.nextPlantGenerateTime || Date.now();
+      // ✅ 恢复目标鱼缸的鱼ID计数器
+      fishIdCounter = tankData.lastFishId || 0;
+      // 如果有鱼但没存lastFishId，从现有鱼的ID里推算
+      if (fishes.length > 0 && fishIdCounter === 0) {
+        const maxId = Math.max(...fishes.map(f => {
+          const match = String(f.id).match(/fish-(\d+)/);
+          return match ? parseInt(match[1]) + 1 : 0;
+        }));
+        fishIdCounter = Math.max(fishIdCounter, maxId);
+      }
       
       // 保存到本地存储
       localStorage.setItem('lastTankId', tankId);
@@ -977,7 +999,8 @@
       lastAddFishTime: 0,
       lastFeedFishTime: 0,
       nextPlantGenerateTime: now + Math.random() * 20 * 1000,
-      createdAt: now
+      createdAt: now,
+      lastFishId: 0  // ✅ 新鱼缸ID计数器从0开始
     };
     
     await saveTankData(tankId, newTank);
