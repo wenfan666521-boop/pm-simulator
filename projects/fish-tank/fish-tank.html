@@ -279,6 +279,12 @@
   // 背景音乐
   let bgAudio = null;
   let bgMusicEnabled = localStorage.getItem('bgMusicEnabled') === 'true';
+
+  // 重力感应状态
+  let gravityEnabled = localStorage.getItem('gravityEnabled') === 'true';
+  let gravityX = 0; // X轴倾斜值 (-90 ~ 90)
+  let gravityY = 0; // Y轴倾斜值 (-90 ~ 90)
+  const GRAVITY_SENSITIVITY = 0.3; // 重力感应灵敏度
   function initBackgroundMusic() {
     bgAudio = new Audio('minimax-output/aquarium-piano-slow.mp3');
     bgAudio.loop = true;
@@ -446,6 +452,11 @@
     updateFeedFishButton();
     schedulePlantGenerate();
     initBackgroundMusic();
+    
+    // 如果之前开启过重力感应，自动初始化
+    if (gravityEnabled) {
+      initGravitySensor();
+    }
 
     const toggleBtn = document.getElementById('toggleBtn');
     if (toggleBtn) {
@@ -1462,6 +1473,7 @@
       '<button onclick="toggleFullscreen();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖥️ 全屏模式</button>' +
       '<button onclick="showBackgroundPanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖼️ 背景设置</button>' +
       '<button onclick="toggleBackgroundMusic();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🎵 背景音乐 ' + (bgMusicEnabled ? 'ON' : 'OFF') + '</button>' +
+      '<button onclick="toggleGravity();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧭 重力感应 ' + (gravityEnabled ? 'ON' : 'OFF') + '</button>' +
       '</div>' +
       '<button onclick="this.parentNode.parentNode.remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
       '</div>';
@@ -1581,6 +1593,51 @@
 
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
+  }
+
+  // 初始化重力感应
+  function initGravitySensor() {
+    if (window.DeviceOrientationEvent) {
+      // iOS 13+ 需要用户授权
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(response => {
+            if (response === 'granted') {
+              window.addEventListener('deviceorientation', handleDeviceOrientation);
+            }
+          })
+          .catch(console.error);
+      } else {
+        // 其他系统直接监听
+        window.addEventListener('deviceorientation', handleDeviceOrientation);
+      }
+    }
+  }
+
+  // 处理设备倾斜
+  function handleDeviceOrientation(event) {
+    if (!gravityEnabled) return;
+    
+    // beta: 前后倾斜 (-180 ~ 180)
+    // gamma: 左右倾斜 (-90 ~ 90)
+    gravityY = event.beta || 0;
+    gravityX = event.gamma || 0;
+  }
+
+  // 切换重力感应
+  function toggleGravity() {
+    gravityEnabled = !gravityEnabled;
+    localStorage.setItem('gravityEnabled', gravityEnabled);
+    
+    if (gravityEnabled) {
+      initGravitySensor();
+      // 重置重力值，避免突然抖动
+      gravityX = 0;
+      gravityY = 0;
+    }
+    
+    showSettingsPanel();
+    showToast(gravityEnabled ? '🧭 重力感应已开启' : '🧭 重力感应已关闭');
   }
 
   // 检查是否可以添加鱼
@@ -1935,6 +1992,14 @@
     fishes.forEach(fish => {
       const fishEl = document.getElementById(fish.id);
       if (!fishEl) return;
+
+      // === 重力感应逻辑 ===
+      if (gravityEnabled && (Math.abs(gravityX) > 2 || Math.abs(gravityY) > 2)) {
+        // 根据重力倾斜调整移动方向
+        fish.dx += gravityX * GRAVITY_SENSITIVITY * 0.05;
+        fish.dy += gravityY * GRAVITY_SENSITIVITY * 0.05;
+      }
+      // ======================
 
       // === 鱼饵吸引逻辑 ===
       const BAIT_DETECT_RANGE = 400; // 检测鱼饵的范围（像素）
