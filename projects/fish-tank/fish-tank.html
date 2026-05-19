@@ -672,9 +672,8 @@
   // 更新鱼缸标题
   function updateTankTitle() {
     const titleEl = document.getElementById('tankTitle');
-    const badgeEl = document.getElementById('tankCountBadge');
     if (titleEl) {
-      titleEl.innerHTML = `🐠 ${currentTankName} <span id="tankCountBadge" style="font-size:12px;opacity:0.7;margin-left:8px;">(${tanks.length})</span> <span id="devHint" style="font-size:12px;opacity:0;"></span>`;
+      titleEl.innerHTML = `🐠 ${currentTankName} <span onclick="event.stopPropagation();showTankSelector()" id="tankCountBadge" style="font-size:12px;opacity:0.7;margin-left:8px;cursor:pointer;padding:4px 8px;background:rgba(255,255,255,0.1);border-radius:12px;">切换鱼缸</span> <span id="devHint" style="font-size:12px;opacity:0;"></span>`;
     }
   }
 
