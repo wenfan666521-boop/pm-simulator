@@ -1649,7 +1649,7 @@
     gravitySensitivity = parseFloat(value);
     localStorage.setItem('gravitySensitivity', gravitySensitivity);
     document.getElementById('sensitivityValue').textContent = gravitySensitivity.toFixed(1);
-    showToast(`🧭 灵敏度已调整为 ' + gravitySensitivity.toFixed(1));
+    showToast(`🧭 灵敏度已调整为 ${gravitySensitivity.toFixed(1)}`);
   }
 
   // 检查是否可以添加鱼
