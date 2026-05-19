@@ -152,7 +152,7 @@
 <body>
 <div class="app-container">
   <div class="tank-header">
-    <h1 class="tank-title" onclick="handleTitleClick()" id="tankTitle">🐠 我的鱼缸 <span id="devHint" style="font-size:12px;opacity:0;"></span></h1>
+    <h1 class="tank-title" onclick="showTankSelector()" id="tankTitle">🐠 我的鱼缸 <span id="tankCountBadge" style="font-size:12px;opacity:0.7;margin-left:8px;"></span> <span id="devHint" style="font-size:12px;opacity:0;"></span></h1>
     <button class="tank-btn" onclick="showMenu()" style="padding:8px 15px;font-size:12px;">☰ 菜单</button>
   </div>
 
@@ -194,8 +194,14 @@
 
   // ==================== IndexedDB 数据库 ====================
   const DB_NAME = 'FishTankDB';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2; // 升级版本号以支持多鱼缸
   let db = null;
+
+  // ==================== 多鱼缸系统 ====================
+  let currentTankId = 'default'; // 当前鱼缸ID
+  let currentTankName = '我的鱼缸'; // 当前鱼缸名称
+  let currentTankCreatedAt = Date.now(); // 当前鱼缸创建时间
+  let tanks = []; // 所有鱼缸列表
 
   // 初始化 IndexedDB 数据库
   function initDB() {
@@ -205,24 +211,99 @@
       request.onsuccess = () => { db = request.result; console.log('IndexedDB 数据库连接成功'); resolve(db); };
       request.onupgradeneeded = (event) => {
         const database = event.target.result;
-        if (!database.objectStoreNames.contains('fishTankData')) database.createObjectStore('fishTankData', { keyPath: 'id' });
-        if (!database.objectStoreNames.contains('background')) database.createObjectStore('background', { keyPath: 'id' });
+        const oldVersion = event.oldVersion;
+        // 版本1: 基础数据
+        if (oldVersion < 1) {
+          if (!database.objectStoreNames.contains('fishTankData')) database.createObjectStore('fishTankData', { keyPath: 'id' });
+          if (!database.objectStoreNames.contains('background')) database.createObjectStore('background', { keyPath: 'id' });
+        }
+        // 版本2: 多鱼缸支持
+        if (oldVersion < 2) {
+          if (!database.objectStoreNames.contains('tanks')) database.createObjectStore('tanks', { keyPath: 'id' });
+          if (!database.objectStoreNames.contains('tankBackgrounds')) database.createObjectStore('tankBackgrounds', { keyPath: 'id' });
+        }
       };
     });
   }
 
-  // 保存游戏数据到 IndexedDB
+  // 保存当前鱼缸数据到 IndexedDB
   function saveGameDataToDB() {
     return new Promise((resolve, reject) => {
       if (!db) { reject(new Error('DB not initialized')); return; }
       const fishData = fishes.map(f => ({ type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount||0, isSpecial: f.isSpecial||false, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' }));
       const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
       const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate } };
-      const transaction = db.transaction(['fishTankData'], 'readwrite');
-      const store = transaction.objectStore('fishTankData');
-      const request = store.put(data);
-      request.onsuccess = () => { console.log('游戏数据已保存到 IndexedDB'); resolve(); };
-      request.onerror = () => { console.error('保存失败:', request.error); reject(request.error); };
+      // 同时保存到旧位置和当前鱼缸
+      const transaction = db.transaction(['fishTankData', 'tanks'], 'readwrite');
+      transaction.objectStore('fishTankData').put(data);
+      // 保存当前鱼缸
+      const tankData = {
+        id: currentTankId,
+        name: currentTankName,
+        fishes: fishData,
+        plants: plantData,
+        lastAddFishTime,
+        lastFeedFishTime,
+        nextPlantGenerateTime,
+        createdAt: currentTankCreatedAt
+      };
+      transaction.objectStore('tanks').put(tankData);
+      transaction.oncomplete = () => { console.log('游戏数据已保存到 IndexedDB'); resolve(); };
+      transaction.onerror = () => { console.error('保存失败:', transaction.error); reject(transaction.error); };
+    });
+  }
+
+  // 保存单个鱼缸数据
+  function saveTankData(tankId, tankData) {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const transaction = db.transaction(['tanks'], 'readwrite');
+      const request = transaction.objectStore('tanks').put({ id: tankId, ...tankData });
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // 加载单个鱼缸数据
+  function loadTankData(tankId) {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const transaction = db.transaction(['tanks'], 'readonly');
+      const request = transaction.objectStore('tanks').get(tankId);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // 加载所有鱼缸列表
+  function loadAllTanks() {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const tanks = [];
+      const transaction = db.transaction(['tanks'], 'readonly');
+      const store = transaction.objectStore('tanks');
+      store.openCursor().onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          tanks.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(tanks);
+        }
+      };
+      store.openCursor().onerror = () => reject(store.openCursor().error);
+    });
+  }
+
+  // 删除鱼缸
+  function deleteTank(tankId) {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const transaction = db.transaction(['tanks', 'tankBackgrounds'], 'readwrite');
+      transaction.objectStore('tanks').delete(tankId);
+      transaction.objectStore('tankBackgrounds').delete(tankId);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
     });
   }
 
@@ -238,12 +319,11 @@
     });
   }
 
-  // 保存背景图到 IndexedDB
+  // 保存背景图到 IndexedDB (当前鱼缸)
   function saveBackgroundToDB(dataUrl) {
     return new Promise((resolve, reject) => {
       if (!db) { reject(new Error('DB not initialized')); return; }
       
-      // 直接解码 base64 转 blob，避免 fetch data URL 失败
       try {
         const base64 = dataUrl.split(',')[1];
         const binary = atob(base64);
@@ -251,27 +331,36 @@
         for (let i = 0; i < binary.length; i++) {
           array.push(binary.charCodeAt(i));
         }
-        // 从 data URL 中提取图片类型，默认 jpeg
         const mimeType = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
         const blob = new Blob([new Uint8Array(array)], { type: mimeType });
         
-        const transaction = db.transaction(['background'], 'readwrite');
-        const request = transaction.objectStore('background').put({ id: 'tankBackground', blob, timestamp: Date.now() });
-        request.onsuccess = () => { console.log('背景图已保存到 IndexedDB'); resolve(); };
-        request.onerror = () => { reject(request.error); };
+        const transaction = db.transaction(['background', 'tankBackgrounds'], 'readwrite');
+        transaction.objectStore('background').put({ id: 'tankBackground', blob, timestamp: Date.now() });
+        transaction.objectStore('tankBackgrounds').put({ id: currentTankId, blob, timestamp: Date.now() });
+        transaction.oncomplete = () => { console.log('背景图已保存到 IndexedDB'); resolve(); };
+        transaction.onerror = () => { reject(transaction.error); };
       } catch (err) {
         reject(err);
       }
     });
   }
 
-  // 从 IndexedDB 加载背景图
+  // 从 IndexedDB 加载背景图 (当前鱼缸)
   function loadBackgroundFromDB() {
     return new Promise((resolve, reject) => {
       if (!db) { reject(new Error('DB not initialized')); return; }
-      const transaction = db.transaction(['background'], 'readonly');
-      const request = transaction.objectStore('background').get('tankBackground');
-      request.onsuccess = () => { resolve(request.result?.blob ? URL.createObjectURL(request.result.blob) : null); };
+      const transaction = db.transaction(['tankBackgrounds'], 'readonly');
+      const request = transaction.objectStore('tankBackgrounds').get(currentTankId);
+      request.onsuccess = () => {
+        if (request.result?.blob) {
+          resolve(URL.createObjectURL(request.result.blob));
+        } else {
+          // 回退到旧的全局背景
+          const oldTransaction = db.transaction(['background'], 'readonly');
+          const oldRequest = oldTransaction.objectStore('background').get('tankBackground');
+          oldRequest.onsuccess = () => resolve(oldRequest.result?.blob ? URL.createObjectURL(oldRequest.result.blob) : null);
+        }
+      };
       request.onerror = () => { reject(request.error); };
     });
   }
@@ -433,14 +522,62 @@
   async function init() {
     try {
       await initDB();
+      
+      // 加载所有鱼缸
+      tanks = await loadAllTanks();
+      
+      // 加载上次选中的鱼缸
+      const lastTankId = localStorage.getItem('lastTankId');
+      if (lastTankId && tanks.find(t => t.id === lastTankId)) {
+        currentTankId = lastTankId;
+      } else if (tanks.length === 0) {
+        // 没有鱼缸，创建默认鱼缸
+        const now = Date.now();
+        const defaultTank = {
+          id: 'default',
+          name: '我的鱼缸',
+          fishes: [],
+          plants: [],
+          lastAddFishTime: 0,
+          lastFeedFishTime: 0,
+          nextPlantGenerateTime: now + Math.random() * 20 * 1000,
+          createdAt: now
+        };
+        await saveTankData('default', defaultTank);
+        tanks = [defaultTank];
+      } else {
+        // 使用第一个鱼缸
+        currentTankId = tanks[0].id;
+      }
+      
+      // 加载当前鱼缸数据
+      const currentTankData = await loadTankData(currentTankId);
+      if (currentTankData) {
+        currentTankName = currentTankData.name;
+        currentTankCreatedAt = currentTankData.createdAt;
+        fishes = currentTankData.fishes || [];
+        plants = currentTankData.plants || [];
+        lastAddFishTime = currentTankData.lastAddFishTime || 0;
+        lastFeedFishTime = currentTankData.lastFeedFishTime || 0;
+        nextPlantGenerateTime = currentTankData.nextPlantGenerateTime || Date.now();
+        // 重新渲染鱼和植物
+        renderFishesAndPlants();
+      }
+      
+      // 加载全局游戏数据（成就、统计等）
       const dbData = await loadGameDataFromDB();
       if (dbData) {
-        applyGameData(dbData);
+        applyGameData(dbData, false); // 不覆盖鱼和植物数据
       } else {
         loadFishFromStorage();
       }
+      
+      // 加载当前鱼缸背景
       const bgUrl = await loadBackgroundFromDB();
       if (bgUrl) setTankBackground(bgUrl, false);
+      
+      // 更新标题显示
+      updateTankTitle();
     } catch (err) {
       console.error('IndexedDB 初始化失败，回退到 localStorage:', err);
       loadFishFromStorage();
@@ -465,6 +602,225 @@
     if (toggleBtn) {
       toggleBtn.textContent = isInIframe ? '🖥️ 全屏' : '🌟小星';
     }
+  }
+
+  // 渲染所有鱼和植物
+  function renderFishesAndPlants() {
+    const tank = document.getElementById('tankWater');
+    // 清空现有鱼和植物（保留计数器和提示元素）
+    const fishEls = tank.querySelectorAll('.fish');
+    const plantEls = tank.querySelectorAll('.plant');
+    fishEls.forEach(el => el.remove());
+    plantEls.forEach(el => el.remove());
+    
+    // 渲染鱼
+    fishes.forEach(fish => {
+      const fishEl = document.createElement('div');
+      fishEl.className = 'fish';
+      fishEl.textContent = fish.type;
+      fishEl.style.left = fish.x + 'px';
+      fishEl.style.top = fish.y + 'px';
+      fishEl.id = fish.id;
+      fishEl.onclick = () => petFish(fish.id);
+      fishEl.style.cursor = 'pointer';
+      tank.appendChild(fishEl);
+      setupCollectionLongPress(fishEl, fish.id);
+    });
+    
+    // 渲染植物
+    plants.forEach(plant => {
+      const plantEl = document.createElement('div');
+      plantEl.className = 'plant';
+      plantEl.textContent = plant.type;
+      plantEl.style.left = plant.x + 'px';
+      plantEl.style.bottom = '10px';
+      plantEl.style.fontSize = '24px';
+      plantEl.style.position = 'absolute';
+      plantEl.style.cursor = 'pointer';
+      plantEl.style.transition = 'transform 0.2s';
+      plantEl.id = plant.id;
+      plantEl.onclick = () => collectPlant(plant.id);
+      tank.appendChild(plantEl);
+    });
+  }
+
+  // 更新鱼缸标题
+  function updateTankTitle() {
+    const titleEl = document.getElementById('tankTitle');
+    const badgeEl = document.getElementById('tankCountBadge');
+    if (titleEl) {
+      titleEl.innerHTML = `🐠 ${currentTankName} <span id="tankCountBadge" style="font-size:12px;opacity:0.7;margin-left:8px;">(${tanks.length})</span> <span id="devHint" style="font-size:12px;opacity:0;"></span>`;
+    }
+  }
+
+  // 显示鱼缸选择器
+  function showTankSelector() {
+    // 先刷新鱼缸列表
+    loadAllTanks().then(allTanks => {
+      tanks = allTanks;
+      updateTankTitle();
+      
+      const overlay = document.createElement('div');
+      overlay.id = 'tankSelectorOverlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+      overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+      
+      const panel = document.createElement('div');
+      panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:350px;max-height:80vh;overflow-y:auto;';
+      
+      let tankListHTML = '<div style="font-size:20px;font-weight:bold;margin-bottom:20px;text-align:center;">🐠 鱼缸列表</div>';
+      tankListHTML += '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">';
+      
+      tanks.forEach(tank => {
+        const isCurrent = tank.id === currentTankId;
+        const fishCount = tank.fishes?.length || 0;
+        const createdAt = new Date(tank.createdAt).toLocaleDateString();
+        tankListHTML += `
+          <div style="padding:15px;border-radius:12px;background:${isCurrent ? 'rgba(102,126,234,0.3)' : 'rgba(255,255,255,0.1)'};margin-bottom:10px;border:${isCurrent ? '2px solid #667eea' : '2px solid transparent'};">
+            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="switchTank('${tank.id}')">
+              <span style="font-weight:bold;font-size:16px;">${isCurrent ? '📍 ' : ''}${tank.name}</span>
+              <span style="font-size:12px;opacity:0.7;">🐟 ${fishCount} 条鱼</span>
+            </div>
+            <div style="font-size:11px;opacity:0.5;margin-top:5px;margin-bottom:10px;">创建于 ${createdAt}</div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button onclick="event.stopPropagation();renameTank('${tank.id}')" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-size:12px;">✏️ 重命名</button>
+              ${tanks.length > 1 ? `<button onclick="event.stopPropagation();confirmDeleteTank('${tank.id}')" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,107,107,0.3);color:#ff6b6b;cursor:pointer;font-size:12px;">🗑️ 删除</button>` : ''}
+            </div>
+          </div>
+        `;
+      });
+      
+      tankListHTML += '</div>';
+      
+      panel.innerHTML = tankListHTML + `
+        <div style="display:flex;gap:10px;">
+          <button onclick="createNewTank()" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">➕ 新建鱼缸</button>
+          <button onclick="document.getElementById('tankSelectorOverlay').remove()" style="flex:1;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
+        </div>
+      `;
+      
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+    });
+  }
+
+  // 切换鱼缸
+  async function switchTank(tankId) {
+    if (tankId === currentTankId) return;
+    
+    // 保存当前鱼缸数据
+    await saveGameDataToDB();
+    
+    // 加载目标鱼缸数据
+    const tankData = await loadTankData(tankId);
+    if (tankData) {
+      currentTankId = tankId;
+      currentTankName = tankData.name;
+      currentTankCreatedAt = tankData.createdAt;
+      fishes = tankData.fishes || [];
+      plants = tankData.plants || [];
+      lastAddFishTime = tankData.lastAddFishTime || 0;
+      lastFeedFishTime = tankData.lastFeedFishTime || 0;
+      nextPlantGenerateTime = tankData.nextPlantGenerateTime || Date.now();
+      
+      // 保存到本地存储
+      localStorage.setItem('lastTankId', tankId);
+      
+      // 重新渲染
+      renderFishesAndPlants();
+      updateTankTitle();
+      updateAddFishButton();
+      updateFeedFishButton();
+      
+      // 加载新鱼缸的背景
+      const bgUrl = await loadBackgroundFromDB();
+      setTankBackground(bgUrl, false);
+    }
+    
+    // 关闭选择器
+    document.getElementById('tankSelectorOverlay')?.remove();
+  }
+
+  // 重命名鱼缸
+  async function renameTank(tankId) {
+    const tank = tanks.find(t => t.id === tankId);
+    if (!tank) return;
+    
+    const newName = prompt('请输入新的鱼缸名称：', tank.name);
+    if (!newName || newName === tank.name) return;
+    
+    tank.name = newName;
+    await saveTankData(tankId, tank);
+    
+    // 如果是当前鱼缸，更新标题
+    if (tankId === currentTankId) {
+      currentTankName = newName;
+      updateTankTitle();
+    }
+    
+    // 刷新列表
+    tanks = await loadAllTanks();
+    document.getElementById('tankSelectorOverlay')?.remove();
+    showTankSelector();
+  }
+
+  // 确认删除鱼缸
+  async function confirmDeleteTank(tankId) {
+    if (tanks.length <= 1) {
+      alert('至少需要保留一个鱼缸！');
+      return;
+    }
+    
+    const tank = tanks.find(t => t.id === tankId);
+    if (!tank) return;
+    
+    if (!confirm(`确定要删除鱼缸「${tank.name}」吗？\n该鱼缸中的 ${tank.fishes?.length || 0} 条鱼将永久丢失！`)) {
+      return;
+    }
+    
+    await deleteTank(tankId);
+    
+    // 如果删除的是当前鱼缸，切换到第一个鱼缸
+    if (tankId === currentTankId) {
+      const remainingTanks = tanks.filter(t => t.id !== tankId);
+      if (remainingTanks.length > 0) {
+        await switchTank(remainingTanks[0].id);
+      }
+    }
+    
+    // 刷新列表
+    tanks = await loadAllTanks();
+    updateTankTitle();
+    document.getElementById('tankSelectorOverlay')?.remove();
+    showTankSelector();
+  }
+
+  // 创建新鱼缸
+  async function createNewTank() {
+    const tankName = prompt('请输入新鱼缸名称：', `鱼缸 ${tanks.length + 1}`);
+    if (!tankName) return;
+    
+    const now = Date.now();
+    const tankId = 'tank_' + now;
+    const newTank = {
+      id: tankId,
+      name: tankName,
+      fishes: [],
+      plants: [],
+      lastAddFishTime: 0,
+      lastFeedFishTime: 0,
+      nextPlantGenerateTime: now + Math.random() * 20 * 1000,
+      createdAt: now
+    };
+    
+    await saveTankData(tankId, newTank);
+    
+    // 切换到新鱼缸
+    await switchTank(tankId);
+    
+    // 刷新列表
+    tanks = await loadAllTanks();
+    updateTankTitle();
   }
 
   // 随机安排下次生成水草的时间
@@ -1494,6 +1850,7 @@
       '<div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">⚙️ 设置</div>' +
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
       '<button onclick="toggleFullscreen();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖥️ 全屏模式</button>' +
+      '<button onclick="showTankSelector();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🐠 鱼缸管理</button>' +
       '<button onclick="showBackgroundPanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖼️ 背景设置</button>' +
       '<button onclick="toggleBackgroundMusic();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🎵 背景音乐 ' + (bgMusicEnabled ? 'ON' : 'OFF') + '</button>' +
       '<button onclick="toggleGravity();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧭 重力感应 ' + (gravityEnabled ? 'ON' : 'OFF') + '</button>' +
@@ -2570,8 +2927,14 @@
   }
 
   // 应用游戏数据（统一加载逻辑，IndexedDB 和 localStorage 共用）
-  function applyGameData(data) {
+  function applyGameData(data, overwriteFishAndPlants = true) {
     if (!data) return;
+    if (overwriteFishAndPlants) {
+      fishes = data.fishes || [];
+      plants = data.plants || [];
+      // 重新渲染鱼和植物
+      setTimeout(() => renderFishesAndPlants(), 0);
+    }
     lastAddFishTime = data.lastAddFishTime || 0;
     lastFeedFishTime = data.lastFeedFishTime || 0;
     achievements = data.achievements || [];
