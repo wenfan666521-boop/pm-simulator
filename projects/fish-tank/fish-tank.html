@@ -613,6 +613,9 @@
     fishEls.forEach(el => el.remove());
     plantEls.forEach(el => el.remove());
     
+    // 更新鱼数量显示
+    updateFishCount();
+    
     // 渲染鱼
     fishes.forEach(fish => {
       const fishEl = document.createElement('div');
