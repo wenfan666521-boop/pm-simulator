@@ -620,12 +620,34 @@
     fishes.forEach(fish => {
       const fishEl = document.createElement('div');
       fishEl.className = 'fish';
-      fishEl.textContent = fish.type;
-      fishEl.style.left = fish.x + 'px';
-      fishEl.style.top = fish.y + 'px';
       fishEl.id = fish.id;
       fishEl.onclick = () => petFish(fish.id);
       fishEl.style.cursor = 'pointer';
+      
+      const isSpecialFish = fish.isSpecial || (fish.type && fish.type.startsWith('assets/'));
+      if (isSpecialFish) {
+        fishEl.style.cssText = `position:absolute;left:${fish.x}px;top:${fish.y}px;width:50px;height:50px;cursor:pointer;z-index:10;`;
+        const img = document.createElement('img');
+        img.src = fish.type;
+        img.style.cssText = 'width:100%;height:100%;pointer-events:none;';
+        fishEl.appendChild(img);
+      } else {
+        fishEl.textContent = fish.type;
+        fishEl.style.cssText = `position:absolute;left:${fish.x}px;top:${fish.y}px;font-size:24px;cursor:pointer;z-index:10;`;
+      }
+      
+      // 应用喂鱼后的大小变换
+      const feedCount = fish.feedCount || 0;
+      fishEl.style.transform = `scale(${1 + feedCount * 0.15})`;
+      
+      // 应用礼物鱼的特殊属性
+      if (fish.sender) {
+        fishEl.dataset.sender = fish.sender;
+        fishEl.dataset.blessing = fish.blessing;
+        fishEl.dataset.name = fish.name || '';
+        fishEl.dataset.description = fish.description || '';
+      }
+      
       tank.appendChild(fishEl);
       setupCollectionLongPress(fishEl, fish.id);
     });
