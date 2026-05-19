@@ -284,7 +284,7 @@
   let gravityEnabled = localStorage.getItem('gravityEnabled') === 'true';
   let gravityX = 0; // X轴倾斜值 (-90 ~ 90)
   let gravityY = 0; // Y轴倾斜值 (-90 ~ 90)
-  const GRAVITY_SENSITIVITY = 0.3; // 重力感应灵敏度
+  let gravitySensitivity = parseFloat(localStorage.getItem('gravitySensitivity') || '0.3'); // 重力感应灵敏度 (0.1~1.0
   function initBackgroundMusic() {
     bgAudio = new Audio('minimax-output/aquarium-piano-slow.mp3');
     bgAudio.loop = true;
@@ -1474,6 +1474,10 @@
       '<button onclick="showBackgroundPanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖼️ 背景设置</button>' +
       '<button onclick="toggleBackgroundMusic();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🎵 背景音乐 ' + (bgMusicEnabled ? 'ON' : 'OFF') + '</button>' +
       '<button onclick="toggleGravity();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧭 重力感应 ' + (gravityEnabled ? 'ON' : 'OFF') + '</button>' +
+      '<div style="padding:12px;background:rgba(255,255,255,0.05);border-radius:10px;">' +
+      '<div style="font-size:12px;margin-bottom:8px;">🎚️ 灵敏度: <span id="sensitivityValue">' + gravitySensitivity.toFixed(1) + '</span></div>' +
+      '<input type="range" min="0.1" max="1.0" step="0.1" value="' + gravitySensitivity + '" oninput="setGravitySensitivity(this.value)" style="width:100%;height:6px;cursor:pointer;">' +
+      '</div>' +
       '</div>' +
       '<button onclick="this.parentNode.parentNode.remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
       '</div>';
@@ -1638,6 +1642,14 @@
     
     showSettingsPanel();
     showToast(gravityEnabled ? '🧭 重力感应已开启' : '🧭 重力感应已关闭');
+  }
+
+  // 设置重力灵敏度
+  function setGravitySensitivity(value) {
+    gravitySensitivity = parseFloat(value);
+    localStorage.setItem('gravitySensitivity', gravitySensitivity);
+    document.getElementById('sensitivityValue').textContent = gravitySensitivity.toFixed(1);
+    showToast(`🧭 灵敏度已调整为 ' + gravitySensitivity.toFixed(1));
   }
 
   // 检查是否可以添加鱼
@@ -1996,8 +2008,8 @@
       // === 重力感应逻辑 ===
       if (gravityEnabled && (Math.abs(gravityX) > 2 || Math.abs(gravityY) > 2)) {
         // 根据重力倾斜调整移动方向
-        fish.dx += gravityX * GRAVITY_SENSITIVITY * 0.05;
-        fish.dy += gravityY * GRAVITY_SENSITIVITY * 0.05;
+        fish.dx += gravityX * gravitySensitivity * 0.05;
+        fish.dy += gravityY * gravitySensitivity * 0.05;
       }
       // ======================
 
