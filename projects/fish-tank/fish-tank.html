@@ -602,6 +602,50 @@
     if (toggleBtn) {
       toggleBtn.textContent = isInIframe ? '🖥️ 全屏' : '🌟小星';
     }
+    
+    // 初始化滑动切换鱼缸手势
+    initSwipeGesture();
+  }
+  
+  // 滑动切换鱼缸手势
+  function initSwipeGesture() {
+    const tankArea = document.querySelector('.app-container');
+    let startX = 0;
+    let startY = 0;
+    const SWIPE_THRESHOLD = 80; // 滑动触发阈值
+    
+    tankArea.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    
+    tankArea.addEventListener('touchend', async (e) => {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const deltaX = endX - startX;
+      const deltaY = endY - startY;
+      
+      // 只处理水平滑动，且垂直滑动距离不超过水平的一半
+      if (Math.abs(deltaX) > Math.abs(deltaY) * 2 && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+        const currentIndex = tanks.findIndex(t => t.id === currentTankId);
+        if (currentIndex === -1) return;
+        
+        let targetIndex;
+        if (deltaX > 0) {
+          // 向右滑 → 上一个鱼缸
+          targetIndex = currentIndex - 1;
+          if (targetIndex < 0) targetIndex = tanks.length - 1;
+        } else {
+          // 向左滑 → 下一个鱼缸
+          targetIndex = currentIndex + 1;
+          if (targetIndex >= tanks.length) targetIndex = 0;
+        }
+        
+        if (tanks[targetIndex]) {
+          await switchTank(tanks[targetIndex].id);
+        }
+      }
+    }, { passive: true });
   }
 
   // 渲染所有鱼和植物
