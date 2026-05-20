@@ -92,6 +92,37 @@
     });
   }
 
+  // 保存所有鱼缸数据
+  async function saveAllTanks() {
+    if (!db) return;
+    const transaction = db.transaction(['tanks'], 'readwrite');
+    const store = transaction.objectStore('tanks');
+    
+    // 清空所有旧数据
+    return new Promise((resolve, reject) => {
+      const clearRequest = store.clear();
+      clearRequest.onsuccess = () => {
+        // 重新写入所有鱼缸
+        tanks.forEach(tank => {
+          store.put({
+            id: tank.id,
+            name: tank.name,
+            fishes: tank.fishes || [],
+            plants: tank.plants || [],
+            lastAddFishTime: tank.lastAddFishTime || 0,
+            lastFeedFishTime: tank.lastFeedFishTime || 0,
+            nextPlantGenerateTime: tank.nextPlantGenerateTime || Date.now(),
+            createdAt: tank.createdAt || Date.now(),
+            lastFishId: tank.lastFishId || 0
+          });
+        });
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      };
+      clearRequest.onerror = () => reject(clearRequest.error);
+    });
+  }
+
   // 加载单个鱼缸数据
   function loadTankData(tankId) {
     return new Promise((resolve, reject) => {
@@ -1199,12 +1230,13 @@
     document.body.appendChild(overlay);
   }
 
-  // 导出存档
+  // 导出存档（支持多鱼缸）
   function exportSave() {
     const saveData = {
-      version: 1,
+      version: 2, // 升级版本号，标识新格式
       exportTime: new Date().toISOString(),
-      fishes: fishes,
+      tanks: tanks, // 所有鱼缸数据
+      currentTankId: currentTankId, // 当前激活的鱼缸
       stats: stats,
       achievements: achievements,
       giftCount: giftCount,
@@ -1220,25 +1252,57 @@
     a.download = `fish_tank_save_${date}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    alert('存档已导出！');
+    alert('存档已导出！（包含 ' + tanks.length + ' 个鱼缸）');
   }
 
-  // 导入存档
+  // 导入存档（支持多鱼缸）
   function importSave(file) {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        if (!data.version || !data.fishes || !data.stats) {
+        
+        // 兼容旧版本（v1只有fishes，没有tanks）
+        if (data.version >= 2 && data.tanks && data.currentTankId) {
+          // 新格式：完整多鱼缸数据
+          tanks = data.tanks;
+          currentTankId = data.currentTankId;
+          
+          // 找到当前鱼缸的数据
+          const currentTank = tanks.find(t => t.id === currentTankId);
+          if (currentTank) {
+            fishes = currentTank.fishes || [];
+            currentTankName = currentTank.name || '我的鱼缸';
+          }
+        } else if (data.fishes && data.stats) {
+          // 旧格式（v1）：只有单个鱼缸数据，转换成多鱼缸格式
+          tanks = [{
+            id: 'default',
+            name: '我的鱼缸',
+            fishes: data.fishes || [],
+            plants: [],
+            lastAddFishTime: 0,
+            lastFeedFishTime: 0,
+            nextPlantGenerateTime: Date.now(),
+            createdAt: Date.now(),
+            lastFishId: 0
+          }];
+          currentTankId = 'default';
+          fishes = data.fishes || [];
+        } else {
           throw new Error('Invalid save file');
         }
-        fishes = data.fishes;
+        
         stats = { ...stats, ...data.stats };
         achievements = data.achievements || [];
         giftCount = data.giftCount || 1;
         usedCodes = data.usedCodes || [];
-        saveFishToStorage();
+        
+        // 保存到 IndexedDB
+        await saveAllTanks();
+        localStorage.setItem('lastTankId', currentTankId);
+        
         location.reload();
       } catch (err) {
         alert('存档导入失败：文件格式错误');
