@@ -8,7 +8,7 @@
   let bubbles = [];
   let plants = [];
   let fishIdCounter = 0;
-  let plantIdCounter = 0;
+  let plantIdCounter = 0; // 每缸独立，在 renderFishesAndPlants 时从当前 plants 计算恢复
   let lastAddFishTime = 0; // 上次添加鱼的时间
   const ADD_FISH_COOLDOWN = 30 * 60 * 1000; // 30分钟冷却时间
   let lastFeedFishTime = 0; // 上次喂鱼的时间
@@ -905,8 +905,14 @@
     plant.style.position = 'absolute';
     plant.style.cursor = 'pointer';
     plant.style.transition = 'transform 0.2s';
-    plant.id = 'plant-' + plantIdCounter++;
-    plant.onclick = () => collectPlant(plant.id);
+    // 计算当前plants中最大的ID数字，加1作为新ID，确保不重复
+    const maxPlantId = plants.reduce((max, p) => {
+      const num = parseInt(p.id.split('-')[1]) || 0;
+      return num > max ? num : max;
+    }, -1);
+    const newPlantId = 'plant-' + (maxPlantId + 1);
+    plant.id = newPlantId;
+    plant.onclick = () => collectPlant(newPlantId);
 
     tank.appendChild(plant);
     plants.push({ id: plant.id, type: plantType, x, y });
@@ -1232,10 +1238,16 @@
 
   // 导出存档（支持多鱼缸）
   function exportSave() {
+    // 导出时移除每个鱼缸的 plants（水草不需要存档）
+    const tanksForExport = tanks.map(tank => ({
+      ...tank,
+      plants: []
+    }));
+    
     const saveData = {
       version: 2, // 升级版本号，标识新格式
       exportTime: new Date().toISOString(),
-      tanks: tanks, // 所有鱼缸数据
+      tanks: tanksForExport, // 所有鱼缸数据（不含水草）
       currentTankId: currentTankId, // 当前激活的鱼缸
       stats: stats,
       achievements: achievements,
@@ -1261,7 +1273,12 @@
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const data = JSON.parse(e.target.result);
+        // 去除 UTF-8 BOM 头（\uFEFF），避免某些设备导出的文件带有BOM导致解析失败
+        let text = e.target.result;
+        if (text.charCodeAt(0) === 0xFEFF) {
+          text = text.slice(1);
+        }
+        const data = JSON.parse(text);
         
         // 兼容旧版本（v1只有fishes，没有tanks）
         if (data.version >= 2 && data.tanks && data.currentTankId) {
