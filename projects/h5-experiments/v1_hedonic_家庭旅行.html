@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI助手 · 专属行程顾问</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 520px;
+            height: 100vh;
+            max-height: 100vh;
+            background: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(102, 126, 234, 0.3);
+        }
+        .chat-header {
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+        .ai-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+            position: relative;
+            flex-shrink: 0;
+            object-fit: cover;
+        }
+        .ai-avatar::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 14px;
+            height: 14px;
+            background: #4ADE80;
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.5);
+        }
+        .ai-info { flex: 1; min-width: 0; }
+        .ai-info h2 { color: #FFFFFF; font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ai-info p { color: rgba(255,255,255,0.85); font-size: 13px; margin-top: 2px; }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            background: #FAFAFF;
+            -webkit-overflow-scrolling: touch;
+        }
+        .message {
+            display: flex;
+            gap: 10px;
+            max-width: 88%;
+            animation: fadeInUp 0.3s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.ai { align-self: flex-start; }
+        .message.user { align-self: flex-end; flex-direction: row-reverse; }
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            object-fit: cover;
+        }
+        .message-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .message.ai .message-avatar { background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%); }
+        .message.user .message-avatar { background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%); }
+        .message-content {
+            padding: 14px 18px;
+            border-radius: 20px;
+            line-height: 1.7;
+            font-size: 16px;
+            word-wrap: break-word;
+        }
+        .message.ai .message-content {
+            background: #FFFFFF;
+            border: 1px solid #E8E5FF;
+            border-top-left-radius: 4px;
+            color: #333;
+            box-shadow: 0 3px 12px rgba(102, 126, 234, 0.08);
+        }
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            border-top-right-radius: 4px;
+            color: #FFFFFF;
+            box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3);
+        }
+        .message-content strong { color: #667EEA; }
+        .chat-input-area {
+            padding: 12px 16px 16px;
+            background: #FFFFFF;
+            border-top: 1px solid #F0EFFF;
+            flex-shrink: 0;
+        }
+        .input-wrapper {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            background: #F8F7FF;
+            border-radius: 24px;
+            padding: 10px 10px 10px 18px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .input-wrapper:focus-within {
+            border-color: #667EEA;
+            background: #FFFFFF;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+        }
+        .chat-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            color: #333;
+            resize: none;
+            max-height: 80px;
+            outline: none;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+        .chat-input::placeholder { color: #A5A5B8; }
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+            flex-shrink: 0;
+        }
+        .send-btn:hover { transform: scale(1.05); }
+        .send-btn:active { transform: scale(0.95); }
+        .quick-emojis {
+            display: flex;
+            gap: 10px;
+            padding: 10px 4px 0;
+            flex-wrap: wrap;
+        }
+        .quick-emoji {
+            font-size: 24px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 10px;
+            transition: all 0.2s;
+            opacity: 0.75;
+        }
+        .quick-emoji:hover {
+            opacity: 1;
+            transform: scale(1.15);
+            background: #F0EFFF;
+        }
+        .restart-btn {
+            display: block;
+            width: calc(100% - 32px);
+            margin: 8px 16px;
+            padding: 12px;
+            background: #F8F7FF;
+            border: 1px dashed #C4B8FF;
+            border-radius: 12px;
+            color: #667EEA;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .restart-btn:hover { background: #667EEA; color: white; border-color: #667EEA; }
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+            background: #FAFAFF;
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #667EEA;
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-6px); opacity: 1; }
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 0;
+            max-width: 480px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: scale(0.9) translateY(20px);
+            transition: transform 0.3s;
+        }
+        .modal-overlay.show .modal-content { transform: scale(1) translateY(0); }
+        .modal-header {
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            color: white;
+            padding: 20px 24px;
+            border-radius: 20px 20px 0 0;
+        }
+        .modal-header h2 { margin: 0; font-size: 20px; font-weight: 600; }
+        .modal-header p { margin: 8px 0 0 0; opacity: 0.9; font-size: 14px; }
+        .modal-body { padding: 24px; }
+        .guide-step { display: flex; gap: 12px; margin-bottom: 16px; }
+        .guide-step:last-child { margin-bottom: 0; }
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .step-content { flex: 1; }
+        .step-title { font-weight: 600; color: #1F1F2E; font-size: 15px; margin-bottom: 4px; }
+        .step-desc { font-size: 13px; color: #7C7C8A; line-height: 1.5; }
+        .modal-footer {
+            padding: 16px 24px;
+            background: #FAFAFF;
+            border-top: 1px solid #F0EEFF;
+            border-radius: 0 0 20px 20px;
+        }
+        .btn-start {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4); }
+        .help-btn {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: 2px solid #667EEA;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transition: all 0.2s;
+        }
+        .help-btn:hover { background: #667EEA; color: white; }
+        .help-btn span { font-size: 18px; }
+    </style>
+</head>
+<body>
+    <!-- 实验指导弹窗 -->
+    <div class="modal-overlay show" id="guideModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🌈 家庭旅行规划体验</h2>
+                <p>请像平常聊天一样与AI交流</p>
+            </div>
+            <div class="modal-body">
+                <div class="guide-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">告诉AI你的出行需求</div>
+                        <div class="step-desc">可以说"我想带孩子去旅游"、"暑假想出去玩"等</div>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">和AI聊聊你的想法</div>
+                        <div class="step-desc">AI会问你一些问题，你只需要说出你的想法即可</div>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">查看AI的推荐</div>
+                        <div class="step-desc">AI会为你推荐目的地和住宿，你可以接受或调整</div>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="step-title">确认并完成规划</div>
+                        <div class="step-desc">满意后告诉AI"可以"，AI将帮你完成规划</div>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%); border-radius: 12px; color: white;">
+                    <div style="font-weight: 600; margin-bottom: 8px;">💡 温馨提示</div>
+                    <div style="font-size: 13px; line-height: 1.8;">
+                        <div>· 不需要等待AI问完所有问题，可以直接说出你的完整想法</div>
+                        <div>· 输入框可以自由输入，想说什么都可以</div>
+                        <div>· AI会尽力理解你的需求并给出推荐</div>
+                    </div>
+                </div>
+                <div style="margin-top: 12px; padding: 12px; background: #FFF9E6; border-radius: 10px; font-size: 13px; color: #996600;">
+                    <strong>📍 本次场景：</strong>你计划暑假带孩子去旅行，正在和AI助手聊天，AI会帮你规划一次难忘的家庭旅行
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-start" onclick="closeGuideModal()">开始对话</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 右上角帮助按钮 -->
+    <div class="help-btn" onclick="showGuideModal()" title="实验说明">
+        <span>❓</span>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=travel assistant&backgroundColor=667eea" class="ai-avatar" alt="AI助手">
+            <div class="ai-info">
+                <h2>星程旅行助手</h2>
+                <p>体验导向 · 专属行程顾问</p>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages"></div>
+        
+        <div class="chat-input-area">
+            <div class="input-wrapper">
+                <textarea class="chat-input" id="chatInput" placeholder="请输入您的回答..." rows="1"></textarea>
+                <button class="send-btn" id="sendBtn">➤</button>
+            </div>
+            <div class="quick-emojis">
+                <span class="quick-emoji" onclick="addEmoji('😊')">😊</span>
+                <span class="quick-emoji" onclick="addEmoji('🌈')">🌈</span>
+                <span class="quick-emoji" onclick="addEmoji('✨')">✨</span>
+                <span class="quick-emoji" onclick="addEmoji('👍')">👍</span>
+                <span class="quick-emoji" onclick="addEmoji('💕')">💕</span>
+            </div>
+            <button class="restart-btn" onclick="restart()">🔄 重新开始</button>
+        </div>
+    </div>
+    
+<script>
+// ========== 会话状态管理 ==========
+let sessionState = {
+    stage: 0,
+    hasChild: false,
+    travelDate: null,
+    preference: null,
+    destination: null
+};
+
+// ========== 关键词映射表 ==========
+const keywordMap = {
+    // 亲子
+    "带孩子": { intent: "hasChild", value: true },
+    "孩子": { intent: "hasChild", value: true },
+    "亲子": { intent: "hasChild", value: true },
+    "小孩": { intent: "hasChild", value: true },
+    "小朋友": { intent: "hasChild", value: true },
+    "娃": { intent: "hasChild", value: true },
+    // 时间
+    "暑假": { intent: "time", value: "暑假" },
+    "夏季": { intent: "time", value: "夏季" },
+    "放假": { intent: "time", value: "暑假" },
+    // 目的地
+    "大理": { intent: "destination", value: "大理" },
+    "云南": { intent: "destination", value: "大理" },
+    "洱海": { intent: "destination", value: "大理" },
+    "安吉": { intent: "destination", value: "安吉" },
+    "浙江": { intent: "destination", value: "安吉" },
+    "竹海": { intent: "destination", value: "安吉" },
+    "成都": { intent: "destination", value: "成都" },
+    "四川": { intent: "destination", value: "成都" },
+    "熊猫": { intent: "destination", value: "成都" },
+    "三亚": { intent: "destination", value: "三亚" },
+    "海边": { intent: "destination", value: "三亚" },
+    // 偏好
+    "自然": { intent: "preference", value: "自然" },
+    "山水": { intent: "preference", value: "自然" },
+    "风景": { intent: "preference", value: "自然" },
+    "拍照": { intent: "preference", value: "拍照" },
+    "出片": { intent: "preference", value: "拍照" },
+    "网红": { intent: "preference", value: "拍照" },
+    "乐园": { intent: "preference", value: "亲子" },
+    "孩子玩": { intent: "preference", value: "亲子" },
+    "休闲": { intent: "preference", value: "休闲" },
+    "放松": { intent: "preference", value: "休闲" },
+    "轻松": { intent: "preference", value: "休闲" },
+    // 确认
+    "可以": { intent: "confirm" },
+    "行": { intent: "confirm" },
+    "好": { intent: "confirm" },
+    "就这么": { intent: "confirm" },
+    "就这个": { intent: "confirm" },
+    "确定": { intent: "confirm" },
+    "订": { intent: "confirm" },
+    "要": { intent: "confirm" },
+    // 修改
+    "修改": { intent: "modify" },
+    "换": { intent: "modify" },
+    "调整": { intent: "modify" },
+    "不太": { intent: "modify" }
+};
+
+// ========== Fallback 响应库 ==========
+const fallbackResponses = [
+    "好的～ 💕 说说看你们想去哪里呀？比如海边、山里、还是城市？",
+    "明白啦～ 🌿 告诉我你们大概什么时候出发，想玩几天呢？",
+    "我理解你的想法～ 🤔 让我们先从基本的信息开始吧，这次旅行是带孩子一起吗？",
+    "好的～ ✨ 请说说你们的基本需求，比如目的地偏好或出行时间～"
+];
+let fallbackIndex = 0;
+
+function getFallback() {
+    const response = fallbackResponses[fallbackIndex % fallbackResponses.length];
+    fallbackIndex++;
+    return response;
+}
+
+// ========== AI 响应生成 ==========
+function generateAIResponse(userInput) {
+    const input = userInput.trim();
+    
+    // 1. 关键词匹配
+    let matched = null;
+    for (const [keyword, data] of Object.entries(keywordMap)) {
+        if (input.includes(keyword)) {
+            matched = data;
+            break;
+        }
+    }
+    
+    // 2. 更新会话状态
+    if (matched) {
+        if (matched.intent === "hasChild") sessionState.hasChild = matched.value;
+        if (matched.intent === "destination") sessionState.destination = matched.value;
+        if (matched.intent === "preference") sessionState.preference = matched.value;
+        if (matched.intent === "time") sessionState.travelDate = matched.value;
+    }
+    
+    // 3. 根据当前阶段和匹配结果生成响应
+    let response = "";
+    
+    switch (sessionState.stage) {
+        case 0:
+        case 1:
+            if (matched && matched.intent === "hasChild") {
+                response = "太棒了！带孩子旅行超有意义的～ 🌈 请问你们大概什么时候出发呀？想玩几天呢？";
+                sessionState.stage = 1;
+            } else if (matched && (matched.intent === "destination" || matched.intent === "preference")) {
+                response = generateStage2Response(matched);
+                sessionState.stage = 2;
+            } else if (matched && matched.intent === "time") {
+                response = "暑假出行太棒了！🌞 这次旅行你们更看重哪方面呀？比如亲近自然、拍照打卡、还是让孩子玩得开心？";
+                sessionState.stage = 1;
+            } else {
+                response = getFallback();
+            }
+            break;
+            
+        case 2:
+            if (matched && matched.intent === "preference") {
+                response = generateStage3Response(matched.value);
+                sessionState.stage = 3;
+            } else if (matched && matched.intent === "destination") {
+                response = generateStage3Response(sessionState.preference, matched.value);
+                sessionState.stage = 3;
+            } else {
+                response = "好的～ 😊 说说看你们想去哪里呀？可以说说你的想法，我来帮你推荐～";
+            }
+            break;
+            
+        case 3:
+            if (matched && matched.intent === "confirm") {
+                response = generateHotelRecommendation();
+                sessionState.stage = 4;
+            } else if (matched && matched.intent === "modify") {
+                response = "好的～ 💕 你想怎么调整呢？可以说说你的想法～";
+            } else if (matched && matched.intent === "destination") {
+                response = generateStage3Response(sessionState.preference, matched.value);
+            } else {
+                response = "这个行程你们觉得怎么样呀？😊 有想去的地方我可以再调整～";
+            }
+            break;
+            
+        case 4:
+            if (matched && matched.intent === "confirm") {
+                response = generateCompletion();
+                sessionState.stage = 5;
+            } else if (matched && matched.intent === "modify") {
+                response = "好的～ 💕 你想换一家吗？我这里还有其他选择～";
+            } else {
+                response = "这家真的很适合你们哦～ 🌟 你们觉得怎么样？";
+            }
+            break;
+            
+        case 5:
+            response = "祝你们一家人旅途愉快，创造美好的回忆！🌈 有什么问题随时来找我哦～ 😊✨";
+            break;
+            
+        default:
+            response = getFallback();
+    }
+    
+    return response;
+}
+
+// 生成阶段2响应
+function generateStage2Response(matched) {
+    const pref = matched.value;
+    if (pref === "自然") {
+        return '哇！亲近自然的旅行超有意义的！🏔️ 我想到几个很适合的目的地：\n\n① <strong>云南大理</strong>——苍山洱海，骑行环湖\n② <strong>浙江安吉</strong>——竹海茶园，住山间民宿\n③ <strong>四川成都</strong>——看熊猫、逛古镇\n\n这几个你们更想去哪个呀？😊';
+    } else if (pref === "拍照") {
+        return '拍照打卡超棒的！📸 我想到几个很出片的目的地：\n\n① <strong>云南大理</strong>——洱海、麦田，超美\n② <strong>三亚</strong>——海边、免税店\n③ <strong>厦门</strong>——鼓浪屿、环岛路\n\n这几个你们更想去哪个呀？😊';
+    } else if (pref === "亲子") {
+        return '带孩子玩得开心最重要！🎢 我想到几个很适合亲子的目的地：\n\n① <strong>四川成都</strong>——看熊猫、逛宽窄巷子\n② <strong>浙江安吉</strong>——漂流、采茶体验\n③ <strong>云南大理</strong>——扎染体验、洱海骑行\n\n这几个你们更想去哪个呀？😊';
+    } else if (pref === "休闲") {
+        return '轻松休闲的旅行最舒服了～ 😌 我想到几个很适合的目的地：\n\n① <strong>云南大理</strong>——洱海边发呆、古城逛吃\n② <strong>三亚</strong>——海边度假、免税购物\n③ <strong>厦门</strong>——鼓浪屿慢生活、小资情调\n\n这几个你们更想去哪个呀？😊';
+    } else {
+        return '好的～ 🌟 说说看你们想去哪里呀？可以说说你的想法，我来帮你推荐～';
+    }
+}
+
+// 生成阶段3响应（推荐行程）
+function generateStage3Response(preference, destination) {
+    const dest = destination || sessionState.destination || "大理";
+    
+    const itineraries = {
+        "大理": `云南真的是明智之选！🌊 洱海的美，只有亲自去过才能体会～\n\n我帮你们规划一个 <strong>5天4晚</strong> 的行程吧：\n\n📅 <strong>Day1：</strong>抵达大理，入住洱海边的亲子民宿 🌅\n📅 <strong>Day2：</strong>洱海骑行 + 双廊亲子拍照点 🚴‍♀️\n📅 <strong>Day3：</strong>喜洲古镇 + 风吹麦田 + 亲子骑行\n📅 <strong>Day4：</strong>大理古城逛吃 + 扎染体验 🎨\n📅 <strong>Day5：</strong>返程 ✈️\n\n这个行程你们觉得怎么样呀？有想去的地方我可以再调整～ 😊`,
+        "安吉": `安吉太适合亲子游了！🎋 竹海茶园，空气清新，孩子可以玩漂流、采茶～\n\n我帮你们规划一个 <strong>5天4晚</strong> 的行程吧：\n\n📅 <strong>Day1：</strong>抵达安吉，入住山间亲子民宿 🌲\n📅 <strong>Day2：</strong>中国大竹海景区 + 观光车游览\n📅 <strong>Day3：</strong>浙北大峡谷徒步 + 采茶体验 🍵\n📅 <strong>Day4：</strong>深溪漂流 + 亲子乐园\n📅 <strong>Day5：</strong>返程 ✈️\n\n这个行程你们觉得怎么样呀？有想去的地方我可以再调整～ 😊`,
+        "成都": `成都真的太适合亲子了！🐼 看看大熊猫、吃吃美食，孩子肯定喜欢～\n\n我帮你们规划一个 <strong>5天4晚</strong> 的行程吧：\n\n📅 <strong>Day1：</strong>抵达成都，入住春熙路附近酒店 🏙️\n📅 <strong>Day2：</strong>熊猫基地看大熊猫 + 宽窄巷子逛吃\n📅 <strong>Day3：</strong>都江堰景区 + 亲子骑行\n📅 <strong>Day4：</strong>武侯祠 + 锦里古街 + 川剧体验\n📅 <strong>Day5：</strong>返程 ✈️\n\n这个行程你们觉得怎么样呀？有想去的地方我可以再调整～ 😊`,
+        "三亚": `三亚海边度假太棒了！🏖️ 阳光沙滩，孩子肯定玩得开心～\n\n我帮你们规划一个 <strong>5天4晚</strong> 的行程吧：\n\n📅 <strong>Day1：</strong>抵达三亚，入住海棠湾亲子酒店 🌊\n📅 <strong>Day2：</strong>蜈支洲岛一日游 + 海边玩耍\n📅 <strong>Day3：</strong>亚龙湾热带天堂森林公园\n📅 <strong>Day4：</strong>南山文化旅游区 + 天涯海角\n📅 <strong>Day5：</strong>返程 ✈️\n\n这个行程你们觉得怎么样呀？有想去的地方我可以再调整～ 😊`
+    };
+    
+    return itineraries[dest] || itineraries["大理"];
+}
+
+// 生成民宿推荐
+function generateHotelRecommendation() {
+    const dest = sessionState.destination || "大理";
+    
+    const hotels = {
+        "大理": `好的！根据你们的行程，我推荐这家 💕\n\n🏨 <strong>大理洱海观岚诗宿</strong>\n面朝洱海，亲子友好\n评分：4.9 ⭐ | ¥680/晚\n\n推开窗就是洱海，早晨被阳光叫醒的感觉太幸福了～\n而且老板特别热情，亲子家庭还有小礼物！🎁\n\n这家真的很适合你们哦～`,
+        "安吉": `好的！根据你们的行程，我推荐这家 💕\n\n🏨 <strong>安吉简爱民宿</strong>\n山间独栋，亲子泳池\n评分：4.8 ⭐ | ¥580/晚\n\n四周竹海环绕，空气清新～\n有儿童泳池和沙坑，孩子可以尽情玩耍！🎪\n\n这家真的很适合你们哦～`,
+        "成都": `好的！根据你们的行程，我推荐这家 💕\n\n🏨 <strong>成都太古里春熙原著</strong>\n市中心，近熊猫基地\n评分：4.9 ⭐ | ¥520/晚\n\n位置超棒，距离熊猫基地只有15分钟车程～\n而且楼下就是太古里，吃喝玩乐都方便！🍜\n\n这家真的很适合你们哦～`,
+        "三亚": `好的！根据你们的行程，我推荐这家 💕\n\n🏨 <strong>三亚海棠湾君悦酒店</strong>\n海景套房，亲子乐园\n评分：4.8 ⭐ | ¥880/晚\n\n海景超棒，有专属亲子乐园～\n孩子们可以在儿童泳池玩上一整天！🏖️\n\n这家真的很适合你们哦～`
+    };
+    
+    return hotels[dest] || hotels["大理"];
+}
+
+// 生成完成响应
+function generateCompletion() {
+    const dest = sessionState.destination || "大理";
+    
+    const completions = {
+        "大理": `太棒了！你的选择真的很棒！✨\n\n📋 <strong>行程确认</strong>\n🏨 住宿：大理洱海观岚诗宿\n💰 ¥680/晚 × 4晚 = ¥2,720\n\n📅 Day1: 抵达，入住洱海民宿\n📅 Day2: 洱海骑行 + 双廊拍照\n📅 Day3: 喜洲古镇 + 风吹麦田\n📅 Day4: 大理古城 + 扎染体验\n📅 Day5: 返程\n\n祝你们一家人旅途愉快，创造美好的回忆！🌈\n有什么问题随时来找我哦～ 😊✨`,
+        "安吉": `太棒了！你的选择真的很棒！✨\n\n📋 <strong>行程确认</strong>\n🏨 住宿：安吉简爱民宿\n💰 ¥580/晚 × 4晚 = ¥2,320\n\n📅 Day1: 抵达，入住山间民宿\n📅 Day2: 中国大竹海景区\n📅 Day3: 浙北大峡谷 + 采茶\n📅 Day4: 深溪漂流 + 亲子乐园\n📅 Day5: 返程\n\n祝你们一家人旅途愉快，创造美好的回忆！🌈\n有什么问题随时来找我哦～ 😊✨`,
+        "成都": `太棒了！你的选择真的很棒！✨\n\n📋 <strong>行程确认</strong>\n🏨 住宿：成都太古里春熙原著\n💰 ¥520/晚 × 4晚 = ¥2,080\n\n📅 Day1: 抵达，入住春熙路\n📅 Day2: 熊猫基地 + 宽窄巷子\n📅 Day3: 都江堰 + 亲子骑行\n📅 Day4: 武侯祠 + 锦里\n📅 Day5: 返程\n\n祝你们一家人旅途愉快，创造美好的回忆！🌈\n有什么问题随时来找我哦～ 😊✨`,
+        "三亚": `太棒了！你的选择真的很棒！✨\n\n📋 <strong>行程确认</strong>\n🏨 住宿：三亚海棠湾君悦酒店\n💰 ¥880/晚 × 4晚 = ¥3,520\n\n📅 Day1: 抵达，入住海棠湾\n📅 Day2: 蜈支洲岛一日游\n📅 Day3: 亚龙湾森林公园\n📅 Day4: 南山 + 天涯海角\n📅 Day5: 返程\n\n祝你们一家人旅途愉快，创造美好的回忆！🌈\n有什么问题随时来找我哦～ 😊✨`
+    };
+    
+    return completions[dest] || completions["大理"];
+}
+
+// ========== 弹窗控制 ==========
+function showGuideModal() {
+    document.getElementById('guideModal').classList.add('show');
+}
+
+function closeGuideModal() {
+    document.getElementById('guideModal').classList.remove('show');
+    setTimeout(() => {
+        addMessage('嗨～欢迎使用星程旅行助手 ✨<br><br>我是你的专属行程规划伙伴～ 😊<br><br>请问这次旅行是带孩子一起出去玩吗？', 'ai');
+    }, 300);
+}
+
+// ========== 聊天核心功能 ==========
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+
+function addMessage(text, type) {
+    const msg = document.createElement('div');
+    msg.className = 'message ' + type;
+    
+    const avatar = type === 'ai' 
+        ? '<div class="message-avatar"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=travel assistant&backgroundColor=667eea" alt="AI"></div>'
+        : '<div class="message-avatar">👤</div>';
+    
+    msg.innerHTML = avatar + '<div class="message-content">' + text + '</div>';
+    
+    chatMessages.appendChild(msg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function sendMessage() {
+    const input = chatInput.value.trim();
+    if (!input) return;
+    
+    addMessage(input, 'user');
+    chatInput.value = '';
+    
+    showTypingIndicator();
+    
+    setTimeout(() => {
+        hideTypingIndicator();
+        const response = generateAIResponse(input);
+        addMessage(response, 'ai');
+    }, 800 + Math.random() * 600);
+}
+
+function showTypingIndicator() {
+    const indicator = document.createElement('div');
+    indicator.className = 'message ai';
+    indicator.id = 'typingIndicator';
+    indicator.innerHTML = '<div class="message-avatar"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=travel assistant&backgroundColor=667eea" alt="AI"></div><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+    chatMessages.appendChild(indicator);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function hideTypingIndicator() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) indicator.remove();
+}
+
+function addEmoji(emoji) {
+    chatInput.value += emoji;
+    chatInput.focus();
+}
+
+function restart() {
+    location.reload();
+}
+
+sendBtn.addEventListener('click', () => sendMessage());
+chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+chatInput.addEventListener('input', () => {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 80) + 'px';
+});
+</script>
+</body>
+</html>
