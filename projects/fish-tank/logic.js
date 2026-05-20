@@ -193,8 +193,9 @@
         const mimeType = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
         const blob = new Blob([new Uint8Array(array)], { type: mimeType });
         
-        const transaction = db.transaction(['background', 'tankBackgrounds'], 'readwrite');
-        transaction.objectStore('background').put({ id: 'tankBackground', blob, timestamp: Date.now() });
+        // 只保存到新的 tankBackgrounds 存储（按鱼缸ID隔离）
+        // 不再写入旧的 'background' 存储，避免 fallback 时互相覆盖
+        const transaction = db.transaction(['tankBackgrounds'], 'readwrite');
         transaction.objectStore('tankBackgrounds').put({ id: currentTankId, blob, timestamp: Date.now() });
         transaction.oncomplete = () => { console.log('背景图已保存到 IndexedDB'); resolve(); };
         transaction.onerror = () => { reject(transaction.error); };
@@ -1200,8 +1201,7 @@
     setTankBackground(null, false); // 不保存到DB，保存操作下面单独处理
     // 从数据库删除当前鱼缸的背景
     if (db) {
-      const transaction = db.transaction(['background', 'tankBackgrounds'], 'readwrite');
-      transaction.objectStore('background').delete('tankBackground');
+      const transaction = db.transaction(['tankBackgrounds'], 'readwrite');
       transaction.objectStore('tankBackgrounds').delete(currentTankId);
     }
     document.getElementById('backgroundPanelOverlay')?.remove();
