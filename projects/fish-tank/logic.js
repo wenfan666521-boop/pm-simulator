@@ -1,0 +1,2978 @@
+  const fishTypes = ['🐠', '🐟', '🦈', '🐙', '🦑', '🦀', '🦐', '🐚'];
+  const plantTypes = ['🍀', '🌱', '🌿', '🪸'];
+  // 特殊鱼定义：code -> { name, svg }
+  const SPECIAL_FISH = {
+    'NIKI': { name: 'niki', svg: 'assets/special-fishes/niki.svg' }
+  };
+  let fishes = [];
+  let bubbles = [];
+  let plants = [];
+  let fishIdCounter = 0;
+  let plantIdCounter = 0;
+  let lastAddFishTime = 0; // 上次添加鱼的时间
+  const ADD_FISH_COOLDOWN = 30 * 60 * 1000; // 30分钟冷却时间
+  let lastFeedFishTime = 0; // 上次喂鱼的时间
+  const FEED_FISH_COOLDOWN = 15 * 60 * 1000; // 15分钟喂鱼冷却时间
+
+  // 手动投喂模式状态
+  let isFeedingMode = false;
+  let currentBait = null;
+  let baitCheckInterval = null;
+
+  // ==================== IndexedDB 数据库 ====================
+  const DB_NAME = 'FishTankDB';
+  const DB_VERSION = 2; // 升级版本号以支持多鱼缸
+  let db = null;
+
+  // ==================== 多鱼缸系统 ====================
+  let currentTankId = 'default'; // 当前鱼缸ID
+  let currentTankName = '我的鱼缸'; // 当前鱼缸名称
+  let currentTankCreatedAt = Date.now(); // 当前鱼缸创建时间
+  let tanks = []; // 所有鱼缸列表
+
+  // 初始化 IndexedDB 数据库
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = () => { console.error('IndexedDB 打开失败:', request.error); reject(request.error); };
+      request.onsuccess = () => { db = request.result; console.log('IndexedDB 数据库连接成功'); resolve(db); };
+      request.onupgradeneeded = (event) => {
+        const database = event.target.result;
+        const oldVersion = event.oldVersion;
+        // 版本1: 基础数据
+        if (oldVersion < 1) {
+          if (!database.objectStoreNames.contains('fishTankData')) database.createObjectStore('fishTankData', { keyPath: 'id' });
+          if (!database.objectStoreNames.contains('background')) database.createObjectStore('background', { keyPath: 'id' });
+        }
+        // 版本2: 多鱼缸支持
+        if (oldVersion < 2) {
+          if (!database.objectStoreNames.contains('tanks')) database.createObjectStore('tanks', { keyPath: 'id' });
+          if (!database.objectStoreNames.contains('tankBackgrounds')) database.createObjectStore('tankBackgrounds', { keyPath: 'id' });
+        }
+      };
+    });
+  }
+
+  // 保存当前鱼缸数据到 IndexedDB
+  function saveGameDataToDB() {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const fishData = fishes.map(f => ({ id: f.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount||0, isSpecial: f.isSpecial||false, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' }));
+      const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
+      const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate } };
+      // 同时保存到旧位置和当前鱼缸
+      const transaction = db.transaction(['fishTankData', 'tanks'], 'readwrite');
+      transaction.objectStore('fishTankData').put(data);
+      // 保存当前鱼缸
+      const tankData = {
+        id: currentTankId,
+        name: currentTankName,
+        fishes: fishData,
+        plants: plantData,
+        lastAddFishTime,
+        lastFeedFishTime,
+        nextPlantGenerateTime,
+        createdAt: currentTankCreatedAt,
+        lastFishId: fishIdCounter  // ✅ 保存该鱼缸的鱼ID计数器
+      };
+      transaction.objectStore('tanks').put(tankData);
+      transaction.oncomplete = () => { console.log('游戏数据已保存到 IndexedDB'); resolve(); };
+      transaction.onerror = () => { console.error('保存失败:', transaction.error); reject(transaction.error); };
+    });
+  }
+
+  // 保存单个鱼缸数据
+  function saveTankData(tankId, tankData) {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const transaction = db.transaction(['tanks'], 'readwrite');
+      const request = transaction.objectStore('tanks').put({ id: tankId, ...tankData });
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // 加载单个鱼缸数据
+  function loadTankData(tankId) {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const transaction = db.transaction(['tanks'], 'readonly');
+      const request = transaction.objectStore('tanks').get(tankId);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // 加载所有鱼缸列表
+  function loadAllTanks() {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const tanks = [];
+      const transaction = db.transaction(['tanks'], 'readonly');
+      const store = transaction.objectStore('tanks');
+      store.openCursor().onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          tanks.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(tanks);
+        }
+      };
+      store.openCursor().onerror = () => reject(store.openCursor().error);
+    });
+  }
+
+  // 删除鱼缸
+  function deleteTank(tankId) {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const transaction = db.transaction(['tanks', 'tankBackgrounds'], 'readwrite');
+      transaction.objectStore('tanks').delete(tankId);
+      transaction.objectStore('tankBackgrounds').delete(tankId);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  // 从 IndexedDB 加载游戏数据
+  function loadGameDataFromDB() {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const transaction = db.transaction(['fishTankData'], 'readonly');
+      const store = transaction.objectStore('fishTankData');
+      const request = store.get('gameData');
+      request.onsuccess = () => { resolve(request.result || null); };
+      request.onerror = () => { reject(request.error); };
+    });
+  }
+
+  // 保存背景图到 IndexedDB (当前鱼缸)
+  function saveBackgroundToDB(dataUrl) {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      
+      try {
+        const base64 = dataUrl.split(',')[1];
+        const binary = atob(base64);
+        const array = [];
+        for (let i = 0; i < binary.length; i++) {
+          array.push(binary.charCodeAt(i));
+        }
+        const mimeType = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+        const blob = new Blob([new Uint8Array(array)], { type: mimeType });
+        
+        const transaction = db.transaction(['background', 'tankBackgrounds'], 'readwrite');
+        transaction.objectStore('background').put({ id: 'tankBackground', blob, timestamp: Date.now() });
+        transaction.objectStore('tankBackgrounds').put({ id: currentTankId, blob, timestamp: Date.now() });
+        transaction.oncomplete = () => { console.log('背景图已保存到 IndexedDB'); resolve(); };
+        transaction.onerror = () => { reject(transaction.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  // 从 IndexedDB 加载背景图 (当前鱼缸)
+  function loadBackgroundFromDB() {
+    return new Promise((resolve, reject) => {
+      if (!db) { reject(new Error('DB not initialized')); return; }
+      const transaction = db.transaction(['tankBackgrounds'], 'readonly');
+      const request = transaction.objectStore('tankBackgrounds').get(currentTankId);
+      request.onsuccess = () => {
+        if (request.result?.blob) {
+          resolve(URL.createObjectURL(request.result.blob));
+        } else {
+          // 回退到旧的全局背景
+          const oldTransaction = db.transaction(['background'], 'readonly');
+          const oldRequest = oldTransaction.objectStore('background').get('tankBackground');
+          oldRequest.onsuccess = () => resolve(oldRequest.result?.blob ? URL.createObjectURL(oldRequest.result.blob) : null);
+        }
+      };
+      request.onerror = () => { reject(request.error); };
+    });
+  }
+
+  // 保存函数（IndexedDB + localStorage 兼容）
+  function saveFishToStorage() { saveGameDataToDB().catch(err => console.error('saveGameDataToDB 失败:', err)); }
+
+  // 背景音乐
+  let bgAudio = null;
+  let bgMusicEnabled = localStorage.getItem('bgMusicEnabled') === 'true';
+
+  // 重力感应状态
+  let gravityEnabled = localStorage.getItem('gravityEnabled') === 'true';
+  let gravityX = 0; // X轴倾斜值 (-90 ~ 90)
+  let gravityY = 0; // Y轴倾斜值 (-90 ~ 90)
+  let gravitySensitivity = parseFloat(localStorage.getItem('gravitySensitivity') || '0.3'); // 重力感应灵敏度 (0.1~1.0
+  function initBackgroundMusic() {
+    bgAudio = new Audio('minimax-output/aquarium-piano-slow.mp3');
+    bgAudio.loop = true;
+    bgAudio.volume = 0.3;
+    if (bgMusicEnabled) { bgAudio.muted = false; bgAudio.play().catch(() => {}); } else { bgAudio.muted = true; }
+  }
+  function toggleBackgroundMusic() {
+    bgMusicEnabled = !bgMusicEnabled;
+    localStorage.setItem('bgMusicEnabled', bgMusicEnabled);
+    if (bgAudio) { bgMusicEnabled ? bgAudio.play().catch(() => {}) : bgAudio.pause(); }
+    showMenu();
+  }
+  // 统计数据
+  let stats = {
+    addFishClicks: 0,      // 点击添加鱼按钮次数
+    feedFishClicks: 0,     // 点击喂鱼按钮次数
+    successfulFeeds: 0,     // 成功喂鱼次数(鱼实际变大)
+    plantsCollected: 0,     // 收集水草次数
+    cleanCount: 0,          // 清理次数
+    petFishClicks: 0,      // 点击鱼的次数(摸鱼)
+    giftsSent: 0,           // 送礼次数
+    giftsReceived: 0,       // 收礼次数
+    legendBaitUsed: 0,      // 传说鱼饵使用次数
+    magicBaitUsed: 0,       // 神奇鱼饵使用次数
+    shrinkBaitUsed: 0,      // 缩小鱼饵使用次数
+    restoreBaitUsed: 0      // 还原鱼饵使用次数
+  };
+
+  // 礼物系统全局变量
+  const INITIAL_GIFT_COUNT = 1; // 初始礼物数
+  let giftCount = INITIAL_GIFT_COUNT; // 当前剩余礼物数
+  let totalGiftsSent = 0; // 历史送礼总数
+  let usedCodes = []; // 已使用的礼物码列表
+  let userId = ''; // 用户唯一ID(设备指纹)
+
+  // 开发者模式
+  const DEV_MODE_PASSWORD = 'fish666'; // 测试口令
+  const DEV_DAILY_LIMIT = 3; // 每日测试口令使用次数
+  const DEV_REWARD_AMOUNT = 3; // 每次奖励礼物数
+  let devClickCount = 0; // 连续点击次数
+  let devLastClickTime = 0; // 上次点击时间
+  let devDailyUsage = 0; // 今日已使用次数
+  let devLastUsageDate = ''; // 上次使用日期
+  let devModeUnlocked = false; // 开发者模式是否解锁(刷新重置)
+
+  // 特殊鱼饵状态
+  let nextFeedMagicBait = false; // 下次喂鱼触发神奇鱼饵（2倍）
+  let nextFeedLegendBait = false; // 下次喂鱼触发传说鱼饵（10倍）
+  let nextFeedShrinkBait = false; // 下次喂鱼触发缩小鱼饵（1/2倍）
+  let nextFeedRestoreBait = false; // 下次喂鱼触发还原鱼饵（1倍）
+
+  // 生成用户唯一ID
+  function generateUserId() {
+    const stored = localStorage.getItem('fishTankUserId');
+    if (stored) return stored;
+    const newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('fishTankUserId', newId);
+    return newId;
+  }
+  userId = generateUserId();
+
+  // 处理标题点击(开发者模式解锁)
+  function handleTitleClick() {
+    const now = Date.now();
+    const hint = document.getElementById('devHint');
+
+    // 如果超过3秒不清零,重新计数
+    if (now - devLastClickTime > 3000) {
+      devClickCount = 0;
+    }
+
+    devLastClickTime = now;
+    devClickCount++;
+
+    if (devModeUnlocked) return; // 已经解锁
+
+    if (devClickCount === 5) {
+      hint.textContent = '(还差2次...)';
+      hint.style.opacity = '0.6';
+    } else if (devClickCount === 6) {
+      hint.textContent = '(再1次!)';
+      hint.style.opacity = '0.8';
+    } else if (devClickCount >= 7) {
+      devModeUnlocked = true;
+      hint.textContent = '✨';
+      hint.style.opacity = '1';
+      showDevModeUnlockedToast();
+      saveFishToStorage();
+    }
+  }
+
+  // 显示开发者模式解锁提示
+  function showDevModeUnlockedToast() {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;';
+    toast.innerHTML = '🔧 开发者模式已解锁!<br><span style="font-size:12px;opacity:0.7;">收礼面板中可输入测试口令</span>';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+  }
+
+  // 检查并重置每日使用次数
+  function checkDevDailyReset() {
+    const today = new Date().toDateString();
+    if (devLastUsageDate !== today) {
+      devDailyUsage = 0;
+      devLastUsageDate = today;
+    }
+  }
+
+  // 物品到emoji的本地映射(备用方案)
+  const itemToEmojiMap = {
+    '金鱼': '🐠', '小鱼': '🐟', '鲨鱼': '🦈', '章鱼': '🐙', '乌贼': '🦑',
+    '螃蟹': '🦀', '虾': '🦐', '贝壳': '🐚', '海马': '🐴', '海豚': '🐬',
+    '鲸鱼': '🐳', '水母': '🪼', '乌龟': '🐢', '珊瑚': '🪸', '海星': '⭐',
+    '海胆': '🦔', '龙虾': '🦞', '河豚': '🐡', '飞鱼': '🐠', '热带鱼': '🐠',
+    '神仙鱼': '🐠', '斗鱼': '🐟', '锦鲤': '🐟', '魟鱼': '🦈', '鲨鱼': '🦈',
+    '青蛙': '🐸', '鸭子': '🦆', '天鹅': '🦢', '鲸鲨': '🦈', '海豹': '🦭',
+    '海狮': '🦭', '海象': '🦣', '三文鱼': '🐟', '金枪鱼': '🐟', '鳗鱼': '🐟',
+    '海龟': '🐢', '蜥蜴': '🦎', '蛇': '🐍', '恐龙': '🦕', '龙': '🐉',
+    '独角兽': '🦄', '凤凰': '🦅', '鹰': '🦅', '鹦鹉': '🦜', '猫': '🐱',
+    '狗': '🐶', '兔子': '🐰', '熊猫': '🐼', '狐狸': '🦊', '熊': '🐻',
+    '老虎': '🐯', '狮子': '🦁', '豹': '🐆', '马': '🐴', '鹿': '🦌',
+    '牛': '🐮', '猪': '🐷', '羊': '🐑', '鸡': '🐔', '鹰': '🦅',
+    '孔雀': '🦚', '火烈鸟': '🦩', '鸽子': '🐦', '猫头鹰': '🦉', '蝴蝶': '🦋',
+    '蜜蜂': '🐝', '瓢虫': '🐞', '蚂蚁': '🐜', '蜗牛': '🐌', '毛毛虫': '🐛'
+  };
+
+  // 检测是否在iframe中
+  const isInIframe = window.self !== window.top;
+
+  // 全屏切换函数
+  function toggleFullscreen() {
+    if (isInIframe) {
+      // 在iframe中,打开新窗口(全屏版本)
+      window.open('fish-tank.html', '_blank');
+    } else {
+      // 在新窗口中,显示欢迎弹窗
+      alert('欢迎回小星工具箱首页看看:https://aowuaowu2026.xyz/');
+    }
+  }
+
+  // 初始化
+  async function init() {
+    try {
+      await initDB();
+      
+      // 加载所有鱼缸
+      tanks = await loadAllTanks();
+      
+      // 加载上次选中的鱼缸
+      const lastTankId = localStorage.getItem('lastTankId');
+      if (lastTankId && tanks.find(t => t.id === lastTankId)) {
+        currentTankId = lastTankId;
+      } else if (tanks.length === 0) {
+        // 没有鱼缸，创建默认鱼缸
+        const now = Date.now();
+        const defaultTank = {
+          id: 'default',
+          name: '我的鱼缸',
+          fishes: [],
+          plants: [],
+          lastAddFishTime: 0,
+          lastFeedFishTime: 0,
+          nextPlantGenerateTime: now + Math.random() * 20 * 1000,
+          createdAt: now,
+          lastFishId: 0  // ✅ 新鱼缸ID计数器从0开始
+        };
+        await saveTankData('default', defaultTank);
+        tanks = [defaultTank];
+      } else {
+        // 使用第一个鱼缸
+        currentTankId = tanks[0].id;
+      }
+      
+      // 加载当前鱼缸数据
+      const currentTankData = await loadTankData(currentTankId);
+      if (currentTankData) {
+        currentTankName = currentTankData.name;
+        currentTankCreatedAt = currentTankData.createdAt;
+        fishes = currentTankData.fishes || [];
+        plants = currentTankData.plants || [];
+        lastAddFishTime = currentTankData.lastAddFishTime || 0;
+        lastFeedFishTime = currentTankData.lastFeedFishTime || 0;
+        nextPlantGenerateTime = currentTankData.nextPlantGenerateTime || Date.now();
+        // ✅ 恢复该鱼缸的鱼ID计数器
+        fishIdCounter = currentTankData.lastFishId || 0;
+        // 如果有鱼但没存lastFishId，从现有鱼的ID里推算
+        if (fishes.length > 0 && fishIdCounter === 0) {
+          const maxId = Math.max(...fishes.map(f => {
+            const match = String(f.id).match(/fish-(\d+)/);
+            return match ? parseInt(match[1]) + 1 : 0;
+          }));
+          fishIdCounter = Math.max(fishIdCounter, maxId);
+        }
+        // 重新渲染鱼和植物
+        renderFishesAndPlants();
+      }
+      
+      // 加载全局游戏数据（成就、统计等）
+      const dbData = await loadGameDataFromDB();
+      if (dbData) {
+        applyGameData(dbData, false); // 不覆盖鱼和植物数据
+      } else {
+        loadFishFromStorage();
+      }
+      
+      // 加载当前鱼缸背景
+      const bgUrl = await loadBackgroundFromDB();
+      if (bgUrl) setTankBackground(bgUrl, false);
+      
+      // 更新标题显示
+      updateTankTitle();
+    } catch (err) {
+      console.error('IndexedDB 初始化失败，回退到 localStorage:', err);
+      loadFishFromStorage();
+    }
+
+    setInterval(generateBubble, 2000);
+    setInterval(updateFishPositions, 100);
+    setInterval(updateAddFishButton, 1000);
+    setInterval(updateFeedFishButton, 1000);
+    setInterval(schedulePlantGenerate, 1000);
+    updateAddFishButton();
+    updateFeedFishButton();
+    schedulePlantGenerate();
+    initBackgroundMusic();
+    
+    // 如果之前开启过重力感应，自动初始化
+    if (gravityEnabled) {
+      initGravitySensor();
+    }
+
+    const toggleBtn = document.getElementById('toggleBtn');
+    if (toggleBtn) {
+      toggleBtn.textContent = isInIframe ? '🖥️ 全屏' : '🌟小星';
+    }
+    
+    // 初始化滑动切换鱼缸手势
+    initSwipeGesture();
+  }
+  
+  // 滑动切换鱼缸手势
+  function initSwipeGesture() {
+    const tankArea = document.querySelector('.app-container');
+    let startX = 0;
+    let startY = 0;
+    const SWIPE_THRESHOLD = 80; // 滑动触发阈值
+    
+    tankArea.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    
+    tankArea.addEventListener('touchend', async (e) => {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const deltaX = endX - startX;
+      const deltaY = endY - startY;
+      
+      // 只处理水平滑动，且垂直滑动距离不超过水平的一半
+      if (Math.abs(deltaX) > Math.abs(deltaY) * 2 && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+        const currentIndex = tanks.findIndex(t => t.id === currentTankId);
+        if (currentIndex === -1) return;
+        
+        let targetIndex;
+        if (deltaX > 0) {
+          // 向右滑 → 上一个鱼缸
+          targetIndex = currentIndex - 1;
+          if (targetIndex < 0) targetIndex = tanks.length - 1;
+        } else {
+          // 向左滑 → 下一个鱼缸
+          targetIndex = currentIndex + 1;
+          if (targetIndex >= tanks.length) targetIndex = 0;
+        }
+        
+        if (tanks[targetIndex]) {
+          await switchTank(tanks[targetIndex].id);
+        }
+      }
+    }, { passive: true });
+  }
+
+  // 渲染所有鱼和植物
+  function renderFishesAndPlants() {
+    const tank = document.getElementById('tankWater');
+    // 清空现有鱼和植物（保留计数器和提示元素）
+    const fishEls = tank.querySelectorAll('.fish');
+    const plantEls = tank.querySelectorAll('.plant');
+    fishEls.forEach(el => el.remove());
+    plantEls.forEach(el => el.remove());
+    
+    // 更新鱼数量显示
+    updateFishCount();
+    
+    // 渲染鱼
+    fishes.forEach(fish => {
+      const fishEl = document.createElement('div');
+      fishEl.className = 'fish';
+      fishEl.id = fish.id;
+      fishEl.onclick = () => petFish(fish.id);
+      fishEl.style.cursor = 'pointer';
+      
+      const isSpecialFish = fish.isSpecial || (fish.type && fish.type.startsWith('assets/'));
+      if (isSpecialFish) {
+        fishEl.style.cssText = `position:absolute;left:${fish.x}px;top:${fish.y}px;width:50px;height:50px;cursor:pointer;z-index:10;`;
+        const img = document.createElement('img');
+        img.src = fish.type;
+        img.style.cssText = 'width:100%;height:100%;pointer-events:none;';
+        fishEl.appendChild(img);
+      } else {
+        fishEl.textContent = fish.type;
+        fishEl.style.cssText = `position:absolute;left:${fish.x}px;top:${fish.y}px;font-size:24px;cursor:pointer;z-index:10;`;
+      }
+      
+      // 应用喂鱼后的大小变换
+      const feedCount = fish.feedCount || 0;
+      fishEl.style.transform = `scale(${1 + feedCount * 0.15})`;
+      
+      // 应用礼物鱼的特殊属性
+      if (fish.sender) {
+        fishEl.dataset.sender = fish.sender;
+        fishEl.dataset.blessing = fish.blessing;
+        fishEl.dataset.name = fish.name || '';
+        fishEl.dataset.description = fish.description || '';
+      }
+      
+      tank.appendChild(fishEl);
+      setupCollectionLongPress(fishEl, fish.id);
+    });
+    
+    // 渲染植物
+    plants.forEach(plant => {
+      const plantEl = document.createElement('div');
+      plantEl.className = 'plant';
+      plantEl.textContent = plant.type;
+      plantEl.style.left = plant.x + 'px';
+      plantEl.style.bottom = '10px';
+      plantEl.style.fontSize = '24px';
+      plantEl.style.position = 'absolute';
+      plantEl.style.cursor = 'pointer';
+      plantEl.style.transition = 'transform 0.2s';
+      plantEl.id = plant.id;
+      plantEl.onclick = () => collectPlant(plant.id);
+      tank.appendChild(plantEl);
+    });
+  }
+
+  // 更新鱼缸标题
+  function updateTankTitle() {
+    const titleEl = document.getElementById('tankTitle');
+    if (titleEl) {
+      titleEl.innerHTML = `🐠 ${currentTankName} <span onclick="event.stopPropagation();showTankSelector()" id="tankCountBadge" style="font-size:12px;opacity:0.7;margin-left:8px;cursor:pointer;padding:4px 8px;background:rgba(255,255,255,0.1);border-radius:12px;">切换鱼缸</span> <span id="devHint" style="font-size:12px;opacity:0;"></span>`;
+    }
+  }
+
+  // 显示鱼缸选择器
+  function showTankSelector() {
+    // 先刷新鱼缸列表
+    loadAllTanks().then(allTanks => {
+      tanks = allTanks;
+      updateTankTitle();
+      
+      const overlay = document.createElement('div');
+      overlay.id = 'tankSelectorOverlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+      overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+      
+      const panel = document.createElement('div');
+      panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:350px;max-height:80vh;overflow-y:auto;';
+      
+      let tankListHTML = '<div style="font-size:20px;font-weight:bold;margin-bottom:20px;text-align:center;">🐠 鱼缸列表</div>';
+      tankListHTML += '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">';
+      
+      tanks.forEach(tank => {
+        const isCurrent = tank.id === currentTankId;
+        const fishCount = tank.fishes?.length || 0;
+        const createdAt = new Date(tank.createdAt).toLocaleDateString();
+        tankListHTML += `
+          <div style="padding:15px;border-radius:12px;background:${isCurrent ? 'rgba(102,126,234,0.3)' : 'rgba(255,255,255,0.1)'};margin-bottom:10px;border:${isCurrent ? '2px solid #667eea' : '2px solid transparent'};">
+            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="switchTank('${tank.id}')">
+              <span style="font-weight:bold;font-size:16px;">${isCurrent ? '📍 ' : ''}${tank.name}</span>
+              <span style="font-size:12px;opacity:0.7;">🐟 ${fishCount} 条鱼</span>
+            </div>
+            <div style="font-size:11px;opacity:0.5;margin-top:5px;margin-bottom:10px;">创建于 ${createdAt}</div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button onclick="event.stopPropagation();showRenameTankPanel('${tank.id}')" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-size:12px;">✏️ 重命名</button>
+              ${tanks.length > 1 ? `<button onclick="event.stopPropagation();showDeleteTankConfirm('${tank.id}')" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,107,107,0.3);color:#ff6b6b;cursor:pointer;font-size:12px;">🗑️ 删除</button>` : ''}
+            </div>
+          </div>
+        `;
+      });
+      
+      tankListHTML += '</div>';
+      
+      panel.innerHTML = tankListHTML + `
+        <div style="display:flex;gap:10px;">
+          <button onclick="showCreateTankPanel()" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">➕ 新建鱼缸</button>
+          <button onclick="document.getElementById('tankSelectorOverlay').remove()" style="flex:1;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
+        </div>
+      `;
+      
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+    });
+  }
+
+  // 切换鱼缸
+  async function switchTank(tankId, isNewTank = false) {
+    if (tankId === currentTankId) return;
+    
+    // 保存当前鱼缸数据
+    await saveGameDataToDB();
+    
+    // 加载目标鱼缸数据
+    const tankData = await loadTankData(tankId);
+    if (tankData) {
+      currentTankId = tankId;
+      currentTankName = tankData.name;
+      currentTankCreatedAt = tankData.createdAt;
+      fishes = tankData.fishes || [];
+      plants = tankData.plants || [];
+      lastAddFishTime = tankData.lastAddFishTime || 0;
+      lastFeedFishTime = tankData.lastFeedFishTime || 0;
+      nextPlantGenerateTime = tankData.nextPlantGenerateTime || Date.now();
+      // ✅ 恢复目标鱼缸的鱼ID计数器
+      fishIdCounter = tankData.lastFishId || 0;
+      // 如果有鱼但没存lastFishId，从现有鱼的ID里推算
+      if (fishes.length > 0 && fishIdCounter === 0) {
+        const maxId = Math.max(...fishes.map(f => {
+          const match = String(f.id).match(/fish-(\d+)/);
+          return match ? parseInt(match[1]) + 1 : 0;
+        }));
+        fishIdCounter = Math.max(fishIdCounter, maxId);
+      }
+      
+      // 保存到本地存储
+      localStorage.setItem('lastTankId', tankId);
+      
+      // 重新渲染
+      renderFishesAndPlants();
+      updateTankTitle();
+      updateAddFishButton();
+      updateFeedFishButton();
+      
+      // 新鱼缸使用默认背景，否则加载已保存的背景
+      if (isNewTank) {
+        resetTankBackground(false); // 重置为默认深蓝色背景，不显示Toast
+      } else {
+        const bgUrl = await loadBackgroundFromDB();
+        setTankBackground(bgUrl, false);
+      }
+    }
+    
+    // 关闭选择器
+    document.getElementById('tankSelectorOverlay')?.remove();
+  }
+
+  // 显示重命名鱼缸弹窗
+  function showRenameTankPanel(tankId) {
+    const tank = tanks.find(t => t.id === tankId);
+    if (!tank) return;
+    
+    document.getElementById('tankSelectorOverlay')?.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'renameTankOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:350px;';
+    
+    panel.innerHTML = `
+      <div style="font-size:20px;font-weight:bold;margin-bottom:20px;text-align:center;">✏️ 重命名鱼缸</div>
+      <div style="font-size:14px;opacity:0.7;margin-bottom:15px;text-align:center;">当前名称：${tank.name}</div>
+      <input type="text" id="renameTankName" placeholder="请输入新的鱼缸名称" value="${tank.name}" style="width:100%;padding:15px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;margin-bottom:20px;font-size:14px;" />
+      <div style="display:flex;gap:10px;">
+        <button onclick="renameTank('${tankId}')" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">确认</button>
+        <button onclick="document.getElementById('renameTankOverlay').remove();showTankSelector();" style="flex:1;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">取消</button>
+      </div>
+    `;
+    
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    document.getElementById('renameTankName').focus();
+    document.getElementById('renameTankName').select();
+  }
+
+  // 重命名鱼缸
+  async function renameTank(tankId) {
+    const newName = document.getElementById('renameTankName').value.trim();
+    if (!newName) return;
+    
+    document.getElementById('renameTankOverlay').remove();
+    
+    const tank = tanks.find(t => t.id === tankId);
+    if (!tank) return;
+    
+    tank.name = newName;
+    await saveTankData(tankId, tank);
+    
+    // 如果是当前鱼缸，更新标题
+    if (tankId === currentTankId) {
+      currentTankName = newName;
+      updateTankTitle();
+    }
+    
+    // 刷新列表
+    tanks = await loadAllTanks();
+    showTankSelector();
+  }
+
+  // 显示删除鱼缸确认弹窗
+  function showDeleteTankConfirm(tankId) {
+    if (tanks.length <= 1) {
+      showToast('至少需要保留一个鱼缸！');
+      return;
+    }
+    
+    const tank = tanks.find(t => t.id === tankId);
+    if (!tank) return;
+    
+    document.getElementById('tankSelectorOverlay')?.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'deleteTankOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:350px;';
+    
+    panel.innerHTML = `
+      <div style="font-size:20px;font-weight:bold;margin-bottom:20px;text-align:center;">🗑️ 确认删除</div>
+      <div style="font-size:14px;text-align:center;margin-bottom:20px;line-height:1.6;">
+        确定要删除鱼缸「<span style="color:#667eea;font-weight:bold;">${tank.name}</span>」吗？<br>
+        <span style="color:#ff6b6b;opacity:0.8;">该鱼缸中的 ${tank.fishes?.length || 0} 条鱼将永久丢失！</span>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="executeDeleteTank('${tankId}')" style="flex:1;padding:12px;border:none;border-radius:10px;background:#ff6b6b;color:#fff;cursor:pointer;font-size:14px;">确认删除</button>
+        <button onclick="document.getElementById('deleteTankOverlay').remove();showTankSelector();" style="flex:1;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">取消</button>
+      </div>
+    `;
+    
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+  }
+
+  // 执行删除鱼缸
+  async function executeDeleteTank(tankId) {
+    document.getElementById('deleteTankOverlay').remove();
+    
+    await deleteTank(tankId);
+    
+    // 如果删除的是当前鱼缸，切换到第一个鱼缸
+    if (tankId === currentTankId) {
+      const remainingTanks = tanks.filter(t => t.id !== tankId);
+      if (remainingTanks.length > 0) {
+        await switchTank(remainingTanks[0].id);
+      }
+    }
+    
+    // 刷新列表
+    tanks = await loadAllTanks();
+    updateTankTitle();
+    showTankSelector();
+  }
+
+  // 显示提示消息
+  function showToast(message, duration = 2000) {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:15px 25px;border-radius:10px;font-size:14px;z-index:9999;animation:fadeIn 0.2s;';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), duration);
+  }
+
+  // 显示新建鱼缸弹窗
+  function showCreateTankPanel() {
+    document.getElementById('tankSelectorOverlay')?.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'createTankOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:350px;';
+    
+    panel.innerHTML = `
+      <div style="font-size:20px;font-weight:bold;margin-bottom:20px;text-align:center;">🐠 新建鱼缸</div>
+      <input type="text" id="newTankName" placeholder="请输入鱼缸名称" value="鱼缸 ${tanks.length + 1}" style="width:100%;padding:15px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;margin-bottom:20px;font-size:14px;" />
+      <div style="display:flex;gap:10px;">
+        <button onclick="createNewTank()" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">创建</button>
+        <button onclick="document.getElementById('createTankOverlay').remove();showTankSelector();" style="flex:1;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">取消</button>
+      </div>
+    `;
+    
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    document.getElementById('newTankName').focus();
+    document.getElementById('newTankName').select();
+  }
+
+  // 创建新鱼缸
+  async function createNewTank() {
+    const tankName = document.getElementById('newTankName').value.trim();
+    if (!tankName) return;
+    
+    document.getElementById('createTankOverlay').remove();
+    
+    const now = Date.now();
+    const tankId = 'tank_' + now;
+    const newTank = {
+      id: tankId,
+      name: tankName,
+      fishes: [],
+      plants: [],
+      lastAddFishTime: 0,
+      lastFeedFishTime: 0,
+      nextPlantGenerateTime: now + Math.random() * 20 * 1000,
+      createdAt: now,
+      lastFishId: 0  // ✅ 新鱼缸ID计数器从0开始
+    };
+    
+    await saveTankData(tankId, newTank);
+    
+    // 切换到新鱼缸
+    await switchTank(tankId, true); // true = 新鱼缸，重置背景为默认
+    
+    // 刷新列表
+    tanks = await loadAllTanks();
+    updateTankTitle();
+  }
+
+  // 随机安排下次生成水草的时间
+  let nextPlantGenerateTime = 0;
+  function schedulePlantGenerate() {
+    const now = Date.now();
+    if (now >= nextPlantGenerateTime) {
+      generateRandomPlant();
+      nextPlantGenerateTime = now + Math.random() * 20 * 1000; // 0-20秒
+    }
+  }
+
+  // 生成随机水草/珊瑚
+  function generateRandomPlant() {
+    const tank = document.getElementById('tankWater');
+    if (!tank) return;
+
+    // 检查水草数量是否达到上限50
+    if (plants.length >= 50) return;
+
+    const tankWidth = tank.offsetWidth;
+    const tankHeight = tank.offsetHeight;
+    const plantType = plantTypes[Math.floor(Math.random() * plantTypes.length)];
+    const x = Math.random() * (tankWidth - 30);
+    const y = tankHeight - 50; // 生成在水缸底部
+
+    const plant = document.createElement('div');
+    plant.className = 'plant';
+    plant.textContent = plantType;
+    plant.style.left = x + 'px';
+    plant.style.bottom = '10px';
+    plant.style.fontSize = '24px';
+    plant.style.position = 'absolute';
+    plant.style.cursor = 'pointer';
+    plant.style.transition = 'transform 0.2s';
+    plant.id = 'plant-' + plantIdCounter++;
+    plant.onclick = () => collectPlant(plant.id);
+
+    tank.appendChild(plant);
+    plants.push({ id: plant.id, type: plantType, x, y });
+  }
+
+  // 收集水草,减少喂鱼冷却1分钟
+  function collectPlant(plantId) {
+    const plantEl = document.getElementById(plantId);
+    if (!plantEl) return;
+
+    stats.plantsCollected++; // 记录收集水草次数
+    checkAchievements(); // 检查成就
+
+    // 减少喂鱼冷却1分钟
+    if (!canFeedFish()) {
+      lastFeedFishTime = Math.max(0, lastFeedFishTime - 60000);
+      updateFeedFishButton();
+    }
+
+    // 收集动画
+    plantEl.style.transform = 'scale(0)';
+    plantEl.style.opacity = '0';
+    setTimeout(() => {
+      if (plantEl.parentNode) {
+        plantEl.parentNode.removeChild(plantEl);
+      }
+    }, 200);
+
+    plants = plants.filter(p => p.id !== plantId);
+    saveFishToStorage();
+  }
+
+  // ========== 送礼系统 ==========
+
+  // 语义识别物品
+  function recognizeItem(itemName) {
+    // 本地映射表优先匹配
+    for (const [key, emoji] of Object.entries(itemToEmojiMap)) {
+      if (itemName.includes(key) || key.includes(itemName)) {
+        return emoji;
+      }
+    }
+
+    // 没有匹配到则返回默认礼物
+    return '🎁';
+  }
+
+  // 解析礼物代码
+  function parseGiftCode(code) {
+    try {
+      // 提取【】中间的内容
+      const match = code.match(/【([^】]+)】/);
+      const raw = match ? match[1] : code.trim();
+      // base64解码 + lz-string解压
+      const decompressed = decodeURIComponent(atob(raw));
+      const jsonStr = LZString.decompressFromBase64(decompressed);
+      return jsonStr ? JSON.parse(jsonStr) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // 全局变量保存当前送礼面板
+  let currentGiftPanel = null;
+  let currentGiftEmoji = null; // 当前选择的礼物emoji
+
+  // 祝福语关键词到emoji映射(本地匹配)
+  const BLESSING_EMOJI_MAP = {
+    '爱|喜欢|心|恋': '❤️',
+    '快乐|开心|幸福|喜悦': '🎉',
+    '加油|努力|奋斗|坚持': '💪',
+    '成功|胜利|夺冠|第一': '🏆',
+    '财运|发财|暴富|金钱': '💰',
+    '太阳|阳光|温暖|光明': '☀️',
+    '星星|夜空|梦想|闪耀': '⭐',
+    '彩虹|希望|美好|未来': '🌈',
+    '生日|寿星|长大|成长': '🎂',
+    '圣诞|圣诞树|铃儿响': '🎄',
+    '新年|春节|龙年|吉祥': '🐉',
+    '礼物|惊喜|祝福|感恩': '🎁',
+    '美丽|自由|蝴蝶|优雅': '🦋',
+    '月亮|宁静|夜晚|浪漫': '🌙',
+    '热情|火辣|能量|激情': '🔥',
+    '和平|宁静|和谐|友好': '☮️',
+    '健康|平安|祝福|身体': '🏥',
+    '学习|知识|智慧|聪明': '📚',
+    '工作|事业|升职|加油': '💼',
+    '家庭|亲情|团聚|温馨': '🏠',
+    '友谊|朋友|陪伴|知己': '🤝',
+    '爱情|浪漫|情侣|结婚': '💍'
+  };
+
+  // AI emoji agent API配置(百炼平台)
+  const AI_EMOJI_CONFIG = {
+    endpoint: 'https://dashscope.aliyuncs.com/api/v1/apps/24111cfa5a494d08adbfb3f572487da9/completion',
+    apiKey: 'sk-457b30bfdc5e49ea82d77a74606367db',
+    timeout: 30000 // 30秒超时
+  };
+
+  // 根据祝福语获取emoji(本地关键词匹配)
+  function getEmojiByBlessing(blessing) {
+    if (!blessing) return null;
+
+    for (const [keywords, emoji] of Object.entries(BLESSING_EMOJI_MAP)) {
+      const regex = new RegExp(keywords);
+      if (regex.test(blessing)) {
+        return emoji;
+      }
+    }
+    return null;
+  }
+
+  // AI emoji agent API调用(百炼平台)
+  async function getAIEmoji(blessing) {
+    if (!AI_EMOJI_CONFIG.endpoint) {
+      return null; // 未配置API,返回null
+    }
+
+    try {
+      const response = await Promise.race([
+        fetch(AI_EMOJI_CONFIG.endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + AI_EMOJI_CONFIG.apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            input: {
+              prompt: blessing
+            },
+            parameters: {}
+          })
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), AI_EMOJI_CONFIG.timeout)
+        )
+      ]);
+
+      if (!response.ok) {
+        throw new Error('API请求失败');
+      }
+
+      const data = await response.json();
+      // 从百炼API响应中提取emoji(格式:{"output":{"text":"😊"},...})
+      return data.output?.text || null;
+    } catch (error) {
+      console.error('AI emoji API调用失败:', error);
+      return null;
+    }
+  }
+
+  // 显示庆祝动画
+  // 显示庆祝动画(全屏遮罩,点击关闭)
+  function showCelebrationAnimation(emoji, blessing, onClose) {
+    // 创建全屏遮罩
+    const overlay = document.createElement('div');
+    overlay.id = 'celebrationOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;';
+
+    // 顶部文字(两行)
+    const topTextContainer = document.createElement('div');
+    topTextContainer.style.cssText = 'position:absolute;top:60px;left:50%;transform:translateX(-50%);text-align:center;animation:fadeInDown 0.8s ease-out;';
+
+    const topLine = document.createElement('div');
+    topLine.style.cssText = 'color:#F7DC6F;font-size:22px;font-weight:bold;text-shadow:0 2px 10px rgba(0,0,0,0.5);margin-bottom:8px;';
+    topLine.textContent = '✨ 你的祝福获得了海神的馈赠 ✨';
+
+    const bottomLine = document.createElement('div');
+    bottomLine.style.cssText = 'color:rgba(220,220,220,0.9);font-size:14px;font-style:italic;text-shadow:0 1px 5px rgba(0,0,0,0.5);';
+    bottomLine.textContent = '快送去给朋友吧~';
+
+    topTextContainer.appendChild(topLine);
+    topTextContainer.appendChild(bottomLine);
+    overlay.appendChild(topTextContainer);
+
+    // 创建粒子容器
+    const particleContainer = document.createElement('div');
+    particleContainer.style.cssText = 'position:absolute;width:100px;height:100px;left:50%;top:50%;margin-left:-50px;margin-top:-50px;z-index:5;';
+
+    // 创建emoji
+    const emojiDiv = document.createElement('div');
+    emojiDiv.style.cssText = 'font-size:120px;z-index:10;position:relative;animation:glowPulse 1.5s ease-in-out infinite;filter:drop-shadow(0 0 30px gold);cursor:pointer;';
+    emojiDiv.textContent = emoji;
+
+    // 创建光环
+    for (let i = 0; i < 3; i++) {
+      const ring = document.createElement('div');
+      ring.style.cssText = `position:absolute;width:100px;height:100px;left:50%;top:50%;margin-left:-50px;margin-top:-50px;border:3px solid gold;border-radius:50%;opacity:0;animation:ringExpand 1.5s ease-out ${i * 0.4}s infinite;`;
+      particleContainer.appendChild(ring);
+    }
+
+    // 创建星星
+    const starPositions = [{x:-120,y:-80},{x:100,y:-60},{x:-90,y:60},{x:110,y:80},{x:-60,y:-130},{x:70,y:-120},{x:-140,y:20},{x:130,y:30}];
+    const starEmojis = ['✨','⭐','🌟','💫'];
+    starPositions.forEach((pos,i) => {
+      const star = document.createElement('div');
+      star.style.cssText = `position:absolute;left:calc(50% + ${pos.x}px);top:calc(50% + ${pos.y}px);font-size:20px;animation:starTwinkle 0.8s ease-in-out ${i * 0.1}s infinite;`;
+      star.textContent = starEmojis[i % 4];
+      particleContainer.appendChild(star);
+    });
+
+    // 创建粒子
+    const colors = ['#FF6B6B','#4ECDC4','#45B7D1','#FFA07A','#98D8C8','#F7DC6F','#DDA0DD','#87CEEB'];
+    for (let i = 0; i < 30; i++) {
+      const p = document.createElement('div');
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 100 + Math.random() * 150;
+      p.style.cssText = `position:absolute;width:10px;height:10px;border-radius:50%;left:50%;top:50%;margin-left:-5px;margin-top:-5px;background:${colors[Math.floor(Math.random() * colors.length)]};animation:particleFly 1.5s ease-out ${Math.random() * 0.5}s infinite;--tx:${Math.cos(angle) * distance}px;--ty:${Math.sin(angle) * distance}px;`;
+      particleContainer.appendChild(p);
+    }
+
+    // 提示文字
+    const hint = document.createElement('div');
+    hint.style.cssText = 'margin-top:30px;color:rgba(255,255,255,0.6);font-size:14px;z-index:10;';
+    hint.textContent = '点击任意位置继续';
+
+    overlay.appendChild(particleContainer);
+    overlay.appendChild(emojiDiv);
+    overlay.appendChild(hint);
+
+    // 点击关闭
+    overlay.onclick = () => {
+      overlay.remove();
+      if (onClose) onClose();
+    };
+
+    document.body.appendChild(overlay);
+  }
+
+  // 更新礼物数显示
+  function updateGiftCountDisplay() {
+    const countDisplay = document.getElementById('giftCountDisplay');
+    if (countDisplay) {
+      countDisplay.textContent = `剩余礼物:${giftCount} 个`;
+    }
+  }
+
+  // 显示背景设置面板
+  function showBackgroundPanel() {
+    const existing = document.getElementById('backgroundPanelOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'backgroundPanelOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:320px;text-align:center;';
+    panel.innerHTML = `
+      <div style="font-size:24px;margin-bottom:20px;">🖼️ 鱼缸背景</div>
+      <input type="file" id="bgFileInput" accept="image/*" style="display:none;" onchange="handleBackgroundUpload(this.files[0])">
+      <button onclick="document.getElementById('bgFileInput').click()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;margin-bottom:10px;">📤 上传背景图片</button>
+      <button onclick="resetTankBackground()" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;margin-bottom:10px;">🔄 恢复默认背景</button>
+      <button onclick="document.getElementById('backgroundPanelOverlay').remove()" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
+    `;
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+  }
+
+  // 处理背景图片上传
+  function handleBackgroundUpload(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setTankBackground(e.target.result, true);
+      document.getElementById('backgroundPanelOverlay')?.remove();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // 设置鱼缸背景 (url: 图片URL, saveToDB: 是否保存到数据库)
+  function setTankBackground(url, saveToDB = false) {
+    const tank = document.getElementById('fishTank');
+    if (url) {
+      tank.style.backgroundImage = `url('${url}')`;
+      tank.style.backgroundSize = 'cover';
+      tank.style.backgroundPosition = 'center center';
+      tank.style.backgroundRepeat = 'no-repeat';
+      tank.classList.add('has-background');
+      if (saveToDB && url.startsWith('data:')) saveBackgroundToDB(url).catch(err => console.error('saveBackgroundToDB 失败:', err));
+    } else {
+      // 重置为默认背景
+      tank.style.backgroundImage = '';
+      tank.classList.remove('has-background');
+    }
+  }
+
+  // 重置鱼缸背景为默认
+  function resetTankBackground(showMessage = true) {
+    setTankBackground(null, false); // 不保存到DB，保存操作下面单独处理
+    // 从数据库删除当前鱼缸的背景
+    if (db) {
+      const transaction = db.transaction(['background', 'tankBackgrounds'], 'readwrite');
+      transaction.objectStore('background').delete('tankBackground');
+      transaction.objectStore('tankBackgrounds').delete(currentTankId);
+    }
+    document.getElementById('backgroundPanelOverlay')?.remove();
+    if (showMessage) {
+      showToast('🔄 已恢复默认背景');
+    }
+  }
+
+  // 显示存档管理面板
+  function showSavePanel() {
+    const overlay = document.createElement('div');
+    overlay.id = 'savePanelOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    overlay.innerHTML = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">' +
+      '<div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">📦 存档管理</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' +
+      '<button onclick="exportSave()" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📤 导出存档</button>' +
+      '<button onclick="document.getElementById(\'saveFileInput\').click()" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📥 导入存档</button>' +
+      '</div>' +
+      '<button onclick="document.getElementById(\'savePanelOverlay\').remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
+      '<input type="file" id="saveFileInput" accept=".json" style="display:none;" onchange="importSave(this.files[0])">' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+  }
+
+  // 导出存档
+  function exportSave() {
+    const saveData = {
+      version: 1,
+      exportTime: new Date().toISOString(),
+      fishes: fishes,
+      stats: stats,
+      achievements: achievements,
+      giftCount: giftCount,
+      usedCodes: usedCodes
+    };
+
+    const json = JSON.stringify(saveData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    a.href = url;
+    a.download = `fish_tank_save_${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    alert('存档已导出！');
+  }
+
+  // 导入存档
+  function importSave(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!data.version || !data.fishes || !data.stats) {
+          throw new Error('Invalid save file');
+        }
+        fishes = data.fishes;
+        stats = { ...stats, ...data.stats };
+        achievements = data.achievements || [];
+        giftCount = data.giftCount || 1;
+        usedCodes = data.usedCodes || [];
+        saveFishToStorage();
+        location.reload();
+      } catch (err) {
+        alert('存档导入失败：文件格式错误');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // 显示送礼面板
+  function showGiftPanel() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    const giftPanel = document.createElement('div');
+    giftPanel.className = 'gift-panel';
+    giftPanel.innerHTML = `
+      <span class="gift-close" onclick="closeGiftPanel()">✕</span>
+      <h3>💫 祈祷祝福</h3>
+      <div id="giftCountDisplay" style="text-align:center;margin-bottom:15px;padding:8px;background:rgba(255,255,255,0.1);border-radius:10px;font-size:12px;color:rgba(255,255,255,0.8);">剩余礼物:${giftCount} 个</div>
+      <div class="gift-section">
+        <input type="text" id="giftSenderName" placeholder="你的名字">
+        <textarea id="giftBlessing" placeholder="输入祝福语" maxlength="200"></textarea>
+        <button id="confirmGiftBtn">生成礼物</button>
+      </div>
+      <div id="giftLoading" class="gift-section" style="display:none;">
+        <h4>🔮 AI 正在分析...</h4>
+        <div style="text-align:center;margin:20px 0;">
+          <div style="font-size:48px;margin-bottom:10px;">⏳</div>
+          <div id="loadingBlessing" style="font-size:12px;opacity:0.8;"></div>
+          <div style="font-size:10px;opacity:0.6;margin-top:10px;">语义分析中...</div>
+        </div>
+        <div style="width:100%;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:15px 0;">
+          <div id="loadingProgress" style="width:0%;height:100%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:2px;transition:width 0.3s ease;"></div>
+        </div>
+      </div>
+      <div id="giftResult" class="gift-section" style="display:none;">
+        <h4>🎁 礼物确认</h4>
+        <div style="text-align:center;margin:15px 0;">
+          <div style="font-size:48px;margin-bottom:10px;">🎁</div>
+          <div style="font-size:14px;">礼物:预览</div>
+          <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福语</div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:15px;">
+          <button id="addToMyTankBtn" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#34c759 0%,#28a745 100%);color:#fff;cursor:pointer;font-size:14px;">🏠 放入鱼缸</button>
+          <button id="sendToFriendBtn" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">📤 送给朋友</button>
+        </div>
+        <div id="giftCodeDisplay" class="gift-code-display" style="display:none;margin-top:15px;"></div>
+      </div>
+    `;
+
+    // 保存当前面板引用
+    currentGiftPanel = giftPanel;
+
+    // 绑定按钮事件
+    giftPanel.querySelector('#confirmGiftBtn').onclick = confirmGift;
+    giftPanel.querySelector('#addToMyTankBtn').onclick = addGiftToMyTank;
+    giftPanel.querySelector('#sendToFriendBtn').onclick = sendGiftToFriend;
+
+    overlay.appendChild(giftPanel);
+    document.body.appendChild(overlay);
+  }
+
+  function closeGiftPanel() {
+    if (currentGiftPanel && currentGiftPanel.parentNode) {
+      currentGiftPanel.parentNode.remove();
+    }
+    currentGiftPanel = null;
+  }
+
+  let currentReceivedGift = null; // 当前收到的礼物数据
+
+  // 显示收礼面板
+  function showReceivePanel() {
+    // 简单的弹窗创建
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+
+    // 检查是否需要重置每日次数
+    checkDevDailyReset();
+
+    // 构建开发者模式部分
+    let devSectionHTML = '';
+    if (devModeUnlocked) {
+      devSectionHTML = '<div style="margin-top:15px;padding-top:15px;border-top:1px dashed rgba(255,255,255,0.2);">' +
+        '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px;">🔧 开发者模式 · 无限兑换</div>' +
+        '<input type="text" id="devCodeInput" placeholder="输入测试口令" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:#fff;margin-bottom:8px;box-sizing:border-box;">' +
+        '<button id="confirmDevBtn" style="width:100%;padding:8px;border:none;border-radius:8px;background:rgba(100,100,100,0.5);color:#fff;cursor:pointer;font-size:12px;">兑换 (+' + DEV_REWARD_AMOUNT + '礼物)</button>' +
+        '</div>';
+    }
+
+    // 构建面板HTML
+    var panelHTML = '<span class="gift-close" onclick="this.parentNode.parentNode.remove()">✕</span>' +
+      '<h3>📬 收取礼物</h3>' +
+      '<div class="gift-section">' +
+      '<input type="text" id="receiveCodeInput" placeholder="粘贴礼物代码">' +
+      '<button id="confirmReceiveBtn">确认收取</button>' +
+      '</div>' +
+      '<div id="receiveResult" class="gift-section" style="display:none;">' +
+      '<h4>🎁 礼物预览</h4>' +
+      '<div style="text-align:center;margin:20px 0;">' +
+      '<div style="font-size:48px;margin-bottom:10px;">🎁</div>' +
+      '<div style="font-size:14px;">礼物:预览</div>' +
+      '<div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福语</div>' +
+      '<div style="font-size:11px;opacity:0.6;">送礼人</div>' +
+      '</div>' +
+      '<button id="addToTankBtn">放入鱼缸</button>' +
+      '</div>' +
+      devSectionHTML;
+
+    overlay.innerHTML = '<div class="gift-panel" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:380px;max-width:90%;box-shadow:0 15px 50px rgba(0,0,0,0.5);">' + panelHTML + '</div>';
+
+    document.body.appendChild(overlay);
+
+    // 绑定按钮事件
+    document.getElementById('confirmReceiveBtn').onclick = confirmReceive;
+    document.getElementById('addToTankBtn').onclick = addReceivedFish;
+    if (devModeUnlocked) {
+      document.getElementById('confirmDevBtn').onclick = confirmDevCode;
+    }
+  }
+
+  // 确认收取礼物
+  function confirmReceive() {
+    const code = document.getElementById('receiveCodeInput').value;
+
+    if (!code) {
+      alert('请输入礼物代码');
+      return;
+    }
+
+    // 检查是否是特殊鱼代码
+    const trimmedCode = code.trim().toUpperCase();
+    if (trimmedCode.startsWith('FISH_')) {
+      const fishKey = trimmedCode.substring(5); // 去掉FISH_前缀
+      const specialFish = SPECIAL_FISH[fishKey];
+      if (!specialFish) {
+        alert('无效的特殊鱼代码');
+        return;
+      }
+      const codeHash = btoa(encodeURIComponent(code));
+      if (usedCodes.includes(codeHash) && !devModeUnlocked) {
+        alert('这条鱼已经被兑换过了~');
+        return;
+      }
+      if (!devModeUnlocked) {
+        usedCodes.push(codeHash);
+        saveFishToStorage();
+      }
+      addSpecialFishToTank(specialFish.svg, specialFish.name);
+      alert(`🎉 成功兑换特殊鱼：${specialFish.name}！`);
+      return;
+    }
+
+    const giftData = parseGiftCode(code);
+
+    if (!giftData) {
+      alert('无效的礼物代码');
+      return;
+    }
+
+    // 生成码的hash用于标识(需要先编码防止非Latin1字符)
+    const codeHash = btoa(encodeURIComponent(code.trim()));
+
+    // 检查是否已使用过(开发者模式下跳过此检查)
+    if (usedCodes.includes(codeHash) && !devModeUnlocked) {
+      alert('这个礼物已经被兑换过了~');
+      return;
+    }
+
+    // 标记为已使用(开发者模式下跳过)
+    if (!devModeUnlocked) {
+      usedCodes.push(codeHash);
+      saveFishToStorage();
+    }
+
+    // 显示礼物预览(使用缩短字段名 e/s/b)
+    const resultDiv = document.getElementById('receiveResult');
+    resultDiv.style.display = 'block';
+
+    resultDiv.querySelector('div').innerHTML = `
+      <div style="font-size:48px;margin-bottom:10px;">${giftData.e}</div>
+      <div style="font-size:14px;">礼物:${giftData.e}</div>
+      <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福:${giftData.b}</div>
+      <div style="font-size:11px;opacity:0.6;">-- ${giftData.s}</div>
+    `;
+
+    // 保存当前礼物数据
+    currentReceivedGift = { emoji: giftData.e, sender: giftData.s, blessing: giftData.b };
+  }
+
+  // 确认测试口令
+  function confirmDevCode() {
+    const code = document.getElementById('devCodeInput').value;
+
+    if (!code) {
+      alert('请输入测试口令');
+      return;
+    }
+
+    // 验证口令（开发者模式下不限制次数）
+    if (code === DEV_MODE_PASSWORD) {
+      giftCount += DEV_REWARD_AMOUNT;
+      saveFishToStorage();
+
+      alert(`🎁 测试口令兑换成功！获得 ${DEV_REWARD_AMOUNT} 个礼物！\n剩余礼物：${giftCount} 个`);
+
+      // 清空输入框并关闭弹窗
+      document.getElementById('devCodeInput').value = '';
+      closeDevPanel();
+    } else if (code === 'magic5') {
+      nextFeedMagicBait = true;
+      alert('🍬 神奇鱼饵已激活！下次喂鱼必定触发2倍变大效果！');
+      document.getElementById('devCodeInput').value = '';
+      closeDevPanel();
+    } else if (code === 'legend100') {
+      nextFeedLegendBait = true;
+      alert('🍰 传说鱼饵已激活！下次喂鱼必定触发10倍变大效果！');
+      document.getElementById('devCodeInput').value = '';
+      closeDevPanel();
+    } else if (code === 'shrink5') {
+      nextFeedShrinkBait = true;
+      alert('🍸 缩小鱼饵已激活！下次喂鱼必定触发缩小效果！');
+      document.getElementById('devCodeInput').value = '';
+      closeDevPanel();
+    } else if (code === 'restore') {
+      nextFeedRestoreBait = true;
+      alert('🧃 还原鱼饵已激活！下次喂鱼必定触发还原效果！');
+      document.getElementById('devCodeInput').value = '';
+      closeDevPanel();
+    } else {
+      alert('无效的测试口令');
+    }
+  }
+
+  // 关闭开发者面板
+  function closeDevPanel() {
+    const devPanel = document.querySelector('.gift-panel');
+    if (devPanel && devPanel.parentNode) {
+      devPanel.parentNode.remove();
+    }
+  }
+
+  // 将收到的礼物鱼放入鱼缸
+  function addReceivedFish() {
+    if (!currentReceivedGift) return;
+
+    const tank = document.getElementById('tankWater');
+    const x = Math.random() * (tank.offsetWidth - 40);
+    const y = Math.random() * (tank.offsetHeight - 40);
+    const fish = document.createElement('div');
+    fish.className = 'fish fish-new';
+    fish.textContent = currentReceivedGift.emoji;
+    fish.style.left = x + 'px';
+    fish.style.top = y + 'px';
+    fish.id = 'fish-' + fishIdCounter++;
+    fish.onclick = () => petFish(fish.id);
+    fish.style.cursor = 'pointer';
+    tank.appendChild(fish);
+    setTimeout(() => fish.classList.remove('fish-new'), 5000);
+
+    // 设置收藏长按触发
+    setupCollectionLongPress(fish, fish.id);
+
+    // 注册到鱼群数组(驱动游动)
+    fishes.push({
+      id: fish.id,
+      type: currentReceivedGift.emoji,
+      x: x,
+      y: y,
+      dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
+      dy: (Math.random() - 0.5) * 3,
+      feedCount: 0,
+      collected: false,
+      collectedAt: Date.now(),
+      sender: currentReceivedGift.sender,
+      blessing: currentReceivedGift.blessing,
+      name: '',
+      description: ''
+    });
+
+    // 更新统计
+    stats.giftsReceived++;
+    saveFishToStorage();
+    checkAchievements(); // 检查普通成就
+    checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)
+
+    // 关闭弹窗
+    const overlay = document.querySelector('.gift-panel').parentNode;
+    if (overlay) overlay.remove();
+
+    // 显示祝福弹窗
+    showBlessingPopup(currentReceivedGift.sender, currentReceivedGift.blessing);
+
+    currentReceivedGift = null;
+  }
+
+  // 确认礼物
+  // 确认礼物(新的AI优先流程)
+  // 确认礼物(AI优先流程)
+  function confirmGift() {
+    const senderName = document.getElementById('giftSenderName').value;
+    const blessing = document.getElementById('giftBlessing').value.trim();
+
+    if (blessing.length > 200) {
+      alert('祝福语不能超过200字');
+      return;
+    }
+
+    // 检查礼物数量
+    if (giftCount <= 0) {
+      alert('礼物数不足,请先解锁成就获得更多礼物!');
+      return;
+    }
+
+    if (!blessing) {
+      alert('请输入祝福语');
+      return;
+    }
+
+    // 显示加载状态
+    const resultDiv = document.getElementById('giftResult');
+    const loadingDiv = document.getElementById('giftLoading');
+
+    resultDiv.style.display = 'none';
+    loadingDiv.style.display = 'block';
+
+    // 显示祝福语在加载中
+    document.getElementById('loadingBlessing').textContent = `「${blessing}」`;
+
+    // 更新加载进度(20秒完成)
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += 0.5;
+      document.getElementById('loadingProgress').style.width = `${Math.min(progress, 100)}%`;
+      if (progress >= 100) clearInterval(progressInterval);
+    }, 100);
+
+    // 显示结果的函数
+    function showResult(emoji) {
+      currentGiftEmoji = emoji;
+      loadingDiv.style.display = 'none';
+      resultDiv.style.display = 'block';
+
+      // 更新礼物预览
+      resultDiv.querySelector('div').innerHTML = `
+        <div style="font-size:48px;margin-bottom:10px;">${emoji}</div>
+        <div style="font-size:14px;">礼物:${emoji}</div>
+        <div style="font-size:12px;opacity:0.8;margin:10px 0;">祝福:${blessing}</div>
+      `;
+
+      // 显示两个按钮(默认隐藏代码区域)
+      document.getElementById('addToMyTankBtn').style.display = 'block';
+      document.getElementById('sendToFriendBtn').style.display = 'block';
+      document.getElementById('giftCodeDisplay').style.display = 'none';
+    }
+
+    // AI优先:先调用AI语义理解
+    getAIEmoji(blessing).then(aiEmoji => {
+      clearInterval(progressInterval);
+
+      if (aiEmoji) {
+        // AI成功:显示庆祝动画,点击后显示结果
+        showCelebrationAnimation(aiEmoji, blessing, () => {
+          showResult(aiEmoji);
+        });
+      } else {
+        // AI失败:尝试本地关键词匹配(不显示庆祝动画)
+        const localEmoji = getEmojiByBlessing(blessing) || fishTypes[Math.floor(Math.random() * fishTypes.length)];
+        showResult(localEmoji);
+      }
+    }).catch(error => {
+      // AI调用错误:静默降级到本地匹配
+      clearInterval(progressInterval);
+
+      const localEmoji = getEmojiByBlessing(blessing) || fishTypes[Math.floor(Math.random() * fishTypes.length)];
+      showResult(localEmoji);
+    });
+  }
+
+  // 放入自己的鱼缸
+  function addGiftToMyTank() {
+    const emoji = currentGiftEmoji || fishTypes[Math.floor(Math.random() * fishTypes.length)];
+
+    // 扣除礼物数
+    giftCount--;
+    totalGiftsSent++;
+    updateGiftCountDisplay();
+
+    // 添加鱼到鱼缸
+    const tank = document.getElementById('tankWater');
+    const x = Math.random() * (tank.offsetWidth - 40);
+    const y = Math.random() * (tank.offsetHeight - 40);
+    const fish = document.createElement('div');
+    fish.className = 'fish fish-new';
+    fish.textContent = emoji;
+    fish.style.left = x + 'px';
+    fish.style.top = y + 'px';
+    fish.id = 'fish-' + fishIdCounter++;
+    fish.onclick = () => petFish(fish.id);
+    fish.style.cursor = 'pointer';
+    tank.appendChild(fish);
+    setTimeout(() => fish.classList.remove('fish-new'), 5000);
+
+    // 设置收藏长按触发
+    setupCollectionLongPress(fish, fish.id);
+
+    // 注册到鱼群数组
+    fishes.push({
+      id: fish.id,
+      type: emoji,
+      x: x,
+      y: y,
+      dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
+      dy: (Math.random() - 0.5) * 3,
+      feedCount: 0
+    });
+
+    // 更新统计
+    stats.giftsReceived++;
+    saveFishToStorage();
+    checkAchievements(); // 检查普通成就
+    checkSecretAchievements(); // 检查隐藏成就
+
+    // 关闭面板
+    closeGiftPanel();
+
+    // 显示成功提示
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#34c759 0%,#28a745 100%);color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;';
+    toast.innerHTML = `💫 祝福已放入鱼缸!<br><span style="font-size:24px;margin-top:10px;display:block;">${emoji}</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+  }
+
+  // 送给朋友
+  function sendGiftToFriend() {
+    const senderName = document.getElementById('giftSenderName').value;
+    const blessing = document.getElementById('giftBlessing').value;
+
+    const emoji = currentGiftEmoji || fishTypes[Math.floor(Math.random() * fishTypes.length)];
+
+    // 构建礼物数据
+    const giftData = {
+      e: emoji,
+      s: senderName || '神秘好友',
+      b: blessing || '祝你养鱼开心!'
+    };
+
+    // 扣除礼物数
+    giftCount--;
+    totalGiftsSent++;
+    updateGiftCountDisplay();
+
+    // 生成礼物码
+    const jsonStr = JSON.stringify(giftData);
+    const compressed = LZString.compressToBase64(jsonStr);
+    const giftCode = btoa(encodeURIComponent(compressed));
+
+    // 显示代码区域,隐藏两个按钮
+    const codeDisplay = document.getElementById('giftCodeDisplay');
+    codeDisplay.innerHTML = `<code>${giftCode}</code>`;
+    codeDisplay.style.display = 'block';
+    document.getElementById('addToMyTankBtn').style.display = 'none';
+    document.getElementById('sendToFriendBtn').style.display = 'none';
+
+    // 创建复制按钮
+    const copyBtn = document.createElement('button');
+    copyBtn.style.cssText = 'width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;margin-top:10px;';
+    copyBtn.textContent = '复制代码';
+    copyBtn.onclick = () => {
+      const copyText = '送你一个礼物,粘贴口令代码去领取吧~【' + giftCode + '】';
+      navigator.clipboard.writeText(copyText).then(() => {
+        copyBtn.textContent = '已复制!';
+      }).catch(() => {
+        alert('复制失败,请手动复制');
+      });
+    };
+
+    const oldCopyBtn = codeDisplay.querySelector('button');
+    if (oldCopyBtn) {
+      oldCopyBtn.remove();
+    }
+    codeDisplay.appendChild(copyBtn);
+
+    // 自动复制
+    const copyText = '送你一个礼物,粘贴口令代码去领取吧~【' + giftCode + '】';
+    navigator.clipboard.writeText(copyText).then(() => {
+      copyBtn.textContent = '发送给朋友领取礼物吧!';
+      copyBtn.style.background = 'linear-gradient(135deg,#34c759 0%,#28a745 100%)';
+    }).catch(() => {});
+
+    // 保存统计
+    stats.giftsSent++;
+    saveFishToStorage();
+  }
+
+  // 生成礼物代码(已废弃,保留兼容性)
+  function generateGiftCode() {
+    sendGiftToFriend();
+  }
+
+  // 接收礼物
+  function receiveGift() {
+    const code = document.getElementById('giftCodeInput').value;
+
+    if (!code) {
+      alert('请输入礼物代码');
+      return;
+    }
+
+    const giftData = parseGiftCode(code);
+
+    if (giftData) {
+      // 显示礼物确认弹窗
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+      overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+      const popup = document.createElement('div');
+      popup.style.cssText = 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:20px;color:#fff;width:340px;text-align:center;';
+      popup.innerHTML = `
+        <div style="font-size:48px;margin-bottom:15px;">🎁</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:10px;">收到礼物!</div>
+        <div style="font-size:14px;margin-bottom:15px;">${giftData.s} 送你 ${giftData.e}</div>
+        <div style="font-size:12px;opacity:0.9;line-height:1.5;margin-bottom:20px;">祝福:${giftData.b}</div>
+        <button onclick="this.parentNode.parentNode.remove();addGiftFish('${giftData.e}', '${giftData.s}', '${giftData.b}')" style="padding:12px 30px;border:none;border-radius:25px;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-size:14px;">放入鱼缸</button>
+      `;
+
+      overlay.appendChild(popup);
+      document.body.appendChild(overlay);
+    } else {
+      alert('无效的礼物代码');
+    }
+  }
+
+  // 添加礼物鱼到鱼缸
+  function addGiftFish(emoji, sender, blessing) {
+    const tank = document.getElementById('tankWater');
+    const x = Math.random() * (tank.offsetWidth - 40);
+    const y = Math.random() * (tank.offsetHeight - 40);
+    const fish = document.createElement('div');
+    fish.className = 'fish fish-new';
+    fish.textContent = emoji;
+    fish.style.left = x + 'px';
+    fish.style.top = y + 'px';
+    fish.id = 'fish-' + fishIdCounter++;
+    fish.onclick = () => petFish(fish.id);
+    fish.style.cursor = 'pointer';
+    tank.appendChild(fish);
+    setTimeout(() => fish.classList.remove('fish-new'), 5000);
+
+    // 设置收藏长按触发（和普通鱼一样）
+    setupCollectionLongPress(fish, fish.id);
+
+    // 注册到鱼群数组(驱动游动)
+    fishes.push({
+      id: fish.id,
+      type: emoji,
+      x: x,
+      y: y,
+      dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
+      dy: (Math.random() - 0.5) * 3,
+      feedCount: 0,
+      collected: false,
+      name: '',
+      description: ''
+    });
+
+    // 更新统计
+    stats.giftsReceived++;
+    saveFishToStorage();
+    checkAchievements(); // 检查普通成就
+    checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)
+
+    // 显示祝福弹窗
+    showBlessingPopup(sender, blessing);
+  }
+
+  // 显示祝福弹窗
+  function showBlessingPopup(sender, blessing) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    const popup = document.createElement('div');
+    popup.style.cssText = 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:20px;color:#fff;width:340px;text-align:center;';
+    popup.innerHTML = `
+      <div style="font-size:48px;margin-bottom:15px;">🎉</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:10px;">收到祝福!</div>
+      <div style="font-size:14px;margin-bottom:15px;">${sender} 的祝福</div>
+      <div style="font-size:12px;opacity:0.9;line-height:1.5;margin-bottom:20px;">${blessing}</div>
+      <button onclick="this.parentNode.parentNode.remove()" style="padding:12px 30px;border:none;border-radius:25px;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-size:14px;">谢谢</button>
+    `;
+
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+  }
+
+  // 显示菜单
+  function showMenu() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    overlay.innerHTML = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">' +
+      '<div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">☰ 菜单</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' +
+      '<button onclick="showAchievements();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🏆 成就列表</button>' +
+      '<button onclick="showCollectionList();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📋 收藏列表</button>' +
+      '<button onclick="cleanTank();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧹 清理鱼缸</button>' +
+      '<button onclick="showSavePanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📦 存档管理</button>' +
+      '<button onclick="showSettingsPanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">⚙️ 设置</button>' +
+      '</div>' +
+      '<button onclick="this.parentNode.parentNode.remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+  }
+
+  // 显示设置面板
+  function showSettingsPanel() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    overlay.innerHTML = '<div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:300px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">' +
+      '<div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">⚙️ 设置</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' +
+      '<button onclick="toggleFullscreen();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖥️ 全屏模式</button>' +
+      '<button onclick="showTankSelector();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🐠 鱼缸管理</button>' +
+      '<button onclick="showBackgroundPanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🖼️ 背景设置</button>' +
+      '<button onclick="toggleBackgroundMusic();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🎵 背景音乐 ' + (bgMusicEnabled ? 'ON' : 'OFF') + '</button>' +
+      '<button onclick="toggleGravity();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧭 重力感应 ' + (gravityEnabled ? 'ON' : 'OFF') + '</button>' +
+      '<div style="padding:12px;background:rgba(255,255,255,0.05);border-radius:10px;">' +
+      '<div style="font-size:12px;margin-bottom:8px;">🎚️ 灵敏度: <span id="sensitivityValue">' + gravitySensitivity.toFixed(1) + '</span></div>' +
+      '<input type="range" min="0.1" max="1.0" step="0.1" value="' + gravitySensitivity + '" oninput="setGravitySensitivity(this.value)" style="width:100%;height:6px;cursor:pointer;">' +
+      '</div>' +
+      '</div>' +
+      '<button onclick="this.parentNode.parentNode.remove()" style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+  }
+
+  // 显示收藏列表
+  function showCollectionList() {
+    const collectedFish = fishes.filter(f => f.collected);
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    let listHTML = '';
+    if (collectedFish.length === 0) {
+      listHTML = '<div style="text-align:center;padding:40px 20px;opacity:0.7;">还没有收藏的鱼哦～<br>悬停或长按一条鱼即可收藏！</div>';
+    } else {
+      collectedFish.forEach((f, index) => {
+        const fishEl = document.getElementById(f.id);
+        listHTML += `<div style="padding:15px;background:rgba(255,255,255,0.1);border-radius:10px;margin-bottom:10px;cursor:pointer;" onclick="focusOnFish('${f.id}');this.parentNode.parentNode.parentNode.remove();">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <span style="font-size:28px;">${f.type.startsWith('assets/') ? '<img src="' + f.type + '" style="width:32px;height:32px;vertical-align:middle;">' : f.type}</span>
+            <span style="font-size:16px;font-weight:bold;">⭐ ${f.name || ('鱼 #' + f.id.split('-')[1])}</span>
+          </div>
+          ${f.description ? '<div style="font-size:12px;opacity:0.7;margin-left:38px;">' + f.description + '</div>' : ''}
+          ${f.sender ? '<div style="font-size:10px;opacity:0.6;margin-left:38px;margin-top:4px;">来自: ' + f.sender + '</div>' : ''}
+          ${f.blessing ? '<div style="font-size:11px;opacity:0.85;margin-left:38px;margin-top:3px;color:#F7DC6F;font-style:italic;">💬 "' + f.blessing + '"</div>' : ''}
+          <div style="font-size:10px;opacity:0.5;margin-left:38px;">收藏于 ${new Date(f.collectedAt).toLocaleDateString()}</div>
+        </div>`;
+      });
+    }
+
+    overlay.innerHTML = `
+      <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:320px;max-height:500px;overflow-y:auto;box-shadow:0 15px 50px rgba(0,0,0,0.5);">
+        <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">📋 收藏列表 (${collectedFish.length})</div>
+        <div style="max-height:400px;overflow-y:auto;">
+          ${listHTML}
+        </div>
+        <button onclick="this.parentNode.parentNode.remove()" style="margin-top:15px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+  }
+
+  // 定位并聚焦到某条鱼
+  function focusOnFish(fishId) {
+    const fishEl = document.getElementById(fishId);
+    if (!fishEl) return;
+    // 鱼缸滚动到鱼的位置
+    const tank = document.getElementById('fishTank');
+    if (tank) {
+      const fishRect = fishEl.getBoundingClientRect();
+      const tankRect = tank.getBoundingClientRect();
+      tank.scrollTop = fishRect.top - tankRect.top + tank.scrollTop - 100;
+    }
+    // 高亮闪烁效果
+    fishEl.style.transition = 'transform 0.3s, filter 0.3s';
+    fishEl.style.transform = 'scale(1.5)';
+    fishEl.style.filter = 'drop-shadow(0 0 20px gold)';
+    setTimeout(() => {
+      fishEl.style.transform = '';
+      fishEl.style.filter = '';
+    }, 1500);
+  }
+
+  // 显示成就列表弹窗
+  function showAchievements() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    // 计算普通成就
+    const normalUnlocked = achievements.filter(id => ACHIEVEMENTS.some(a => a.id === id));
+    const secretUnlocked = achievements.filter(id => SECRET_ACHIEVEMENTS.some(a => a.id === id));
+    const unlockedCount = normalUnlocked.length + secretUnlocked.length;
+    const totalCount = ACHIEVEMENTS.length + SECRET_ACHIEVEMENTS.length;
+
+    let listHTML = '';
+
+    // 普通成就列表
+    ACHIEVEMENTS.forEach(a => {
+      const isUnlocked = normalUnlocked.includes(a.id);
+      if (isUnlocked) {
+        listHTML += `<div style="padding:15px;background:rgba(255,255,255,0.15);border-radius:10px;margin-bottom:10px;">
+          <div style="font-size:18px;margin-bottom:5px;">🏆 ${a.name}</div>
+          <div style="font-size:12px;opacity:0.8;margin-bottom:5px;">${a.description}</div>
+          <div style="font-size:11px;opacity:0.6;color:#aaa;">解锁条件: ${a.unlockHint}</div>
+        </div>`;
+      } else {
+        listHTML += `<div style="padding:12px 15px;background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:8px;opacity:0.4;">
+          <div style="font-size:16px;">🔒 ${a.name}</div>
+        </div>`;
+      }
+    });
+
+    // 隐藏成就列表(解锁后才显示,带金色边框和✨前缀)
+    SECRET_ACHIEVEMENTS.forEach(a => {
+      if (!achievements.includes(a.id)) return; // 未解锁的不显示
+      listHTML += `<div style="padding:15px;background:rgba(255,215,0,0.1);border-radius:10px;margin-bottom:10px;border:1px solid rgba(255,215,0,0.4);">
+        <div style="font-size:12px;opacity:0.6;color:#F7DC6F;margin-bottom:5px;">✨ 隐藏成就</div>
+        <div style="font-size:18px;margin-bottom:5px;">✨ ${a.name}</div>
+        <div style="font-size:12px;opacity:0.8;margin-bottom:5px;font-style:italic;">"${a.description}"</div>
+      </div>`;
+    });
+
+    const popup = document.createElement('div');
+    popup.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:25px;border-radius:20px;color:#fff;width:340px;max-height:450px;overflow-y:auto;';
+    popup.innerHTML = `
+      <div style="text-align:center;font-size:18px;font-weight:700;margin-bottom:5px;">🏆 成就列表</div>
+      <div style="text-align:center;font-size:14px;opacity:0.7;margin-bottom:20px;">(${unlockedCount}/${totalCount})</div>
+      ${listHTML}
+      <button onclick="this.parentNode.parentNode.remove()" style="width:100%;margin-top:15px;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;">关闭</button>
+    `;
+
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+  }
+
+  // 初始化重力感应
+  function initGravitySensor() {
+    if (window.DeviceOrientationEvent) {
+      // iOS 13+ 需要用户授权
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(response => {
+            if (response === 'granted') {
+              window.addEventListener('deviceorientation', handleDeviceOrientation);
+            }
+          })
+          .catch(console.error);
+      } else {
+        // 其他系统直接监听
+        window.addEventListener('deviceorientation', handleDeviceOrientation);
+      }
+    }
+  }
+
+  // 处理设备倾斜
+  function handleDeviceOrientation(event) {
+    if (!gravityEnabled) return;
+    
+    // beta: 前后倾斜 (-180 ~ 180)
+    // gamma: 左右倾斜 (-90 ~ 90)
+    gravityY = event.beta || 0;
+    gravityX = event.gamma || 0;
+  }
+
+  // 切换重力感应
+  function toggleGravity() {
+    gravityEnabled = !gravityEnabled;
+    localStorage.setItem('gravityEnabled', gravityEnabled);
+    
+    if (gravityEnabled) {
+      initGravitySensor();
+      // 重置重力值，避免突然抖动
+      gravityX = 0;
+      gravityY = 0;
+    }
+    
+    showSettingsPanel();
+    showToast(gravityEnabled ? '🧭 重力感应已开启' : '🧭 重力感应已关闭');
+  }
+
+  // 设置重力灵敏度
+  function setGravitySensitivity(value) {
+    gravitySensitivity = parseFloat(value);
+    localStorage.setItem('gravitySensitivity', gravitySensitivity);
+    document.getElementById('sensitivityValue').textContent = gravitySensitivity.toFixed(1);
+    showToast(`🧭 灵敏度已调整为 ${gravitySensitivity.toFixed(1)}`);
+  }
+
+  // 检查是否可以添加鱼
+  function canAddFish() {
+    const now = Date.now();
+    return now - lastAddFishTime >= ADD_FISH_COOLDOWN;
+  }
+
+  // 获取冷却剩余时间(秒)
+  function getCooldownRemaining() {
+    const now = Date.now();
+    const elapsed = now - lastAddFishTime;
+    const remaining = ADD_FISH_COOLDOWN - elapsed;
+    return Math.max(0, Math.ceil(remaining / 1000));
+  }
+
+  // 更新添加鱼按钮状态
+  function updateAddFishButton() {
+    const btn = document.getElementById('addFishBtn');
+    if (!btn) return;
+
+    if (canAddFish()) {
+      btn.disabled = false;
+      btn.textContent = '➕ 添加鱼';
+      btn.style.opacity = '1';
+    } else {
+      const remaining = getCooldownRemaining();
+      const minutes = Math.floor(remaining / 60);
+      const seconds = remaining % 60;
+      btn.disabled = true;
+      btn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+      btn.style.opacity = '0.6';
+    }
+  }
+
+  // 添加随机鱼
+  function addRandomFish() {
+    stats.addFishClicks++; // 记录点击添加鱼按钮
+    checkAchievements(); // 检查成就
+    if (!canAddFish()) {
+      saveFishToStorage();
+      return;
+    }
+
+    const tank = document.getElementById('tankWater');
+    const fish = document.createElement('div');
+    const fishType = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+    const x = Math.random() * (tank.offsetWidth - 40);
+    const y = Math.random() * (tank.offsetHeight - 40);
+
+    fish.className = 'fish fish-new';
+    fish.textContent = fishType;
+    fish.style.left = x + 'px';
+    fish.style.top = y + 'px';
+    // 鱼的移动完全由JS控制,不再使用CSS动画
+    fish.id = 'fish-' + fishIdCounter++;
+
+    // 绑定点击事件 - 摸鱼减少冷却时间
+    fish.style.cursor = 'pointer';
+    fish.onclick = () => petFish(fish.id);
+
+    tank.appendChild(fish);
+
+    // 设置收藏长按触发
+    setupCollectionLongPress(fish, fish.id);
+
+    // 5秒后移除新鱼特效
+    setTimeout(() => {
+      fish.classList.remove('fish-new');
+    }, 5000);
+    fishes.push({ id: fish.id, type: fishType, x, y, dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8), dy: (Math.random() - 0.5) * 3, feedCount: 0, collected: false, name: '', description: '', collectedAt: null });
+
+    lastAddFishTime = Date.now();
+    updateFishCount();
+    checkAchievements(); // 检查成就
+    saveFishToStorage();
+  }
+
+  // 收藏长按触发 - PC和移动端统一长按弹出
+  function setupCollectionLongPress(fishEl, fishId) {
+    let longPressTimer = null;
+    const longPressDuration = 600; // 长按600ms触发
+
+    // PC: mousedown 开始计时
+    fishEl.addEventListener('mousedown', (e) => {
+      longPressTimer = setTimeout(() => {
+        e.stopPropagation();
+        showCollectionMenu(fishId);
+      }, longPressDuration);
+    });
+    fishEl.addEventListener('mouseup', () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+    fishEl.addEventListener('mouseleave', () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+
+    // 移动端: 长按0.6秒触发
+    fishEl.addEventListener('touchstart', (e) => {
+      longPressTimer = setTimeout(() => {
+        e.preventDefault();
+        e.stopPropagation();
+        showCollectionMenu(fishId);
+      }, longPressDuration);
+    }, { passive: false });
+    fishEl.addEventListener('touchend', () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+    fishEl.addEventListener('touchmove', () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+  }
+
+  // 显示收藏菜单
+  // 长按菜单（收藏/取消收藏/删除）
+  function showCollectionMenu(fishId) {
+    const fishData = fishes.find(f => f.id === fishId);
+    if (!fishData) return;
+
+    const isCollected = fishData.collected;
+    const isGift = !!fishData.sender;
+    const fishIcon = fishData.type.startsWith('assets/')
+      ? '<img src="' + fishData.type + '" style="width:36px;height:36px;vertical-align:middle;">'
+      : fishData.type;
+    const giftTag = isGift ? '<span style="margin-left:8px;font-size:12px;opacity:0.6;">🎁礼物鱼</span>' : '';
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    var btn1, btn2;
+    if (isCollected) {
+      btn1 = '<button onclick="uncollectFish(\'' + fishId + '\');this.parentNode.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer;font-size:14px;font-weight:bold;">⭐ 取消收藏</button>';
+    } else {
+      btn1 = '<button onclick="confirmCollectFish(\'' + fishId + '\');this.parentNode.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;cursor:pointer;font-size:14px;font-weight:bold;">⭐ 收藏</button>';
+    }
+    btn2 = '<button onclick="confirmDeleteFish(\'' + fishId + '\');this.parentNode.parentNode.remove();" style="padding:12px 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#ff6b6b 0%,#ee5a5a 100%);color:#fff;cursor:pointer;font-size:14px;">🗑️ 删除</button>';
+
+    var html = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:25px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">';
+    html += '<div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:20px;">' + fishIcon + giftTag + '</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:10px;">' + btn1 + btn2;
+    html += '<button onclick="this.parentNode.parentNode.parentNode.remove()" style="padding:10px 20px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);cursor:pointer;font-size:13px;">关闭</button>';
+    html += '</div></div>';
+    overlay.innerHTML = html;
+
+    document.body.appendChild(overlay);
+  }
+
+  // 确认收藏（弹出输入名字/描述的框）
+  function confirmCollectFish(fishId) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1001;';
+
+    var html = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:25px;border-radius:20px;color:#fff;width:280px;box-shadow:0 15px 50px rgba(0,0,0,0.5);">';
+    html += '<div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:15px;">⭐ 收藏这条鱼</div>';
+    html += '<input type="text" id="collectNameInput" placeholder="给鱼起个名字（选填）" maxlength="20" style="width:100%;padding:10px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none;">';
+    html += '<textarea id="collectDescInput" placeholder="描述（选填，最多100字）" maxlength="100" rows="2" style="width:100%;padding:10px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;resize:none;box-sizing:border-box;margin-bottom:15px;outline:none;"></textarea>';
+    html += '<div style="display:flex;gap:10px;">';
+    html += '<button id="cancelCollectBtn" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:13px;">取消</button>';
+    html += '<button id="confirmCollectBtn" style="flex:1;padding:10px;border:none;border-radius:10px;background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;cursor:pointer;font-size:13px;font-weight:bold;">确认</button>';
+    html += '</div></div>';
+    overlay.innerHTML = html;
+
+    document.body.appendChild(overlay);
+    document.getElementById('collectNameInput').focus();
+
+    // 用闭包绑定，不依赖 onclick 字符串
+    document.getElementById('cancelCollectBtn').addEventListener('click', function() {
+      overlay.remove();
+    });
+    document.getElementById('confirmCollectBtn').addEventListener('click', function() {
+      var name = document.getElementById('collectNameInput').value.trim();
+      var desc = document.getElementById('collectDescInput').value.trim();
+      var fishData = fishes.find(function(f) { return f.id === fishId; });
+      if (!fishData) return;
+      fishData.collected = true;
+      fishData.name = name;
+      fishData.description = desc;
+      fishData.collectedAt = Date.now();
+      overlay.remove();
+      saveFishToStorage();
+      showToast('⭐ 收藏成功');
+    });
+  }
+
+  // 执行收藏（已由 confirmCollectFish 的闭包处理，此函数保留作备用）
+  function doCollectFish(fishId) {
+    var fishData = fishes.find(function(f) { return f.id === fishId; });
+    if (!fishData) return;
+    var name = (document.getElementById('collectNameInput') || {value: ''}).value.trim();
+    var desc = (document.getElementById('collectDescInput') || {value: ''}).value.trim();
+    fishData.collected = true;
+    fishData.name = name;
+    fishData.description = desc;
+    fishData.collectedAt = Date.now();
+    saveFishToStorage();
+    showToast('⭐ 收藏成功');
+  }
+
+  // 取消收藏
+  function uncollectFish(fishId) {
+    const fishData = fishes.find(f => f.id === fishId);
+    if (!fishData) return;
+    fishData.collected = false;
+    fishData.name = '';
+    fishData.description = '';
+    fishData.collectedAt = null;
+    saveFishToStorage();
+    showToast('☆ 已取消收藏');
+  }
+
+  // 确认删除鱼
+  function confirmDeleteFish(fishId) {
+    const fishData = fishes.find(f => f.id === fishId);
+    if (!fishData) return;
+    const isGift = !!fishData.sender;
+    const msg = isGift
+      ? '🎁 放生后祝福语将丢失，确定要删除这条礼物鱼吗？'
+      : '确定要放生这条鱼吗？';
+    if (!confirm(msg)) return;
+    deleteFish(fishId);
+  }
+
+  // 删除鱼（实际执行）
+  function deleteFish(fishId) {
+    const fishEl = document.getElementById(fishId);
+    if (fishEl) fishEl.remove();
+    fishes = fishes.filter(f => f.id !== fishId);
+    saveFishToStorage();
+    updateFishCount();
+    checkSecretAchievements();
+    showToast('🗑️ 鱼已放生');
+  }
+
+  // Toast提示
+  function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.85);color:#fff;padding:15px 25px;border-radius:12px;font-size:15px;z-index:9999;text-align:center;pointer-events:none;';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+  }
+
+  // 添加特殊SVG鱼到鱼缸
+  function addSpecialFishToTank(svgPath, fishName) {
+    const tank = document.getElementById('tankWater');
+    const fish = document.createElement('div');
+    const x = Math.random() * (tank.offsetWidth - 60);
+    const y = Math.random() * (tank.offsetHeight - 60);
+
+    fish.className = 'fish fish-new';
+    fish.style.left = x + 'px';
+    fish.style.top = y + 'px';
+    fish.style.width = '50px';
+    fish.style.height = '50px';
+    fish.id = 'fish-' + fishIdCounter++;
+
+    // 使用img标签显示SVG
+    const img = document.createElement('img');
+    img.src = svgPath;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.pointerEvents = 'none';
+    fish.appendChild(img);
+
+    // 绑定点击事件 - 摸鱼减少冷却时间
+    fish.style.cursor = 'pointer';
+    fish.onclick = () => petFish(fish.id);
+
+    tank.appendChild(fish);
+
+    // 设置收藏长按触发
+    setupCollectionLongPress(fish, fish.id);
+
+    // 5秒后移除新鱼特效
+    setTimeout(() => {
+      fish.classList.remove('fish-new');
+    }, 5000);
+
+    fishes.push({ id: fish.id, type: svgPath, x, y, dx: (Math.random() > 0.5 ? 1 : -1) * (6 + Math.random() * 6), dy: (Math.random() - 0.5) * 2, feedCount: 0, isSpecial: true, collected: false, name: '', description: '', collectedAt: null });
+
+    lastAddFishTime = Date.now();
+    updateFishCount();
+    checkAchievements();
+    saveFishToStorage();
+  }
+
+  // 摸鱼 - 点击鱼减少冷却时间
+  function petFish(fishId) {
+    stats.petFishClicks++; // 记录摸鱼点击次数
+    checkAchievements(); // 检查成就
+    if (!canAddFish()) {
+      lastAddFishTime = Math.max(0, lastAddFishTime - 60000); // 减少1分钟
+      updateAddFishButton();
+      saveFishToStorage();
+
+      // 显示摸鱼反馈(不改变鱼的永久大小)
+      const fishEl = document.getElementById(fishId);
+      const fishData = fishes.find(f => f.id === fishId);
+      if (fishEl && fishData) {
+        // 保存当前大小
+        const currentScale = 1 + (fishData.feedCount || 0) * 0.15;
+        fishEl.style.transform = `scale(${currentScale * 1.2})`;
+        setTimeout(() => {
+          fishEl.style.transform = `scale(${currentScale})`;
+        }, 150);
+      }
+    }
+  }
+
+  // 生成水泡
+  function generateBubble() {
+    const tank = document.getElementById('tankWater');
+    const bubble = document.createElement('div');
+    const x = Math.random() * (tank.offsetWidth - 20);
+
+    bubble.className = 'fish bubble';
+    bubble.textContent = '●';
+    bubble.style.left = x + 'px';
+    bubble.style.bottom = '0px';
+
+    tank.appendChild(bubble);
+    bubbles.push(bubble);
+
+    // 3秒后移除水泡
+    setTimeout(() => {
+      if (bubble.parentNode) {
+        bubble.parentNode.removeChild(bubble);
+        bubbles = bubbles.filter(b => b !== bubble);
+      }
+    }, 3000);
+  }
+
+  // 更新鱼的位置 - 更加自由随意的游动
+  function updateFishPositions() {
+    const tank = document.getElementById('tankWater');
+    const tankWidth = tank.offsetWidth;
+    const tankHeight = tank.offsetHeight;
+
+    fishes.forEach(fish => {
+      const fishEl = document.getElementById(fish.id);
+      if (!fishEl) return;
+
+      // === 重力感应逻辑 ===
+      if (gravityEnabled && (Math.abs(gravityX) > 2 || Math.abs(gravityY) > 2)) {
+        // 根据重力倾斜调整移动方向
+        fish.dx += gravityX * gravitySensitivity * 0.05;
+        fish.dy += gravityY * gravitySensitivity * 0.05;
+      }
+      // ======================
+
+      // === 鱼饵吸引逻辑 ===
+      const BAIT_DETECT_RANGE = 400; // 检测鱼饵的范围（像素）
+      if (currentBait && currentBait.parentNode) {
+        const baitRect = currentBait.getBoundingClientRect();
+        const fishRect = fishEl.getBoundingClientRect();
+        const fishCenterX = fishRect.left + fishRect.width / 2;
+        const fishCenterY = fishRect.top + fishRect.height / 2;
+        const baitCenterX = baitRect.left + baitRect.width / 2;
+        const baitCenterY = baitRect.top + baitRect.height / 2;
+
+        const dx = baitCenterX - fishCenterX;
+        const dy = baitCenterY - fishCenterY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // 在检测范围内，主动靠近鱼饵
+        if (distance < BAIT_DETECT_RANGE && distance > 5) {
+          const speed = 3; // 靠近速度
+          fish.dx += (dx / distance) * speed * 0.1;
+          fish.dy += (dy / distance) * speed * 0.1;
+        }
+      }
+      // =====================
+
+      // 每100ms随机改变方向和速度,让游动更自然
+      if (Math.random() < 0.2) {
+        fish.dx += (Math.random() - 0.5) * 8; // 水平速度变化更大
+        fish.dy += (Math.random() - 0.5) * 1; // 垂直速度变化很小
+
+        // 限制最大速度:水平快,垂直慢
+        const maxSpeedX = 25;
+        const maxSpeedY = 5;
+        fish.dx = Math.max(-maxSpeedX, Math.min(maxSpeedX, fish.dx));
+        fish.dy = Math.max(-maxSpeedY, Math.min(maxSpeedY, fish.dy));
+      }
+
+      // 更新位置
+      fish.x += fish.dx * 0.1; // 乘以0.1因为每100ms更新一次
+      fish.y += fish.dy * 0.1;
+
+      // 边界检测 - 碰到边界时水平翻转反方向移动
+      if (fish.x <= 0) {
+        fish.x = 0;
+        fish.dx = Math.abs(fish.dx); // 水平翻转向右
+      } else if (fish.x >= tankWidth - 40) {
+        fish.x = tankWidth - 40;
+        fish.dx = -Math.abs(fish.dx); // 水平翻转向左
+      }
+
+      if (fish.y <= 0) {
+        fish.y = 0;
+        fish.dy = Math.abs(fish.dy) + 1; // 向下
+      } else if (fish.y >= tankHeight - 40) {
+        fish.y = tankHeight - 40;
+        fish.dy = -Math.abs(fish.dy) - 1; // 向上
+      }
+
+      fishEl.style.left = fish.x + 'px';
+      fishEl.style.top = fish.y + 'px';
+    });
+  }
+
+  // 检查是否可以喂鱼
+  function canFeedFish() {
+    const now = Date.now();
+    return now - lastFeedFishTime >= FEED_FISH_COOLDOWN;
+  }
+
+  // 获取喂鱼冷却剩余时间(秒)
+  function getFeedCooldownRemaining() {
+    const now = Date.now();
+    const elapsed = now - lastFeedFishTime;
+    const remaining = FEED_FISH_COOLDOWN - elapsed;
+    return Math.max(0, Math.ceil(remaining / 1000));
+  }
+
+  // 更新喂鱼按钮状态
+  function updateFeedFishButton() {
+    const btn = document.getElementById('feedFishBtn');
+    if (!btn) return;
+
+    if (canFeedFish()) {
+      btn.disabled = false;
+      btn.textContent = '🍽️ 喂鱼';
+      btn.style.opacity = '1';
+    } else {
+      const remaining = getFeedCooldownRemaining();
+      const minutes = Math.floor(remaining / 60);
+      const seconds = remaining % 60;
+      btn.disabled = true;
+      btn.textContent = `⏳ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+      btn.style.opacity = '0.6';
+    }
+  }
+
+  // 退出投喂模式
+  function exitFeedingMode() {
+    isFeedingMode = false;
+    document.getElementById('feedingHint').style.display = 'none';
+    document.getElementById('fishTank').style.cursor = 'default';
+    // 移除点击事件监听
+    const tank = document.getElementById('tankWater');
+    tank.removeEventListener('click', handleTankClick);
+    // 清理碰撞检测
+    if (baitCheckInterval) {
+      clearInterval(baitCheckInterval);
+      baitCheckInterval = null;
+    }
+    // 清理鱼饵
+    if (currentBait) {
+      if (currentBait.parentNode) currentBait.remove();
+      currentBait = null;
+    }
+  }
+
+  // 处理鱼缸点击（放置鱼饵）
+  function handleTankClick(e) {
+    if (!isFeedingMode) return;
+
+    // 获取点击位置（相对于 tankWater）
+    const tank = document.getElementById('tankWater');
+    const rect = tank.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // 防止点击到其他元素
+    if (e.target !== tank && !e.target.classList.contains('fish-counter') && !e.target.classList.contains('feeding-hint')) {
+      // 点击的是鱼或其他元素，可能不是用户想要的，忽略
+      if (e.target.classList.contains('fish')) return;
+    }
+
+    // 如果已存在鱼饵，先删掉旧的
+    if (currentBait) {
+      if (currentBait.parentNode) currentBait.remove();
+      currentBait = null;
+    }
+    // 清理之前的碰撞检测循环
+    if (baitCheckInterval) {
+      clearInterval(baitCheckInterval);
+      baitCheckInterval = null;
+    }
+
+    // 创建鱼饵
+    const bait = document.createElement('div');
+    bait.className = 'bait';
+    bait.textContent = '🍎';
+    bait.style.left = x + 'px';
+    bait.style.top = y + 'px';
+    tank.appendChild(bait);
+    currentBait = bait;
+
+    // 鱼饵轻微下沉动画（用 CSS 动画模拟漂浮，同时往下慢慢移）
+    let baitY = y;
+    const sinkSpeed = 0.5; // 每帧下沉速度（像素）
+
+    // 碰撞检测循环
+    baitCheckInterval = setInterval(() => {
+      if (!currentBait || !currentBait.parentNode) {
+        clearInterval(baitCheckInterval);
+        return;
+      }
+
+      // 鱼饵缓慢下沉
+      baitY += sinkSpeed;
+      currentBait.style.top = baitY + 'px';
+
+      // 边界检测：鱼饵沉到底部或超出范围就消失（不退出投喂模式，用户可继续放）
+      if (baitY > tank.offsetHeight - 30 || baitY < -30) {
+        if (currentBait) {
+          if (currentBait.parentNode) currentBait.remove();
+          currentBait = null;
+        }
+        if (baitCheckInterval) {
+          clearInterval(baitCheckInterval);
+          baitCheckInterval = null;
+        }
+        return;
+      }
+
+      // 碰撞检测：鱼饵和每条鱼
+      for (const fish of fishes) {
+        const fishEl = document.getElementById(fish.id);
+        if (!fishEl || !fishEl.parentNode) continue;
+
+        const fishRect = fishEl.getBoundingClientRect();
+        const baitRect = currentBait.getBoundingClientRect();
+
+        // 检测重叠
+        if (!(fishRect.right < baitRect.left ||
+              fishRect.left > baitRect.right ||
+              fishRect.bottom < baitRect.top ||
+              fishRect.top > baitRect.bottom)) {
+          // 碰撞了！
+          clearInterval(baitCheckInterval);
+          baitCheckInterval = null;
+
+          // 鱼饵消失动画
+          currentBait.classList.add('bait-eaten');
+          setTimeout(() => {
+            if (currentBait && currentBait.parentNode) currentBait.remove();
+            currentBait = null;
+          }, 300);
+
+          // 鱼变大动画
+          fishEl.classList.add('fish-eating');
+          fish.feedCount++;
+          const scale = 1 + fish.feedCount * 0.15;
+          fishEl.style.transform = `scale(${scale})`;
+          setTimeout(() => {
+            fishEl.classList.remove('fish-eating');
+          }, 400);
+
+          // 更新统计
+          stats.successfulFeeds++;
+          saveFishToStorage();
+          checkAchievements();
+
+          // 退出投喂模式
+          setTimeout(() => exitFeedingMode(), 350);
+          return;
+        }
+      }
+    }, 16); // ~60fps
+  }
+
+  // 喂鱼
+  function feedFish() {
+    stats.feedFishClicks++; // 记录点击喂鱼按钮
+    checkAchievements(); // 检查成就
+
+    // 如果已经在投喂模式，退出
+    if (isFeedingMode) {
+      exitFeedingMode();
+      return;
+    }
+
+    if (!canFeedFish()) {
+      saveFishToStorage();
+      return;
+    }
+
+    lastFeedFishTime = Date.now();
+    updateFeedFishButton();
+
+    // 进入投喂模式
+    isFeedingMode = true;
+    document.getElementById('feedingHint').style.display = 'block';
+    document.getElementById('fishTank').style.cursor = 'crosshair';
+
+    // 添加点击事件监听
+    const tank = document.getElementById('tankWater');
+    tank.addEventListener('click', handleTankClick);
+
+    // 检查是否有特殊鱼饵（先显示提示，等用户放置后再检查）
+    // 这里简化处理：先进入普通投喂模式
+    saveFishToStorage();
+  }
+
+  // 显示特殊鱼饵选择弹窗
+  function showSpecialBaitPopup(baitEmoji, multiplier, tank, tankWidth, tankHeight, baitType) {
+    if (fishes.length === 0) {
+      alert('鱼缸里没有鱼，无法使用特殊鱼饵！');
+      return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'specialBaitOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center;';
+
+    // 根据鱼饵类型设置名称和颜色
+    let baitName, multiplierText, titleColor, effectText;
+    if (baitType === 'legend') {
+      baitName = '传说鱼饵';
+      multiplierText = '10倍';
+      titleColor = '#FFD700';
+      effectText = '变大10倍';
+    } else if (baitType === 'magic') {
+      baitName = '神奇鱼饵';
+      multiplierText = '2倍';
+      titleColor = '#7DCFFF';
+      effectText = '变大2倍';
+    } else if (baitType === 'shrink') {
+      baitName = '缩小鱼饵';
+      multiplierText = '1/2';
+      titleColor = '#B19CD9';
+      effectText = '缩小到1/2';
+    } else {
+      baitName = '还原鱼饵';
+      multiplierText = '1倍';
+      titleColor = '#77DD77';
+      effectText = '还原到1倍';
+    }
+
+    // 生成鱼的选项HTML
+    let fishOptionsHTML = '';
+    fishes.forEach((f, index) => {
+      const currentScale = 1 + f.feedCount * 0.15;
+      const newScale = baitType === 'restore' ? 1 : currentScale * multiplier;
+      const arrow = baitType === 'restore' ? '→ 1.0x' : `→ ${newScale.toFixed(1)}x`;
+      fishOptionsHTML += `<div class="special-bait-fish-item" onclick="applySpecialBait(${index}, ${multiplier}, '${baitEmoji}', '${baitType}')" style="padding:10px;margin:8px 0;background:rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;text-align:center;">
+        <div style="font-size:32px;margin-bottom:5px;">${f.type}</div>
+        <div style="font-size:12px;opacity:0.8;">当前: ${currentScale.toFixed(1)}x ${arrow}</div>
+      </div>`;
+    });
+
+    overlay.innerHTML = `
+      <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:30px;border-radius:20px;color:#fff;width:320px;max-height:450px;overflow-y:auto;text-align:center;">
+        <div style="font-size:48px;margin-bottom:15px;">${baitEmoji}</div>
+        <div style="font-size:20px;font-weight:bold;margin-bottom:10px;color:${titleColor};">${baitName}</div>
+        <div style="font-size:14px;opacity:0.8;margin-bottom:20px;">选择一条鱼使其<strong>${effectText}</strong></div>
+        <div style="max-height:300px;overflow-y:auto;">
+          ${fishOptionsHTML}
+        </div>
+        <button onclick="document.getElementById('specialBaitOverlay').remove()" style="margin-top:15px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">取消</button>
+      </div>
+    `;
+
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+  }
+
+  // 应用特殊鱼饵效果
+  function applySpecialBait(fishIndex, multiplier, baitEmoji, baitType) {
+    if (fishIndex < 0 || fishIndex >= fishes.length) return;
+
+    const targetFish = fishes[fishIndex];
+    const fishEl = document.getElementById(targetFish.id);
+
+    if (fishEl) {
+      let newScale;
+      let toastBg, toastMsg;
+
+      if (baitType === 'restore') {
+        // 还原鱼饵：恢复到1倍
+        newScale = 1;
+        targetFish.feedCount = 0;
+        toastBg = 'linear-gradient(135deg,#77DD77 0%,#28a745 100%)';
+        toastMsg = '鱼儿还原到 <strong>1倍</strong>！';
+      } else {
+        // 其他鱼饵：乘以倍率
+        const currentScale = 1 + targetFish.feedCount * 0.15;
+        newScale = currentScale * multiplier;
+        targetFish.feedCount = Math.round((newScale - 1) / 0.15);
+
+        if (baitType === 'legend') {
+          toastBg = 'linear-gradient(135deg,#FFD700 0%,#FFA500 100%)';
+          toastMsg = `鱼儿变大 <strong>10倍</strong>！`;
+        } else if (baitType === 'magic') {
+          toastBg = 'linear-gradient(135deg,#7DCFFF 0%,#007AFF 100%)';
+          toastMsg = `鱼儿变大 <strong>2倍</strong>！`;
+        } else {
+          toastBg = 'linear-gradient(135deg,#B19CD9 0%,#9370DB 100%)';
+          toastMsg = `鱼儿缩小到 <strong>1/2</strong>！`;
+        }
+      }
+
+      // 应用变换效果
+      fishEl.style.transform = `scale(${newScale})`;
+
+      // 显示成功提示
+      const toast = document.createElement('div');
+      toast.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:${toastBg};color:#fff;padding:20px 30px;border-radius:15px;font-size:16px;z-index:9999;text-align:center;box-shadow:0 0 30px rgba(0,0,0,0.3);`;
+      toast.innerHTML = `${baitEmoji} ${toastMsg}<br><span style="font-size:24px;margin-top:10px;display:block;">${targetFish.type}</span>`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+
+    // 关闭弹窗
+    const overlay = document.getElementById('specialBaitOverlay');
+    if (overlay) overlay.remove();
+
+    // 记录特殊鱼饵使用次数
+    if (baitType === 'legend') stats.legendBaitUsed++;
+    else if (baitType === 'magic') stats.magicBaitUsed++;
+    else if (baitType === 'shrink') stats.shrinkBaitUsed++;
+    else if (baitType === 'restore') stats.restoreBaitUsed++;
+
+    saveFishToStorage();
+    stats.successfulFeeds++;
+    checkAchievements();
+  }
+
+  // 清理鱼缸
+  function cleanTank() {
+    // 分离收藏和非收藏的鱼
+    const collectedFish = fishes.filter(f => f.collected);
+    const normalFish = fishes.filter(f => !f.collected);
+
+    if (normalFish.length === 0) {
+      if (collectedFish.length > 0) {
+        alert('已跳过 ' + collectedFish.length + ' 条收藏鱼，没有可清理的鱼！');
+      } else {
+        alert('鱼缸里没有鱼！');
+      }
+      return;
+    }
+
+    if (!confirm('确定要清理鱼缸吗?收藏的鱼会被保留，其余鱼、鱼饵和水草都会被清除!')) {
+      return;
+    }
+
+    stats.cleanCount++; // 记录清理次数
+    const tank = document.getElementById('tankWater');
+
+    // 清理所有非收藏的鱼
+    normalFish.forEach(fish => {
+      const fishEl = document.getElementById(fish.id);
+      if (fishEl) {
+        fishEl.style.opacity = '0';
+        setTimeout(() => {
+          if (fishEl.parentNode) {
+            fishEl.parentNode.removeChild(fishEl);
+          }
+        }, 300);
+      }
+    });
+
+    // 清理所有收藏鱼在鱼缸中的元素（但保留数据）
+    collectedFish.forEach(fish => {
+      const fishEl = document.getElementById(fish.id);
+      if (fishEl) {
+        fishEl.style.opacity = '0';
+        setTimeout(() => {
+          if (fishEl.parentNode) {
+            fishEl.parentNode.removeChild(fishEl);
+          }
+        }, 300);
+      }
+    });
+    // 重置fishes数组，重新只放入收藏的鱼
+    fishes = [];
+    collectedFish.forEach(f => {
+      fishes.push(f);
+    });
+
+    // 重新渲染收藏的鱼
+    collectedFish.forEach(f => {
+      const fishEl = document.createElement('div');
+      fishEl.className = 'fish';
+      const isSpecialFish = f.isSpecial || (f.type && f.type.startsWith('assets/'));
+      if (isSpecialFish) {
+        fishEl.style.width = '50px';
+        fishEl.style.height = '50px';
+        const img = document.createElement('img');
+        img.src = f.type;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.pointerEvents = 'none';
+        fishEl.appendChild(img);
+      } else {
+        fishEl.textContent = f.type;
+      }
+      fishEl.style.left = f.x + 'px';
+      fishEl.style.top = f.y + 'px';
+      fishEl.style.cursor = 'pointer';
+      fishEl.style.opacity = '0';
+      const oldId = f.id;
+      fishEl.id = 'fish-' + fishIdCounter++;
+      f.id = fishEl.id;
+      fishEl.onclick = () => petFish(fishEl.id);
+      tank.appendChild(fishEl);
+      setupCollectionLongPress(fishEl, fishEl.id);
+      setTimeout(() => {
+        fishEl.style.opacity = '1';
+      }, 50);
+    });
+
+    // 清理所有鱼饵
+    const foods = tank.querySelectorAll('[id^="food-"]');
+    foods.forEach(food => {
+      if (food.parentNode) {
+        food.parentNode.removeChild(food);
+      }
+    });
+
+    // 清理所有水草
+    plants.forEach(plant => {
+      const plantEl = document.getElementById(plant.id);
+      if (plantEl && plantEl.parentNode) {
+        plantEl.parentNode.removeChild(plantEl);
+      }
+    });
+    plants = [];
+
+    // 重置冷却时间
+    lastAddFishTime = 0;
+    lastFeedFishTime = 0;
+    nextPlantGenerateTime = 0;
+
+    updateFishCount();
+    updateAddFishButton();
+    updateFeedFishButton();
+    saveFishToStorage();
+
+    if (collectedFish.length > 0) {
+      alert('已保留 ' + collectedFish.length + ' 条收藏鱼！');
+    }
+  }
+
+  // 更新鱼的数量
+  function updateFishCount() {
+    document.getElementById('fishCount').textContent = fishes.length;
+  }
+
+  // 保存鱼到localStorage
+  function saveFishToStorage() {
+    const fishData = fishes.map(f => ({ id: f.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0, isSpecial: f.isSpecial || false, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null, sender: f.sender || '', blessing: f.blessing || '' }));
+    const plantData = plants.map(p => ({ id: p.id, type: p.type, x: p.x, y: p.y }));
+    const data = {
+      fishes: fishData,
+      plants: plantData,
+      lastAddFishTime,
+      lastFeedFishTime,
+      achievements,
+      nextPlantGenerateTime,
+      stats,
+      giftData: {
+        giftCount: giftCount,
+        totalGiftsSent: totalGiftsSent,
+        usedCodes: usedCodes,
+        userId: userId,
+        devDailyUsage: devDailyUsage,
+        devLastUsageDate: devLastUsageDate
+      }
+    };
+    localStorage.setItem('fishTankData', JSON.stringify(data));
+  }
+
+  // 从localStorage加载鱼
+  function loadFishFromStorage() {
+    const savedData = localStorage.getItem('fishTankData');
+    if (savedData) applyGameData(JSON.parse(savedData));
+  }
+
+  // 应用游戏数据（统一加载逻辑，IndexedDB 和 localStorage 共用）
+  function applyGameData(data, overwriteFishAndPlants = true) {
+    if (!data) return;
+    
+    lastAddFishTime = data.lastAddFishTime || 0;
+    lastFeedFishTime = data.lastFeedFishTime || 0;
+    achievements = data.achievements || [];
+    nextPlantGenerateTime = data.nextPlantGenerateTime || 0;
+    stats = data.stats || { addFishClicks:0, feedFishClicks:0, successfulFeeds:0, plantsCollected:0, cleanCount:0, petFishClicks:0, giftsSent:0, giftsReceived:0, legendBaitUsed:0, magicBaitUsed:0, shrinkBaitUsed:0, restoreBaitUsed:0 };
+    if (data.giftData) {
+      giftCount = data.giftData.giftCount ?? INITIAL_GIFT_COUNT;
+      totalGiftsSent = data.giftData.totalGiftsSent || 0;
+      usedCodes = data.giftData.usedCodes || [];
+      devDailyUsage = data.giftData.devDailyUsage || 0;
+      devLastUsageDate = data.giftData.devLastUsageDate || '';
+    }
+    
+    // ⚠️ 只有当 overwriteFishAndPlants = true 时才重新渲染鱼和植物
+    // 否则只更新全局数据（成就、统计、礼物等），不碰鱼和植物
+    if (overwriteFishAndPlants) {
+      fishes = data.fishes || [];
+      plants = data.plants || [];
+      renderFishesAndPlants();
+    }
+    
+    updateFishCount();
+  }
+
+  // 更新时间
+  init();
