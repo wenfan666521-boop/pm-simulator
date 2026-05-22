@@ -3124,6 +3124,8 @@
       giftCount = Math.min(giftCount + totalGifts, 9999);
       showOfflineRewardModal(events, totalGifts, offlineStart);
     }
+    // 检查完毕后立即更新 lastVisitTime，避免下次刷新重复触发
+    saveLastVisitTime();
   }
 
   // 执行多次抽奖
