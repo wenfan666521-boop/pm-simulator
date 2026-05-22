@@ -3114,7 +3114,8 @@
       return;
     }
     console.log('[离线奖励] 触发！离线', hours, '小时，', minutes, '分钟，将抽奖', rule.draws, '次');
-    const events = performOfflineDraws(hours, minutes, rule.draws, rule.giftCap);
+    const offlineStart = parseInt(localStorage.getItem("lastVisitTime")) || Date.now();
+    const events = performOfflineDraws(hours, minutes, rule.draws, rule.giftCap, offlineStart);
     if (events.length > 0) {
       const totalGifts = events.reduce((sum, e) => sum + e.reward, 0);
       offlineStats.totalTriggered++;
@@ -3126,11 +3127,13 @@
   }
 
   // 执行多次抽奖
-  function performOfflineDraws(hours, minutes, draws, giftCap) {
+  function performOfflineDraws(hours, minutes, draws, giftCap, offlineStartTime) {
     const results = [];
+    const now = Date.now();
+    const offlineRange = now - offlineStartTime;
     for (let i = 0; i < draws; i++) {
       const tier = selectTier();
-      const event = drawSingleEvent(tier, hours, minutes);
+      const event = drawSingleEvent(tier, hours, minutes, offlineStartTime, offlineRange, now);
       if (event) results.push(event);
       if (results.reduce((s, e) => s + e.reward, 0) >= giftCap) break;
     }
@@ -3149,7 +3152,7 @@
   }
 
   // 从指定等级抽一个事件（按 weight 权重）
-  function drawSingleEvent(tier, hours, minutes) {
+  function drawSingleEvent(tier, hours, minutes, offlineStartTime, offlineRange, now) {
     const candidates = OFFLINE_EVENTS.filter(e =>
       e.tier === tier && e.enabled && checkUnlockCondition(e.unlockCondition, hours, minutes)
     );
@@ -3164,7 +3167,9 @@
           .replace(/\{minutes\}/g, String(minutes))
           .replace(/\{fishCount\}/g, String(fishes.length))
           .replace(/\{plantCount\}/g, String(plants.length));
-        const entry = { ...event, description: desc, triggeredAt: new Date().toISOString(), read: false };
+        const randomOffset = Math.random() * offlineRange;
+        const triggeredTime = new Date(offlineStartTime + randomOffset);
+        const entry = { ...event, description: desc, triggeredAt: triggeredTime.toISOString(), read: false };
         offlineEventLog.unshift(entry);
         if (offlineEventLog.length > OFFLINE_LOG_MAX) offlineEventLog.pop();
         return entry;
