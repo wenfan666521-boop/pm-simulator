@@ -128,7 +128,7 @@ window.REWARD_RULES = [
 ];
 
 // 离线最低触发门槛（分钟）
-window.OFFLINE_MIN_TRIGGER_MINUTES = 1;
+window.OFFLINE_MIN_TRIGGER_MINUTES = 30;
 
 // 日志保留条数上限
 window.EVENT_LOG_MAX = 30;
