@@ -3186,20 +3186,29 @@
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;';
     const panel = document.createElement('div');
-    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border:2px solid #ffd700;border-radius:20px;padding:30px;max-width:360px;width:90%;text-align:center;color:#fff;box-shadow:0 0 40px rgba(255,215,0,0.3);';
+    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border:2px solid #4a9eff;border-radius:20px;padding:30px;max-width:360px;width:90%;text-align:center;color:#fff;box-shadow:0 0 30px rgba(74,158,255,0.3);';
+    const totalHours = Math.floor((Date.now() - (events[0] ? new Date(events[0].triggeredAt).getTime() : Date.now())) / 3600000);
     panel.innerHTML = `
-      <div style="font-size:48px;margin-bottom:10px;">🎁</div>
-      <div style="font-size:20px;font-weight:bold;margin-bottom:5px;">你不在的时候发生了什么…</div>
-      <div style="color:gold;font-size:14px;margin-bottom:20px;">+${totalGifts} 🎁</div>
-      <div style="max-height:300px;overflow-y:auto;text-align:left;margin-bottom:20px;">
-        ${events.map(e => `
-          <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:12px;margin-bottom:8px;">
-            <div style="font-size:20px;margin-bottom:4px;">${e.emoji} ${e.name}</div>
-            <div style="font-size:13px;opacity:0.85;white-space:pre-line;">${e.description}</div>
-          </div>
-        `).join('')}
+      <div style="font-size:20px;font-weight:bold;margin-bottom:20px;">⏰ 你离开了 ${totalHours} 小时</div>
+      <div style="max-height:300px;overflow-y:auto;text-align:left;margin-bottom:16px;padding-left:20px;position:relative;">
+        <div style="position:absolute;left:7px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,#4a9eff,#1e6fdd);border-radius:1px;"></div>
+        ${events.map(e => {
+          const t = new Date(e.triggeredAt);
+          const timeStr = t.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+          return `<div style="position:relative;padding-left:20px;margin-bottom:12px;">
+            <div style="position:absolute;left:-7px;top:2px;width:12px;height:12px;background:#4a9eff;border-radius:50%;border:2px solid #1a1a2e;"></div>
+            <div style="background:rgba(74,158,255,0.1);border-radius:10px;padding:10px 12px;border:1px solid rgba(74,158,255,0.3);">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:16px;">${e.emoji} ${e.name}</span>
+                <span style="color:gold;font-size:12px;">+${e.reward} 🎁</span>
+              </div>
+              <div style="font-size:11px;opacity:0.5;margin-top:2px;">${timeStr}</div>
+            </div>
+          </div>`;
+        }).join('')}
       </div>
-      <button id="offlineRewardConfirmBtn" style="background:linear-gradient(135deg,#ffd700,#ffaa00);border:none;border-radius:25px;padding:12px 40px;font-size:16px;font-weight:bold;color:#1a1a2e;cursor:pointer;">收下礼物 ✨</button>
+      <div style="font-size:11px;opacity:0.5;margin-bottom:14px;">📜 去菜单「事件日志」查看详情</div>
+      <button id="offlineRewardConfirmBtn" style="background:linear-gradient(135deg,#4a9eff,#1e6fdd);border:none;border-radius:25px;padding:12px 40px;font-size:16px;font-weight:bold;color:#fff;cursor:pointer;">${totalGifts > 0 ? '收下礼物 ✨' : '知道了'}</button>
     `;
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
