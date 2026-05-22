@@ -1574,7 +1574,9 @@
       // offline:H — 设置离线时长 H 小时，用于测试离线奖励
       const hours = parseFloat(code.split(':')[1] || '1');
       const offsetMs = hours * 3600 * 1000; // 毫秒
-      localStorage.setItem('lastVisitTime', (Date.now() - offsetMs).toString());
+      const newTime = Date.now() - offsetMs;
+      localStorage.setItem('lastVisitTime', newTime.toString());
+      console.log('[开发者口令] offline:', hours, 'h, 设置 lastVisitTime =', newTime, '| 当前时间:', Date.now(), '| 差值(ms):', Date.now() - newTime);
       const rule = OFFLINE_REWARD_RULES.find(r => (hours * 60) >= r.minMinutes && (hours * 60) < r.maxMinutes);
       const ruleInfo = rule ? `，将触发 ${rule.draws} 次抽奖，礼物上限 ${rule.giftCap}` : '，但不满足最低触发条件';
       alert(`⏰ 离线时间已设为 ${hours}h（${Math.round(hours * 60)} 分钟）${ruleInfo}\n刷新页面后生效。`);
@@ -3262,13 +3264,9 @@
     badge.textContent = unread;
   }
 
-  // 心跳：每 5 分钟写一次时间戳
+  // 心跳：只在页面真正关闭（beforeunload）时才更新 lastVisitTime
   function startOfflineHeartbeat() {
-    // 首次调用时，如果已有 lastVisitTime（可能是测试命令设置的），不覆盖
-    const existing = localStorage.getItem('lastVisitTime');
-    if (!existing) {
-      saveLastVisitTime();
-    }
+    // 每5分钟更新一次时间戳
     setInterval(saveLastVisitTime, 5 * 60 * 1000);
     window.addEventListener('beforeunload', saveLastVisitTime);
     window.addEventListener('visibilitychange', () => {
