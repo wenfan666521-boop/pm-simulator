@@ -58,7 +58,7 @@
     return new Promise((resolve, reject) => {
       if (!db) { reject(new Error('DB not initialized')); return; }
       const fishData = fishes.map(f => ({ id: f.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount||0, isSpecial: f.isSpecial||false, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' }));
-      const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
+      const plantData = []; // 水草不存档，动态生成
       const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate }, offlineEventLog, offlineStats };
       // 同时保存到旧位置和当前鱼缸
       const transaction = db.transaction(['fishTankData', 'tanks'], 'readwrite');
@@ -102,13 +102,13 @@
     return new Promise((resolve, reject) => {
       const clearRequest = store.clear();
       clearRequest.onsuccess = () => {
-        // 重新写入所有鱼缸
+        // 重新写入所有鱼缸（水草动态生成，不存档）
         tanks.forEach(tank => {
           store.put({
             id: tank.id,
             name: tank.name,
             fishes: tank.fishes || [],
-            plants: tank.plants || [],
+            plants: [], // 水草不存档，动态生成
             lastAddFishTime: tank.lastAddFishTime || 0,
             lastFeedFishTime: tank.lastFeedFishTime || 0,
             nextPlantGenerateTime: tank.nextPlantGenerateTime || Date.now(),
@@ -423,7 +423,7 @@
         currentTankName = currentTankData.name;
         currentTankCreatedAt = currentTankData.createdAt;
         fishes = currentTankData.fishes || [];
-        plants = currentTankData.plants || [];
+        plants = []; // 水草不存档，动态生成
         lastAddFishTime = currentTankData.lastAddFishTime || 0;
         lastFeedFishTime = currentTankData.lastFeedFishTime || 0;
         nextPlantGenerateTime = currentTankData.nextPlantGenerateTime || Date.now();
@@ -1329,6 +1329,8 @@
         
         // 保存到 IndexedDB
         await saveAllTanks();
+        // 同步全局数据（成就、统计、礼物等）到 fishTankData，让 init() 能读到
+        await saveGameDataToDB();
         localStorage.setItem('lastTankId', currentTankId);
         
         location.reload();
@@ -3062,7 +3064,7 @@
     // 否则只更新全局数据（成就、统计、礼物等），不碰鱼和植物
     if (overwriteFishAndPlants) {
       fishes = data.fishes || [];
-      plants = data.plants || [];
+      plants = []; // 水草不存档，动态生成
       renderFishesAndPlants();
     }
     
