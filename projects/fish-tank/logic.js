@@ -3264,14 +3264,9 @@
     badge.textContent = unread;
   }
 
-  // 心跳：只在用户真正离开时才更新 lastVisitTime
+  // 心跳：定期记录用户在线状态，不更新 lastVisitTime
   function startOfflineHeartbeat() {
-    // 切换标签页时（用户去了别的页面，算"离开"）
-    window.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') saveLastVisitTime();
-    });
-    // 关闭页面时（用户真的离开了）
-    window.addEventListener('beforeunload', saveLastVisitTime);
+    // 只做在线状态心跳，不涉及 lastVisitTime
   }
 
   // 保存访问时间戳
