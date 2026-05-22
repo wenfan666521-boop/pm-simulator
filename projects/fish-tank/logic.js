@@ -493,6 +493,13 @@
       console.log('[init] 开始执行 startOfflineHeartbeat');
       startOfflineHeartbeat();
     }, 1500);
+    // 页面重新可见时检查离线奖励
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[可见性] 页面重新可见，触发离线奖励检查');
+        checkOfflineReward();
+      }
+    });
   }
   
   // 滑动切换鱼缸手势
