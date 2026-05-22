@@ -3264,14 +3264,14 @@
     badge.textContent = unread;
   }
 
-  // 心跳：只在页面真正关闭（beforeunload）时才更新 lastVisitTime
+  // 心跳：只在用户真正离开时才更新 lastVisitTime
   function startOfflineHeartbeat() {
-    // 每5分钟更新一次时间戳
-    setInterval(saveLastVisitTime, 5 * 60 * 1000);
-    window.addEventListener('beforeunload', saveLastVisitTime);
+    // 切换标签页时（用户去了别的页面，算"离开"）
     window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') saveLastVisitTime();
     });
+    // 关闭页面时（用户真的离开了）
+    window.addEventListener('beforeunload', saveLastVisitTime);
   }
 
   // 保存访问时间戳
