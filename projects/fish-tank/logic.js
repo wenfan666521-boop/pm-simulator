@@ -3261,7 +3261,11 @@
 
   // 心跳：每 5 分钟写一次时间戳
   function startOfflineHeartbeat() {
-    saveLastVisitTime();
+    // 首次调用时，如果已有 lastVisitTime（可能是测试命令设置的），不覆盖
+    const existing = localStorage.getItem('lastVisitTime');
+    if (!existing) {
+      saveLastVisitTime();
+    }
     setInterval(saveLastVisitTime, 5 * 60 * 1000);
     window.addEventListener('beforeunload', saveLastVisitTime);
     window.addEventListener('visibilitychange', () => {
