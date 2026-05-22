@@ -3264,9 +3264,9 @@
     badge.textContent = unread;
   }
 
-  // 心跳：定期记录用户在线状态，不更新 lastVisitTime
+  // 心跳：每5分钟更新一次 lastVisitTime
   function startOfflineHeartbeat() {
-    // 只做在线状态心跳，不涉及 lastVisitTime
+    setInterval(saveLastVisitTime, 5 * 60 * 1000);
   }
 
   // 保存访问时间戳
