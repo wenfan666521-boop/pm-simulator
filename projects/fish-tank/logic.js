@@ -3202,9 +3202,13 @@
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;';
     const panel = document.createElement('div');
     panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border:2px solid #4a9eff;border-radius:20px;padding:30px;max-width:360px;width:90%;text-align:center;color:#fff;box-shadow:0 0 30px rgba(74,158,255,0.3);';
-    const totalHours = Math.floor((Date.now() - offlineStart) / 3600000);
+    const elapsed = Date.now() - offlineStart;
+    const totalMinutes = Math.floor(elapsed / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const timeStr = hours > 0 ? hours + ' 小时 ' + mins + ' 分钟' : mins + ' 分钟';
     panel.innerHTML = `
-      <div style="font-size:20px;font-weight:bold;margin-bottom:20px;">⏰ 你离开了 ${totalHours} 小时</div>
+      <div style="font-size:20px;font-weight:bold;margin-bottom:20px;">⏰ 你离开了 ${timeStr}</div>
       <div style="max-height:300px;overflow-y:auto;text-align:left;margin-bottom:16px;padding-left:20px;position:relative;">
         <div style="position:absolute;left:7px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,#4a9eff,#1e6fdd);border-radius:1px;"></div>
         ${events.map(e => {
