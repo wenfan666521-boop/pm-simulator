@@ -599,7 +599,7 @@
   function updateTankTitle() {
     const titleEl = document.getElementById('tankTitle');
     if (titleEl) {
-      titleEl.innerHTML = `🐠 ${currentTankName} <span onclick="event.stopPropagation();showTankSelector()" id="tankCountBadge" style="font-size:12px;opacity:0.7;margin-left:8px;cursor:pointer;padding:4px 8px;background:rgba(255,255,255,0.1);border-radius:12px;">切换鱼缸</span> <span onclick="event.stopPropagation();handleTitleClick()" id="devHint" style="font-size:12px;opacity:0;"></span>`;
+      titleEl.innerHTML = `🐠 ${currentTankName} <span onclick="event.stopPropagation();showTankSelector()" id="tankCountBadge" style="font-size:12px;opacity:0.7;margin-left:8px;cursor:pointer;padding:4px 8px;background:rgba(255,255,255,0.1);border-radius:12px;">切换鱼缸</span> <span id="devHint" style="font-size:12px;opacity:0;"></span>`;
     }
   }
 
@@ -1562,19 +1562,6 @@
     } else if (code === 'restore') {
       nextFeedRestoreBait = true;
       alert('🧃 还原鱼饵已激活！下次喂鱼必定触发还原效果！');
-      document.getElementById('devCodeInput').value = '';
-      closeDevPanel();
-    } else if (code.startsWith('offline')) {
-      // offlineH - 设置离线时长（测试用）
-      const parts = code.split(':');
-      const hours = parseFloat(parts[1] || '1');
-      const minutes = Math.round(hours * 60);
-      const offset = minutes * 60 * 1000;
-      const newLastVisit = Date.now() - offset;
-      localStorage.setItem('lastVisitTime', newLastVisit.toString());
-      const rule = OFFLINE_REWARD_RULES.find(r => minutes >= r.minMinutes && minutes < r.maxMinutes);
-      const ruleInfo = rule ? ` → 将触发 ${rule.draws} 次抽奖，礼物上限 ${rule.giftCap}` : ' → 不满足最低触发条件';
-      alert(`⏰ 已将离线时间设置为 ${hours} 小时（${minutes} 分钟）${ruleInfo}\n刷新页面后生效。`);
       document.getElementById('devCodeInput').value = '';
       closeDevPanel();
     } else {
