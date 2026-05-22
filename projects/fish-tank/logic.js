@@ -484,10 +484,13 @@
     initSwipeGesture();
 
     // 启动离线奖励检查（延迟 800ms，避免初始化项太拥挤）
+    console.log('[init] 计划 800ms 后执行 checkOfflineReward');
     setTimeout(checkOfflineReward, 800);
     // 访问时间戳心跳：每 5 分钟写一次，防崩溃
     // 延后到 checkOfflineReward 之后启动，避免覆盖掉用户设置的离线时间
+    console.log('[init] 计划 1500ms 后执行 startOfflineHeartbeat');
     setTimeout(() => {
+      console.log('[init] 开始执行 startOfflineHeartbeat');
       startOfflineHeartbeat();
     }, 1500);
   }
@@ -3276,6 +3279,7 @@
   // 保存访问时间戳
   function saveLastVisitTime() {
     localStorage.setItem('lastVisitTime', Date.now().toString());
+    console.log('[心跳] lastVisitTime 已更新:', localStorage.getItem('lastVisitTime'), '| 时间:', new Date().toLocaleTimeString());
   }
 
   // 更新时间
