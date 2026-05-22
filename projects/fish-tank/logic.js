@@ -1564,6 +1564,17 @@
       alert('🧃 还原鱼饵已激活！下次喂鱼必定触发还原效果！');
       document.getElementById('devCodeInput').value = '';
       closeDevPanel();
+    } else if (code.startsWith('offline:')) {
+      // offline:H — 设置离线时长 H 小时，用于测试离线奖励
+      const hours = parseFloat(code.split(':')[1] || '1');
+      const minutes = Math.round(hours * 60);
+      const offset = minutes * 60 * 1000;
+      localStorage.setItem('lastVisitTime', (Date.now() - offset).toString());
+      const rule = OFFLINE_REWARD_RULES.find(r => minutes >= r.minMinutes && minutes < r.maxMinutes);
+      const ruleInfo = rule ? `，将触发 ${rule.draws} 次抽奖，礼物上限 ${rule.giftCap}` : '，但不满足最低触发条件';
+      alert(`⏰ 离线时间已设为 ${hours}h（${minutes} 分钟）${ruleInfo}\n刷新页面后生效。`);
+      document.getElementById('devCodeInput').value = '';
+      closeDevPanel();
     } else {
       alert('无效的测试口令');
     }
