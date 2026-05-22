@@ -3211,7 +3211,7 @@
       <div style="font-size:20px;font-weight:bold;margin-bottom:20px;">⏰ 你离开了 ${timeStr}</div>
       <div style="max-height:300px;overflow-y:auto;text-align:left;margin-bottom:16px;padding-left:20px;position:relative;">
         <div style="position:absolute;left:7px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,#4a9eff,#1e6fdd);border-radius:1px;"></div>
-        ${events.map(e => {
+        ${events.slice().sort((a, b) => new Date(a.triggeredAt) - new Date(b.triggeredAt)).map(e => {
           const t = new Date(e.triggeredAt);
           const timeStr = t.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
           return `<div style="position:relative;padding-left:20px;margin-bottom:12px;">
@@ -3255,7 +3255,7 @@
       </div>
       <div style="flex:1;overflow-y:auto;">
         ${offlineEventLog.length === 0 ? '<div style="text-align:center;opacity:0.5;padding:40px 0;">还没有记录</div>' :
-          offlineEventLog.map(e => `
+          offlineEventLog.slice().sort((a, b) => new Date(a.triggeredAt) - new Date(b.triggeredAt)).map(e => `
             <div style="background:rgba(255,255,255,0.08);border-radius:12px;padding:12px;margin-bottom:8px;${!e.read ? 'border-left:3px solid gold;' : ''}">
               <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
                 <span style="font-size:16px;">${e.emoji} ${e.name}</span>
