@@ -1572,7 +1572,9 @@
       const hours = parseFloat(code.split(':')[1] || '1');
       const minutes = Math.round(hours * 60);
       const offset = minutes * 60 * 1000;
-      localStorage.setItem('lastVisitTime', (Date.now() - offset).toString());
+      const newTime = Date.now() - offset;
+      localStorage.setItem('lastVisitTime', newTime.toString());
+      console.log('[开发者口令] offline:', hours, 'h, 设置 lastVisitTime =', newTime);
       const rule = OFFLINE_REWARD_RULES.find(r => minutes >= r.minMinutes && minutes < r.maxMinutes);
       const ruleInfo = rule ? `，将触发 ${rule.draws} 次抽奖，礼物上限 ${rule.giftCap}` : '，但不满足最低触发条件';
       alert(`⏰ 离线时间已设为 ${hours}h（${minutes} 分钟）${ruleInfo}\n刷新页面后生效。`);
@@ -3090,14 +3092,26 @@
   // 离线奖励主入口
   function checkOfflineReward() {
     const lastVisit = localStorage.getItem('lastVisitTime');
-    if (!lastVisit) return;
+    console.log('[离线奖励检查] lastVisitTime:', lastVisit, '| 当前时间:', Date.now());
+    if (!lastVisit) {
+      console.log('[离线奖励] 无lastVisitTime，跳过');
+      return;
+    }
     const now = Date.now();
     const elapsed = now - parseInt(lastVisit);
     const minutes = Math.floor(elapsed / 60000);
     const hours = Math.floor(minutes / 60);
-    if (minutes < OFFLINE_MIN_TRIGGER_MINUTES) return;
+    console.log('[离线奖励] 离线分钟数:', minutes, '触发门槛:', OFFLINE_MIN_TRIGGER_MINUTES);
+    if (minutes < OFFLINE_MIN_TRIGGER_MINUTES) {
+      console.log('[离线奖励] 未达触发门槛，跳过');
+      return;
+    }
     const rule = OFFLINE_REWARD_RULES.find(r => minutes >= r.minMinutes && minutes < r.maxMinutes);
-    if (!rule) return;
+    if (!rule) {
+      console.log('[离线奖励] 无匹配规则，跳过');
+      return;
+    }
+    console.log('[离线奖励] 触发！离线', hours, '小时，', minutes, '分钟，将抽奖', rule.draws, '次');
     const events = performOfflineDraws(hours, minutes, rule.draws, rule.giftCap);
     if (events.length > 0) {
       const totalGifts = events.reduce((sum, e) => sum + e.reward, 0);
