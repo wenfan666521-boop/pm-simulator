@@ -3126,6 +3126,7 @@
     }
     // 检查完毕后立即更新 lastVisitTime，避免下次刷新重复触发
     saveLastVisitTime();
+    saveFishToStorage();  // 同步保存离线日志到 IndexedDB
   }
 
   // 执行多次抽奖
