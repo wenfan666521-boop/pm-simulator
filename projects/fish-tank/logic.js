@@ -486,7 +486,10 @@
     // 启动离线奖励检查（延迟 800ms，避免初始化项太拥挤）
     setTimeout(checkOfflineReward, 800);
     // 访问时间戳心跳：每 5 分钟写一次，防崩溃
-    startOfflineHeartbeat();
+    // 延后到 checkOfflineReward 之后启动，避免覆盖掉用户设置的离线时间
+    setTimeout(() => {
+      startOfflineHeartbeat();
+    }, 1500);
   }
   
   // 滑动切换鱼缸手势
