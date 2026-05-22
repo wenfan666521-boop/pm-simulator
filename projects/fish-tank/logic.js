@@ -3133,7 +3133,9 @@
     }
     // 检查完毕后立即更新 lastVisitTime，避免下次刷新重复触发
     saveLastVisitTime();
-    saveFishToStorage();  // 同步保存离线日志到 IndexedDB
+    console.log('[离线] 检查 db 状态:', !!db);
+    saveFishToStorage().then(() => console.log('[离线] saveFishToStorage 完成'));
+    // 同步保存离线日志到 IndexedDB
   }
 
   // 执行多次抽奖
