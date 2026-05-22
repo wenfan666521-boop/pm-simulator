@@ -283,7 +283,7 @@
   let devModeUnlocked = false; // 开发者模式是否解锁(刷新重置)
 
   // ==================== 离线事件系统状态 ====================
-  let offlineEventLog = []; // 事件日志（最多保留 OFFLINE_LOG_MAX 条，倒序）
+  let offlineEventLog = []; // 事件日志（最多保留 EVENT_LOG_MAX 条，倒序）
   let offlineStats = { totalTriggered: 0, totalRewards: 0, legendaryCount: 0 };
   let offlineHeartbeatTimer = null; // 兜底写时间戳的定时器
   const LAST_VISIT_KEY = 'fishTankLastVisitTime';
@@ -1589,7 +1589,7 @@
       const newTime = Date.now() - offsetMs;
       localStorage.setItem('lastVisitTime', newTime.toString());
       console.log('[开发者口令] offline:', hours, 'h, 设置 lastVisitTime =', newTime, '| 当前时间:', Date.now(), '| 差值(ms):', Date.now() - newTime);
-      const rule = OFFLINE_REWARD_RULES.find(r => (hours * 60) >= r.minMinutes && (hours * 60) < r.maxMinutes);
+      const rule = REWARD_RULES.find(r => (hours * 60) >= r.minMinutes && (hours * 60) < r.maxMinutes);
       const ruleInfo = rule ? `，将触发 ${rule.draws} 次抽奖，礼物上限 ${rule.giftCap}` : '，但不满足最低触发条件';
       alert(`⏰ 离线时间已设为 ${hours}h（${Math.round(hours * 60)} 分钟）${ruleInfo}\n刷新页面后生效。`);
       document.getElementById('devCodeInput').value = '';
@@ -2505,6 +2505,9 @@
         setTimeout(() => {
           fishEl.style.transform = `scale(${currentScale})`;
         }, 150);
+        
+        // 有概率触发在线事件（摸鱼小惊喜）
+        if (Math.random() < 0.10) triggerOnlineEvent('petting');
       }
     }
   }
@@ -2766,6 +2769,9 @@
           saveFishToStorage();
           saveGameDataToDB();
           checkAchievements();
+
+          // 有概率触发在线事件
+          if (Math.random() < 0.15) triggerOnlineEvent('feeding');
 
           // 退出投喂模式
           setTimeout(() => exitFeedingMode(), 350);
@@ -3120,6 +3126,74 @@
 
   // ==================== 离线奖励系统 ====================
 
+  // ==================== 在线事件系统 ====================
+  // 触发在线事件（喂鱼/摸鱼时有概率触发）
+  function triggerOnlineEvent(source) {
+    const candidates = EVENTS.filter(e =>
+      e.trigger === 'online' && e.enabled &&
+      (e.source ? e.source.includes(source) : false)
+    );
+    if (!candidates.length) return;
+    
+    const totalWeight = candidates.reduce((s, e) => s + (e.weight || 1), 0);
+    let rand = Math.random() * totalWeight;
+    for (const event of candidates) {
+      rand -= (event.weight || 1);
+      if (rand <= 0) {
+        const entry = { ...event, triggeredAt: new Date().toISOString(), read: false };
+        offlineEventLog.unshift(entry);
+        if (offlineEventLog.length > EVENT_LOG_MAX) offlineEventLog.pop();
+        giftCount = Math.min(giftCount + entry.reward, 9999);
+        offlineStats.totalRewards += entry.reward;
+        // 更新菜单礼物显示
+        const giftEl = document.getElementById('giftCount');
+        if (giftEl) giftEl.textContent = giftCount;
+        // 右上角浮动提示
+        showEventToast(entry);
+        // 异步保存
+        saveFishToStorage();
+        saveGameDataToDB();
+        return;
+      }
+    }
+    // 保底：从候选中随机选一个（权重最高）
+    if (candidates.length > 0) {
+      const event = candidates[Math.floor(Math.random() * candidates.length)];
+      const entry = { ...event, triggeredAt: new Date().toISOString(), read: false };
+      offlineEventLog.unshift(entry);
+      if (offlineEventLog.length > EVENT_LOG_MAX) offlineEventLog.pop();
+      giftCount = Math.min(giftCount + entry.reward, 9999);
+      offlineStats.totalRewards += entry.reward;
+      const giftEl = document.getElementById('giftCount');
+      if (giftEl) giftEl.textContent = giftCount;
+      showEventToast(entry);
+      saveFishToStorage();
+      saveGameDataToDB();
+    }
+  }
+
+  // 在线事件浮动提示
+  function showEventToast(event) {
+    const existing = document.getElementById('eventToast');
+    if (existing) existing.remove();
+    
+    const toast = document.createElement('div');
+    toast.id = 'eventToast';
+    toast.style.cssText = 'position:fixed;top:20px;right:20px;background:linear-gradient(135deg,rgba(26,26,46,0.95),rgba(22,33,62,0.95));border:1px solid #4a9eff;border-radius:12px;padding:12px 20px;color:#fff;font-size:14px;z-index:9999;box-shadow:0 4px 20px rgba(74,158,255,0.3);display:flex;align-items:center;gap:8px;opacity:1;transition:opacity 0.5s ease;';
+    toast.innerHTML = '<span style="font-size:20px;">' + event.emoji + '</span><span> +' + event.reward + ' 🎁</span>';
+    
+    const closeBtn = document.createElement('span');
+    closeBtn.textContent = '✕';
+    closeBtn.style.cssText = 'margin-left:8px;opacity:0.5;cursor:pointer;font-size:12px;';
+    closeBtn.onclick = () => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); };
+    toast.appendChild(closeBtn);
+    
+    document.body.appendChild(toast);
+    
+    // 3秒后淡出
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
+  }
+
   // 离线奖励主入口
   function checkOfflineReward() {
     const lastVisit = localStorage.getItem('lastVisitTime');
@@ -3137,7 +3211,7 @@
       console.log('[离线奖励] 未达触发门槛，跳过');
       return;
     }
-    const rule = OFFLINE_REWARD_RULES.find(r => minutes >= r.minMinutes && minutes < r.maxMinutes);
+    const rule = REWARD_RULES.find(r => minutes >= r.minMinutes && minutes < r.maxMinutes);
     if (!rule) {
       console.log('[离线奖励] 无匹配规则，跳过');
       return;
@@ -3177,7 +3251,7 @@
   function selectTier() {
     const rand = Math.random() * 100;
     let cumulative = 0;
-    for (const [tier, prob] of Object.entries(OFFLINE_TIER_PROBABILITY)) {
+    for (const [tier, prob] of Object.entries(EVENT_TIER_PROBABILITY)) {
       cumulative += prob;
       if (rand < cumulative) return tier;
     }
@@ -3186,7 +3260,7 @@
 
   // 从指定等级抽一个事件（按 weight 权重）
   function drawSingleEvent(tier, hours, minutes, offlineStartTime, offlineRange, now) {
-    const candidates = OFFLINE_EVENTS.filter(e =>
+    const candidates = EVENTS.filter(e => e.trigger !== "online" &&
       e.tier === tier && e.enabled && checkUnlockCondition(e.unlockCondition, hours, minutes)
     );
     if (!candidates.length) return null;
@@ -3204,7 +3278,7 @@
         const triggeredTime = new Date(offlineStartTime + randomOffset);
         const entry = { ...event, description: desc, triggeredAt: triggeredTime.toISOString(), read: false };
         offlineEventLog.unshift(entry);
-        if (offlineEventLog.length > OFFLINE_LOG_MAX) offlineEventLog.pop();
+        if (offlineEventLog.length > EVENT_LOG_MAX) offlineEventLog.pop();
         return entry;
       }
     }
