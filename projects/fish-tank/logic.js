@@ -59,7 +59,7 @@
       if (!db) { reject(new Error('DB not initialized')); return; }
       const fishData = fishes.map(f => ({ id: f.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount||0, isSpecial: f.isSpecial||false, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' }));
       const plantData = plants.map(p => ({ type: p.type, x: p.x, y: p.y }));
-      const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate } };
+      const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate }, offlineEventLog, offlineStats };
       // 同时保存到旧位置和当前鱼缸
       const transaction = db.transaction(['fishTankData', 'tanks'], 'readwrite');
       transaction.objectStore('fishTankData').put(data);
@@ -282,6 +282,12 @@
   let devLastUsageDate = ''; // 上次使用日期
   let devModeUnlocked = false; // 开发者模式是否解锁(刷新重置)
 
+  // ==================== 离线事件系统状态 ====================
+  let offlineEventLog = []; // 事件日志（最多保留 OFFLINE_LOG_MAX 条，倒序）
+  let offlineStats = { totalTriggered: 0, totalRewards: 0, legendaryCount: 0 };
+  let offlineHeartbeatTimer = null; // 兜底写时间戳的定时器
+  const LAST_VISIT_KEY = 'fishTankLastVisitTime';
+
   // 特殊鱼饵状态
   let nextFeedMagicBait = false; // 下次喂鱼触发神奇鱼饵（2倍）
   let nextFeedLegendBait = false; // 下次喂鱼触发传说鱼饵（10倍）
@@ -476,6 +482,11 @@
     
     // 初始化滑动切换鱼缸手势
     initSwipeGesture();
+
+    // 启动离线奖励检查（延迟 800ms，避免初始化项太拥挤）
+    setTimeout(checkOfflineReward, 800);
+    // 访问时间戳心跳：每 5 分钟写一次，防崩溃
+    startOfflineHeartbeat();
   }
   
   // 滑动切换鱼缸手势
@@ -1930,6 +1941,7 @@
       '<div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:20px;">☰ 菜单</div>' +
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
       '<button onclick="showAchievements();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🏆 成就列表</button>' +
+      '<button onclick="showOfflineEventLog();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;position:relative;">📜 事件日志 <span id="offlineUnreadBadge" style="display:none;background:red;border-radius:10px;padding:2px 6px;font-size:11px;vertical-align:middle;"></span></button>' +
       '<button onclick="showCollectionList();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📋 收藏列表</button>' +
       '<button onclick="cleanTank();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">🧹 清理鱼缸</button>' +
       '<button onclick="showSavePanel();this.parentNode.parentNode.parentNode.remove();" style="padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-size:14px;">📦 存档管理</button>' +
@@ -3036,6 +3048,8 @@
     achievements = data.achievements || [];
     nextPlantGenerateTime = data.nextPlantGenerateTime || 0;
     stats = data.stats || { addFishClicks:0, feedFishClicks:0, successfulFeeds:0, plantsCollected:0, cleanCount:0, petFishClicks:0, giftsSent:0, giftsReceived:0, legendBaitUsed:0, magicBaitUsed:0, shrinkBaitUsed:0, restoreBaitUsed:0 };
+    offlineEventLog = Array.isArray(data.offlineEventLog) ? data.offlineEventLog : [];
+    offlineStats = data.offlineStats || { totalTriggered: 0, totalRewards: 0, legendaryCount: 0 };
     if (data.giftData) {
       giftCount = data.giftData.giftCount ?? INITIAL_GIFT_COUNT;
       totalGiftsSent = data.giftData.totalGiftsSent || 0;
@@ -3053,6 +3067,184 @@
     }
     
     updateFishCount();
+  }
+
+  // ==================== 离线奖励系统 ====================
+
+  // 离线奖励主入口
+  function checkOfflineReward() {
+    const lastVisit = localStorage.getItem('lastVisitTime');
+    if (!lastVisit) return;
+    const now = Date.now();
+    const elapsed = now - parseInt(lastVisit);
+    const minutes = Math.floor(elapsed / 60000);
+    const hours = Math.floor(minutes / 60);
+    if (minutes < OFFLINE_MIN_TRIGGER_MINUTES) return;
+    const rule = OFFLINE_REWARD_RULES.find(r => minutes >= r.minMinutes && minutes < r.maxMinutes);
+    if (!rule) return;
+    const events = performOfflineDraws(hours, minutes, rule.draws, rule.giftCap);
+    if (events.length > 0) {
+      const totalGifts = events.reduce((sum, e) => sum + e.reward, 0);
+      offlineStats.totalTriggered++;
+      offlineStats.totalRewards += totalGifts;
+      if (events.some(e => e.tier === 'legendary')) offlineStats.legendaryCount++;
+      giftCount = Math.min(giftCount + totalGifts, 9999);
+      showOfflineRewardModal(events, totalGifts);
+    }
+  }
+
+  // 执行多次抽奖
+  function performOfflineDraws(hours, minutes, draws, giftCap) {
+    const results = [];
+    for (let i = 0; i < draws; i++) {
+      const tier = selectTier();
+      const event = drawSingleEvent(tier, hours, minutes);
+      if (event) results.push(event);
+      if (results.reduce((s, e) => s + e.reward, 0) >= giftCap) break;
+    }
+    return results;
+  }
+
+  // 按概率选等级
+  function selectTier() {
+    const rand = Math.random() * 100;
+    let cumulative = 0;
+    for (const [tier, prob] of Object.entries(OFFLINE_TIER_PROBABILITY)) {
+      cumulative += prob;
+      if (rand < cumulative) return tier;
+    }
+    return 'common';
+  }
+
+  // 从指定等级抽一个事件（按 weight 权重）
+  function drawSingleEvent(tier, hours, minutes) {
+    const candidates = OFFLINE_EVENTS.filter(e =>
+      e.tier === tier && e.enabled && checkUnlockCondition(e.unlockCondition, hours, minutes)
+    );
+    if (!candidates.length) return null;
+    const totalWeight = candidates.reduce((s, e) => s + (e.weight || 1), 0);
+    let rand = Math.random() * totalWeight;
+    for (const event of candidates) {
+      rand -= (event.weight || 1);
+      if (rand <= 0) {
+        const desc = event.description
+          .replace(/\{hours\}/g, String(hours))
+          .replace(/\{minutes\}/g, String(minutes))
+          .replace(/\{fishCount\}/g, String(fishes.length))
+          .replace(/\{plantCount\}/g, String(plants.length));
+        const entry = { ...event, description: desc, triggeredAt: new Date().toISOString(), read: false };
+        offlineEventLog.unshift(entry);
+        if (offlineEventLog.length > OFFLINE_LOG_MAX) offlineEventLog.pop();
+        return entry;
+      }
+    }
+    return candidates[candidates.length - 1];
+  }
+
+  // 检查解锁条件
+  function checkUnlockCondition(cond, hours, minutes) {
+    if (!cond) return true;
+    const match = cond.match(/offline>=(\d+)h/);
+    if (match) return hours >= parseInt(match[1]);
+    return true;
+  }
+
+  // 离线奖励弹窗
+  function showOfflineRewardModal(events, totalGifts) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border:2px solid #ffd700;border-radius:20px;padding:30px;max-width:360px;width:90%;text-align:center;color:#fff;box-shadow:0 0 40px rgba(255,215,0,0.3);';
+    panel.innerHTML = `
+      <div style="font-size:48px;margin-bottom:10px;">🎁</div>
+      <div style="font-size:20px;font-weight:bold;margin-bottom:5px;">你不在的时候发生了什么…</div>
+      <div style="color:gold;font-size:14px;margin-bottom:20px;">+${totalGifts} 🎁</div>
+      <div style="max-height:300px;overflow-y:auto;text-align:left;margin-bottom:20px;">
+        ${events.map(e => `
+          <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:12px;margin-bottom:8px;">
+            <div style="font-size:20px;margin-bottom:4px;">${e.emoji} ${e.name}</div>
+            <div style="font-size:13px;opacity:0.85;white-space:pre-line;">${e.description}</div>
+          </div>
+        `).join('')}
+      </div>
+      <button id="offlineRewardConfirmBtn" style="background:linear-gradient(135deg,#ffd700,#ffaa00);border:none;border-radius:25px;padding:12px 40px;font-size:16px;font-weight:bold;color:#1a1a2e;cursor:pointer;">收下礼物 ✨</button>
+    `;
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    document.getElementById('offlineRewardConfirmBtn').onclick = () => {
+      document.body.removeChild(overlay);
+      saveFishToStorage();
+    };
+    overlay.onclick = (e) => { if (e.target === overlay) { document.body.removeChild(overlay); saveFishToStorage(); } };
+  }
+
+  // 事件日志页面
+  function showOfflineEventLog() {
+    const existing = document.getElementById('eventLogOverlay');
+    if (existing) { existing.remove(); return; }
+    const overlay = document.createElement('div');
+    overlay.id = 'eventLogOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:#1a1a2e;border:2px solid #4a9eff;border-radius:20px;padding:25px;max-width:400px;width:90%;max-height:80vh;display:flex;flex-direction:column;color:#fff;';
+    const unreadCount = offlineEventLog.filter(e => !e.read).length;
+    panel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+        <div style="font-size:18px;font-weight:bold;">📜 事件日志${unreadCount ? ` <span style="background:red;border-radius:10px;padding:2px 8px;font-size:12px;">${unreadCount}</span>` : ''}</div>
+        <div style="font-size:20px;cursor:pointer;color:#aaa;" onclick="document.body.removeChild(document.getElementById('eventLogOverlay'));">✕</div>
+      </div>
+      <div style="flex:1;overflow-y:auto;">
+        ${offlineEventLog.length === 0 ? '<div style="text-align:center;opacity:0.5;padding:40px 0;">还没有记录</div>' :
+          offlineEventLog.map(e => `
+            <div style="background:rgba(255,255,255,0.08);border-radius:12px;padding:12px;margin-bottom:8px;${!e.read ? 'border-left:3px solid gold;' : ''}">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="font-size:16px;">${e.emoji} ${e.name}</span>
+                <span style="font-size:12px;opacity:0.5;">${new Date(e.triggeredAt).toLocaleString('zh-CN')}</span>
+              </div>
+              <div style="font-size:13px;opacity:0.8;white-space:pre-line;">${e.description}</div>
+              ${e.reward > 0 ? `<div style="color:gold;font-size:12px;margin-top:4px;">+${e.reward} 🎁</div>` : ''}
+            </div>
+          `).join('')}
+      </div>
+      <div style="margin-top:15px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);font-size:12px;opacity:0.5;text-align:center;">
+        共触发 ${offlineStats.totalTriggered} 次 | 累计获得 ${offlineStats.totalRewards} 🎁 | 传说事件 ${offlineStats.legendaryCount} 次
+      </div>
+    `;
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    overlay.onclick = (e) => { if (e.target === overlay) document.body.removeChild(overlay); };
+    markEventsAsRead();
+    renderOfflineUnreadBadge();
+  }
+
+  // 标记所有事件为已读
+  function markEventsAsRead() {
+    offlineEventLog.forEach(e => e.read = true);
+    saveFishToStorage();
+  }
+
+  // 渲染未读红点（菜单项）
+  function renderOfflineUnreadBadge() {
+    const badge = document.getElementById('offlineUnreadBadge');
+    if (!badge) return;
+    const unread = offlineEventLog.filter(e => !e.read).length;
+    badge.style.display = unread > 0 ? 'inline-block' : 'none';
+    badge.textContent = unread;
+  }
+
+  // 心跳：每 5 分钟写一次时间戳
+  function startOfflineHeartbeat() {
+    saveLastVisitTime();
+    setInterval(saveLastVisitTime, 5 * 60 * 1000);
+    window.addEventListener('beforeunload', saveLastVisitTime);
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') saveLastVisitTime();
+    });
+  }
+
+  // 保存访问时间戳
+  function saveLastVisitTime() {
+    localStorage.setItem('lastVisitTime', Date.now().toString());
   }
 
   // 更新时间
