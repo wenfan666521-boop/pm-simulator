@@ -80,13 +80,14 @@ window.OFFLINE_TIER_PROBABILITY = {
 
 // 离线时长 → 抽奖次数 + 礼物上限
 window.OFFLINE_REWARD_RULES = [
+  { minMinutes: 1,   maxMinutes: 30,  draws: 1, giftCap: 3 },
   { minMinutes: 30,  maxMinutes: 120, draws: 1, giftCap: 5 },
   { minMinutes: 120, maxMinutes: 240, draws: 2, giftCap: 8 },
   { minMinutes: 240, maxMinutes: Infinity, draws: 3, giftCap: 10 }
 ];
 
 // 最低触发门槛（分钟）
-window.OFFLINE_MIN_TRIGGER_MINUTES = 30;
+window.OFFLINE_MIN_TRIGGER_MINUTES = 1;
 
 // 日志保留条数上限
 window.OFFLINE_LOG_MAX = 30;
