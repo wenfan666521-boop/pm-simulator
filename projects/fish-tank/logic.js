@@ -331,6 +331,7 @@
       hint.style.opacity = '1';
       showDevModeUnlockedToast();
       saveFishToStorage();
+    saveGameDataToDB();
     }
   }
 
@@ -967,6 +968,7 @@
 
     plants = plants.filter(p => p.id !== plantId);
     saveFishToStorage();
+    saveGameDataToDB();
   }
 
   // ========== 送礼系统 ==========
@@ -1495,6 +1497,7 @@
       if (!devModeUnlocked) {
         usedCodes.push(codeHash);
         saveFishToStorage();
+        saveGameDataToDB();
       }
       addSpecialFishToTank(specialFish.svg, specialFish.name);
       alert(`🎉 成功兑换特殊鱼：${specialFish.name}！`);
@@ -1521,6 +1524,7 @@
     if (!devModeUnlocked) {
       usedCodes.push(codeHash);
       saveFishToStorage();
+    saveGameDataToDB();
     }
 
     // 显示礼物预览(使用缩短字段名 e/s/b)
@@ -1551,6 +1555,7 @@
     if (code === DEV_MODE_PASSWORD) {
       giftCount += DEV_REWARD_AMOUNT;
       saveFishToStorage();
+    saveGameDataToDB();
 
       alert(`🎁 测试口令兑换成功！获得 ${DEV_REWARD_AMOUNT} 个礼物！\n剩余礼物：${giftCount} 个`);
 
@@ -1643,6 +1648,7 @@
     // 更新统计
     stats.giftsReceived++;
     saveFishToStorage();
+    saveGameDataToDB();
     checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)
 
@@ -1780,6 +1786,7 @@
     // 更新统计
     stats.giftsReceived++;
     saveFishToStorage();
+    saveGameDataToDB();
     checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就
 
@@ -1854,6 +1861,7 @@
     // 保存统计
     stats.giftsSent++;
     saveFishToStorage();
+    saveGameDataToDB();
   }
 
   // 生成礼物代码(已废弃,保留兼容性)
@@ -1931,6 +1939,7 @@
     // 更新统计
     stats.giftsReceived++;
     saveFishToStorage();
+    saveGameDataToDB();
     checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)
 
@@ -2211,6 +2220,7 @@
     checkAchievements(); // 检查成就
     if (!canAddFish()) {
       saveFishToStorage();
+      saveGameDataToDB();
       return;
     }
 
@@ -2246,6 +2256,7 @@
     updateFishCount();
     checkAchievements(); // 检查成就
     saveFishToStorage();
+    saveGameDataToDB();
   }
 
   // 收藏长按触发 - PC和移动端统一长按弹出
@@ -2363,6 +2374,7 @@
       fishData.collectedAt = Date.now();
       overlay.remove();
       saveFishToStorage();
+      saveGameDataToDB();
       showToast('⭐ 收藏成功');
     });
   }
@@ -2378,6 +2390,7 @@
     fishData.description = desc;
     fishData.collectedAt = Date.now();
     saveFishToStorage();
+    saveGameDataToDB();
     showToast('⭐ 收藏成功');
   }
 
@@ -2390,6 +2403,7 @@
     fishData.description = '';
     fishData.collectedAt = null;
     saveFishToStorage();
+    saveGameDataToDB();
     showToast('☆ 已取消收藏');
   }
 
@@ -2411,6 +2425,7 @@
     if (fishEl) fishEl.remove();
     fishes = fishes.filter(f => f.id !== fishId);
     saveFishToStorage();
+    saveGameDataToDB();
     updateFishCount();
     checkSecretAchievements();
     showToast('🗑️ 鱼已放生');
@@ -2467,6 +2482,7 @@
     updateFishCount();
     checkAchievements();
     saveFishToStorage();
+    saveGameDataToDB();
   }
 
   // 摸鱼 - 点击鱼减少冷却时间
@@ -2477,6 +2493,7 @@
       lastAddFishTime = Math.max(0, lastAddFishTime - 60000); // 减少1分钟
       updateAddFishButton();
       saveFishToStorage();
+      saveGameDataToDB();
 
       // 显示摸鱼反馈(不改变鱼的永久大小)
       const fishEl = document.getElementById(fishId);
@@ -2747,6 +2764,7 @@
           // 更新统计
           stats.successfulFeeds++;
           saveFishToStorage();
+          saveGameDataToDB();
           checkAchievements();
 
           // 退出投喂模式
@@ -2770,6 +2788,7 @@
 
     if (!canFeedFish()) {
       saveFishToStorage();
+      saveGameDataToDB();
       return;
     }
 
@@ -2788,6 +2807,7 @@
     // 检查是否有特殊鱼饵（先显示提示，等用户放置后再检查）
     // 这里简化处理：先进入普通投喂模式
     saveFishToStorage();
+    saveGameDataToDB();
   }
 
   // 显示特殊鱼饵选择弹窗
@@ -2910,6 +2930,7 @@
     else if (baitType === 'restore') stats.restoreBaitUsed++;
 
     saveFishToStorage();
+    saveGameDataToDB();
     stats.successfulFeeds++;
     checkAchievements();
   }
@@ -3025,6 +3046,7 @@
     updateAddFishButton();
     updateFeedFishButton();
     saveFishToStorage();
+    saveGameDataToDB();
 
     if (collectedFish.length > 0) {
       alert('已保留 ' + collectedFish.length + ' 条收藏鱼！');
@@ -3236,8 +3258,10 @@
     document.getElementById('offlineRewardConfirmBtn').onclick = () => {
       document.body.removeChild(overlay);
       saveFishToStorage();
+      saveGameDataToDB();
     };
-    overlay.onclick = (e) => { if (e.target === overlay) { document.body.removeChild(overlay); saveFishToStorage(); } };
+    overlay.onclick = (e) => { if (e.target === overlay) { document.body.removeChild(overlay); saveFishToStorage();
+      saveGameDataToDB(); } };
   }
 
   // 事件日志页面
@@ -3283,6 +3307,7 @@
   function markEventsAsRead() {
     offlineEventLog.forEach(e => e.read = true);
     saveFishToStorage();
+    saveGameDataToDB();
   }
 
   // 渲染未读红点（菜单项）
