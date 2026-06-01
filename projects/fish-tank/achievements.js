@@ -264,7 +264,7 @@ function checkAchievements() {
       } else {
         showAchievementPopup(achievement, 0);
       }
-      saveFishToStorage();
+      saveGameDataToDB();
     }
   });
   // 检查隐藏成就
@@ -282,7 +282,7 @@ function checkSecretAchievements() {
       } else {
         showSecretAchievementPopup(achievement, 0);
       }
-      saveFishToStorage();
+      saveGameDataToDB();
     }
   });
 }
