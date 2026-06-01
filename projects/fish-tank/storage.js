@@ -160,7 +160,15 @@
         lastFishId: fishIdCounter  // ✅ 保存该鱼缸的鱼ID计数器
       };
       transaction.objectStore('tanks').put(tankData);
-      transaction.oncomplete = () => { console.log('游戏数据已保存到 IndexedDB'); resolve(); };
+      transaction.oncomplete = () => {
+        // localStorage 备份（兼容回退路径）
+        try {
+          const backup = { fishes: fishData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate }, offlineEventLog, offlineStats, dailyData: { dailyOnlineEventCount, dailyOfflineEventCount, dailyEventDate } };
+          localStorage.setItem('fishTankData', JSON.stringify(backup));
+        } catch (e) { /* localStorage 可能不可用 */ }
+        console.log('游戏数据已保存到 IndexedDB');
+        resolve();
+      };
       transaction.onerror = () => { console.error('保存失败:', transaction.error); reject(transaction.error); };
     });
   }
