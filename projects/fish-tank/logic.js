@@ -59,7 +59,7 @@
       if (!db) { reject(new Error('DB not initialized')); return; }
       const fishData = fishes.map(f => ({ id: f.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount||0, isSpecial: f.isSpecial||false, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' }));
       const plantData = []; // 水草不存档，动态生成
-      const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate }, offlineEventLog, offlineStats };
+      const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate }, offlineEventLog, offlineStats, dailyData: { dailyOnlineEventCount, dailyOfflineEventCount, dailyEventDate } };
       // 同时保存到旧位置和当前鱼缸
       const transaction = db.transaction(['fishTankData', 'tanks'], 'readwrite');
       transaction.objectStore('fishTankData').put(data);
@@ -285,6 +285,9 @@
   // ==================== 离线事件系统状态 ====================
   let offlineEventLog = []; // 事件日志（最多保留 EVENT_LOG_MAX 条，倒序）
   let offlineStats = { totalTriggered: 0, totalRewards: 0, legendaryCount: 0 };
+  let dailyOnlineEventCount = 0; // 今日在线事件触发次数
+  let dailyOfflineEventCount = 0; // 今日离线事件触发次数
+  let dailyEventDate = ''; // 记录日期，跨天重置
   let offlineHeartbeatTimer = null; // 兜底写时间戳的定时器
   const LAST_VISIT_KEY = 'fishTankLastVisitTime';
 
@@ -350,6 +353,16 @@
     if (devLastUsageDate !== today) {
       devDailyUsage = 0;
       devLastUsageDate = today;
+    }
+  }
+
+  // 检查并重置每日事件计数
+  function resetDailyEventLimits() {
+    const today = new Date().toDateString();
+    if (dailyEventDate !== today) {
+      dailyOnlineEventCount = 0;
+      dailyOfflineEventCount = 0;
+      dailyEventDate = today;
     }
   }
 
@@ -469,6 +482,7 @@
     updateAddFishButton();
     updateFeedFishButton();
     schedulePlantGenerate();
+    resetDailyEventLimits();
     initBackgroundMusic();
     
     // 如果之前开启过重力感应，自动初始化
@@ -3105,6 +3119,11 @@
     stats = data.stats || { addFishClicks:0, feedFishClicks:0, successfulFeeds:0, plantsCollected:0, cleanCount:0, petFishClicks:0, giftsSent:0, giftsReceived:0, legendBaitUsed:0, magicBaitUsed:0, shrinkBaitUsed:0, restoreBaitUsed:0 };
     offlineEventLog = Array.isArray(data.offlineEventLog) ? data.offlineEventLog : [];
     offlineStats = data.offlineStats || { totalTriggered: 0, totalRewards: 0, legendaryCount: 0 };
+    if (data.dailyData) {
+      dailyOnlineEventCount = data.dailyData.dailyOnlineEventCount || 0;
+      dailyOfflineEventCount = data.dailyData.dailyOfflineEventCount || 0;
+      dailyEventDate = data.dailyData.dailyEventDate || '';
+    }
     if (data.giftData) {
       giftCount = data.giftData.giftCount ?? INITIAL_GIFT_COUNT;
       totalGiftsSent = data.giftData.totalGiftsSent || 0;
@@ -3129,11 +3148,15 @@
   // ==================== 在线事件系统 ====================
   // 触发在线事件（喂鱼/摸鱼时有概率触发）
   function triggerOnlineEvent(source) {
+    resetDailyEventLimits();
+    if (dailyOnlineEventCount >= 5) return; // 每日上限5次
+
     const candidates = EVENTS.filter(e =>
       e.trigger === 'online' && e.enabled &&
       (e.source ? e.source.includes(source) : false)
     );
     if (!candidates.length) return;
+    dailyOnlineEventCount++;
     
     const totalWeight = candidates.reduce((s, e) => s + (e.weight || 1), 0);
     let rand = Math.random() * totalWeight;
@@ -3235,13 +3258,18 @@
 
   // 执行多次抽奖
   function performOfflineDraws(hours, minutes, draws, giftCap, offlineStartTime) {
+    resetDailyEventLimits();
     const results = [];
     const now = Date.now();
     const offlineRange = now - offlineStartTime;
     for (let i = 0; i < draws; i++) {
+      if (dailyOfflineEventCount >= 4) break; // 每日离线上限4次
       const tier = selectTier();
       const event = drawSingleEvent(tier, hours, minutes, offlineStartTime, offlineRange, now);
-      if (event) results.push(event);
+      if (event) {
+        results.push(event);
+        dailyOfflineEventCount++;
+      }
       if (results.reduce((s, e) => s + e.reward, 0) >= giftCap) break;
     }
     return results;
