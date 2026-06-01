@@ -26,7 +26,7 @@
       hint.textContent = '✨';
       hint.style.opacity = '1';
       showDevModeUnlockedToast();
-      saveFishToStorage();
+      saveGameDataToDB();
       saveGameDataToDB();
     }
   }
@@ -316,7 +316,7 @@
       }
       if (!devModeUnlocked) {
         usedCodes.push(codeHash);
-        saveFishToStorage();
+        saveGameDataToDB();
         saveGameDataToDB();
       }
       addSpecialFishToTank(specialFish.svg, specialFish.name);
@@ -343,7 +343,7 @@
     // 标记为已使用(开发者模式下跳过)
     if (!devModeUnlocked) {
       usedCodes.push(codeHash);
-      saveFishToStorage();
+      saveGameDataToDB();
     saveGameDataToDB();
     }
 
@@ -374,7 +374,7 @@
     // 验证口令（开发者模式下不限制次数）
     if (code === DEV_MODE_PASSWORD) {
       giftCount += DEV_REWARD_AMOUNT;
-      saveFishToStorage();
+      saveGameDataToDB();
     saveGameDataToDB();
 
       alert(`🎁 测试口令兑换成功！获得 ${DEV_REWARD_AMOUNT} 个礼物！\n剩余礼物：${giftCount} 个`);
@@ -467,7 +467,7 @@
 
     // 更新统计
     stats.giftsReceived++;
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
     checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)
@@ -605,7 +605,7 @@
 
     // 更新统计
     stats.giftsReceived++;
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
     checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就
@@ -680,7 +680,7 @@
 
     // 保存统计
     stats.giftsSent++;
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
   }
 
@@ -758,7 +758,7 @@
 
     // 更新统计
     stats.giftsReceived++;
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
     checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)

@@ -41,7 +41,7 @@
         // 右上角浮动提示
         showEventToast(entry);
         // 异步保存
-        saveFishToStorage();
+        saveGameDataToDB();
         saveGameDataToDB();
         return;
       }
@@ -57,7 +57,7 @@
       const giftEl = document.getElementById('giftCount');
       if (giftEl) giftEl.textContent = giftCount;
       showEventToast(entry);
-      saveFishToStorage();
+      saveGameDataToDB();
       saveGameDataToDB();
     }
   }
@@ -119,7 +119,7 @@
     }
     // 检查完毕后立即更新 lastVisitTime，避免下次刷新重复触发
     saveLastVisitTime();
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
   }
 
@@ -225,10 +225,10 @@
     document.body.appendChild(overlay);
     document.getElementById('offlineRewardConfirmBtn').onclick = () => {
       document.body.removeChild(overlay);
-      saveFishToStorage();
+      saveGameDataToDB();
       saveGameDataToDB();
     };
-    overlay.onclick = (e) => { if (e.target === overlay) { document.body.removeChild(overlay); saveFishToStorage();
+    overlay.onclick = (e) => { if (e.target === overlay) { document.body.removeChild(overlay); saveGameDataToDB();
       saveGameDataToDB(); } };
   }
 
@@ -274,7 +274,7 @@
   // 标记所有事件为已读
   function markEventsAsRead() {
     offlineEventLog.forEach(e => e.read = true);
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
   }
 

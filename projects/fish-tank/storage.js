@@ -36,13 +36,13 @@
   // 初始化 IndexedDB 数据库
 
   let bgAudio = null;
-  let bgMusicEnabled = localStorage.getItem('bgMusicEnabled') === 'true';
+  let bgMusicEnabled = false;
 
   // 重力感应状态
-  let gravityEnabled = localStorage.getItem('gravityEnabled') === 'true';
+  let gravityEnabled = false;
   let gravityX = 0; // X轴倾斜值 (-90 ~ 90)
   let gravityY = 0; // Y轴倾斜值 (-90 ~ 90)
-  let gravitySensitivity = parseFloat(localStorage.getItem('gravitySensitivity') || '0.3'); // 重力感应灵敏度 (0.1~1.0
+  let gravitySensitivity = 0.3; // 重力感应灵敏度 (0.1~1.0)
 
   let stats = {
     addFishClicks: 0,      // 点击添加鱼按钮次数
@@ -143,7 +143,7 @@
       if (!db) { reject(new Error('DB not initialized')); return; }
       const fishData = fishes.map(f => ({ id: f.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount||0, isSpecial: f.isSpecial||false, collected: f.collected||false, name: f.name||'', description: f.description||'', collectedAt: f.collectedAt||null, sender: f.sender||'', blessing: f.blessing||'' }));
       const plantData = []; // 水草不存档，动态生成
-      const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate }, offlineEventLog, offlineStats, dailyData: { dailyOnlineEventCount, dailyOfflineEventCount, dailyEventDate } };
+      const data = { id: 'gameData', fishes: fishData, plants: plantData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate }, offlineEventLog, offlineStats, dailyData: { dailyOnlineEventCount, dailyOfflineEventCount, dailyEventDate }, currentTankId, preferences: { bgMusicEnabled, gravityEnabled, gravitySensitivity } };
       // 同时保存到旧位置和当前鱼缸
       const transaction = db.transaction(['fishTankData', 'tanks'], 'readwrite');
       transaction.objectStore('fishTankData').put(data);
@@ -160,15 +160,7 @@
         lastFishId: fishIdCounter  // ✅ 保存该鱼缸的鱼ID计数器
       };
       transaction.objectStore('tanks').put(tankData);
-      transaction.oncomplete = () => {
-        // localStorage 备份（兼容回退路径）
-        try {
-          const backup = { fishes: fishData, lastAddFishTime, lastFeedFishTime, achievements, nextPlantGenerateTime, stats, giftData: { giftCount, totalGiftsSent, usedCodes, userId, devDailyUsage, devLastUsageDate }, offlineEventLog, offlineStats, dailyData: { dailyOnlineEventCount, dailyOfflineEventCount, dailyEventDate } };
-          localStorage.setItem('fishTankData', JSON.stringify(backup));
-        } catch (e) { /* localStorage 可能不可用 */ }
-        console.log('游戏数据已保存到 IndexedDB');
-        resolve();
-      };
+      transaction.oncomplete = () => { console.log('游戏数据已保存到 IndexedDB'); resolve(); };
       transaction.onerror = () => { console.error('保存失败:', transaction.error); reject(transaction.error); };
     });
   }
@@ -390,7 +382,6 @@
         await saveAllTanks();
         // 同步全局数据（成就、统计、礼物等）到 fishTankData，让 init() 能读到
         await saveGameDataToDB();
-        localStorage.setItem('lastTankId', currentTankId);
         
         location.reload();
       } catch (err) {
@@ -400,37 +391,7 @@
     reader.readAsText(file);
   }
 
-  // 保存鱼到localStorage
-  function saveFishToStorage() {
-    const fishData = fishes.map(f => ({ id: f.id, type: f.type, x: f.x, y: f.y, dx: f.dx, dy: f.dy, feedCount: f.feedCount || 0, isSpecial: f.isSpecial || false, collected: f.collected || false, name: f.name || '', description: f.description || '', collectedAt: f.collectedAt || null, sender: f.sender || '', blessing: f.blessing || '' }));
-    const plantData = plants.map(p => ({ id: p.id, type: p.type, x: p.x, y: p.y }));
-    const data = {
-      fishes: fishData,
-      plants: plantData,
-      lastAddFishTime,
-      lastFeedFishTime,
-      achievements,
-      nextPlantGenerateTime,
-      stats,
-      giftData: {
-        giftCount: giftCount,
-        totalGiftsSent: totalGiftsSent,
-        usedCodes: usedCodes,
-        userId: userId,
-        devDailyUsage: devDailyUsage,
-        devLastUsageDate: devLastUsageDate
-      }
-    };
-    localStorage.setItem('fishTankData', JSON.stringify(data));
-  }
-
-  // 从localStorage加载鱼
-  function loadFishFromStorage() {
-    const savedData = localStorage.getItem('fishTankData');
-    if (savedData) applyGameData(JSON.parse(savedData));
-  }
-
-  // 应用游戏数据（统一加载逻辑，IndexedDB 和 localStorage 共用）
+  // 应用游戏数据
   function applyGameData(data, overwriteFishAndPlants = true) {
     if (!data) return;
     
@@ -453,12 +414,18 @@
       devDailyUsage = data.giftData.devDailyUsage || 0;
       devLastUsageDate = data.giftData.devLastUsageDate || '';
     }
+    if (data.currentTankId) {
+      currentTankId = data.currentTankId;
+    }
+    if (data.preferences) {
+      bgMusicEnabled = data.preferences.bgMusicEnabled ?? false;
+      gravityEnabled = data.preferences.gravityEnabled ?? false;
+      gravitySensitivity = data.preferences.gravitySensitivity ?? 0.3;
+    }
     
-    // ⚠️ 只有当 overwriteFishAndPlants = true 时才重新渲染鱼和植物
-    // 否则只更新全局数据（成就、统计、礼物等），不碰鱼和植物
     if (overwriteFishAndPlants) {
       fishes = data.fishes || [];
-      plants = []; // 水草不存档，动态生成
+      plants = [];
       renderFishesAndPlants();
     }
     

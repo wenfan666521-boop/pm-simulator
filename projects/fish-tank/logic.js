@@ -8,11 +8,8 @@
       // 加载所有鱼缸
       tanks = await loadAllTanks();
       
-      // 加载上次选中的鱼缸
-      const lastTankId = localStorage.getItem('lastTankId');
-      if (lastTankId && tanks.find(t => t.id === lastTankId)) {
-        currentTankId = lastTankId;
-      } else if (tanks.length === 0) {
+      // 选中上次鱼缸（从 IndexedDB 的 gameData 中恢复）
+      if (tanks.length === 0) {
         // 没有鱼缸，创建默认鱼缸
         const now = Date.now();
         const defaultTank = {
@@ -61,8 +58,6 @@
       const dbData = await loadGameDataFromDB();
       if (dbData) {
         applyGameData(dbData, false); // 不覆盖鱼和植物数据
-      } else {
-        loadFishFromStorage();
       }
       
       // 加载当前鱼缸背景
@@ -72,8 +67,7 @@
       // 更新标题显示
       updateTankTitle();
     } catch (err) {
-      console.error('IndexedDB 初始化失败，回退到 localStorage:', err);
-      loadFishFromStorage();
+      console.error('IndexedDB 初始化失败:', err);
     }
 
     setInterval(generateBubble, 2000);
@@ -130,7 +124,6 @@
 
   function toggleBackgroundMusic() {
     bgMusicEnabled = !bgMusicEnabled;
-    localStorage.setItem('bgMusicEnabled', bgMusicEnabled);
     if (bgAudio) { bgMusicEnabled ? bgAudio.play().catch(() => {}) : bgAudio.pause(); }
     showMenu();
   }
@@ -664,7 +657,6 @@
   // 切换重力感应
   function toggleGravity() {
     gravityEnabled = !gravityEnabled;
-    localStorage.setItem('gravityEnabled', gravityEnabled);
     
     if (gravityEnabled) {
       initGravitySensor();
@@ -680,7 +672,6 @@
   // 设置重力灵敏度
   function setGravitySensitivity(value) {
     gravitySensitivity = parseFloat(value);
-    localStorage.setItem('gravitySensitivity', gravitySensitivity);
     document.getElementById('sensitivityValue').textContent = gravitySensitivity.toFixed(1);
     showToast(`🧭 灵敏度已调整为 ${gravitySensitivity.toFixed(1)}`);
   }

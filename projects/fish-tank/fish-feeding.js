@@ -86,7 +86,7 @@
     }, 200);
 
     plants = plants.filter(p => p.id !== plantId);
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
   }
 
@@ -128,7 +128,7 @@
     stats.addFishClicks++; // 记录点击添加鱼按钮
     checkAchievements(); // 检查成就
     if (!canAddFish()) {
-      saveFishToStorage();
+      saveGameDataToDB();
       saveGameDataToDB();
       return;
     }
@@ -164,7 +164,7 @@
     lastAddFishTime = Date.now();
     updateFishCount();
     checkAchievements(); // 检查成就
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
   }
 
@@ -282,7 +282,7 @@
       fishData.description = desc;
       fishData.collectedAt = Date.now();
       overlay.remove();
-      saveFishToStorage();
+      saveGameDataToDB();
       saveGameDataToDB();
       showToast('⭐ 收藏成功');
     });
@@ -298,7 +298,7 @@
     fishData.name = name;
     fishData.description = desc;
     fishData.collectedAt = Date.now();
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
     showToast('⭐ 收藏成功');
   }
@@ -311,7 +311,7 @@
     fishData.name = '';
     fishData.description = '';
     fishData.collectedAt = null;
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
     showToast('☆ 已取消收藏');
   }
@@ -333,7 +333,7 @@
     const fishEl = document.getElementById(fishId);
     if (fishEl) fishEl.remove();
     fishes = fishes.filter(f => f.id !== fishId);
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
     updateFishCount();
     checkSecretAchievements();
@@ -381,7 +381,7 @@
     lastAddFishTime = Date.now();
     updateFishCount();
     checkAchievements();
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
   }
 
@@ -392,7 +392,7 @@
     if (!canAddFish()) {
       lastAddFishTime = Math.max(0, lastAddFishTime - 60000); // 减少1分钟
       updateAddFishButton();
-      saveFishToStorage();
+      saveGameDataToDB();
       saveGameDataToDB();
 
       // 显示摸鱼反馈(不改变鱼的永久大小)
@@ -666,7 +666,7 @@
 
           // 更新统计
           stats.successfulFeeds++;
-          saveFishToStorage();
+          saveGameDataToDB();
           saveGameDataToDB();
           checkAchievements();
 
@@ -693,7 +693,7 @@
     }
 
     if (!canFeedFish()) {
-      saveFishToStorage();
+      saveGameDataToDB();
       saveGameDataToDB();
       return;
     }
@@ -712,7 +712,7 @@
 
     // 检查是否有特殊鱼饵（先显示提示，等用户放置后再检查）
     // 这里简化处理：先进入普通投喂模式
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
   }
 
@@ -835,7 +835,7 @@
     else if (baitType === 'shrink') stats.shrinkBaitUsed++;
     else if (baitType === 'restore') stats.restoreBaitUsed++;
 
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
     stats.successfulFeeds++;
     checkAchievements();
@@ -951,7 +951,7 @@
     updateFishCount();
     updateAddFishButton();
     updateFeedFishButton();
-    saveFishToStorage();
+    saveGameDataToDB();
     saveGameDataToDB();
 
     if (collectedFish.length > 0) {
