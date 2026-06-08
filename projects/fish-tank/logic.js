@@ -38,6 +38,7 @@
 
       // 用 currentTankId 加载对应鱼缸的数据（此时 currentTankId 已正确）
       const tankData = await loadTankData(currentTankId);
+      console.log('[switchTank] 加载目标缸数据:', currentTankId, 'fishes数量:', (tankData?.fishes || []).length);
       if (tankData) {
         currentTankName = tankData.name;
         currentTankCreatedAt = tankData.createdAt;
@@ -398,7 +399,9 @@
   // 切换鱼缸
   async function switchTank(tankId, isNewTank = false) {
     if (tankId === currentTankId) return;
+    console.log('[switchTank] 开始切换，当前缸:', currentTankId, '-> 目标缸:', tankId, '当前fishes数量:', fishes.length);
     await saveGameDataToDB();
+    console.log('[switchTank] 保存完成');
     const tankData = await loadTankData(tankId);
     if (tankData) {
       currentTankId = tankId;
