@@ -1,5 +1,38 @@
 // 拆分自 logic.js - 礼物系统 + 开发者模式
 
+  // 祝福语关键词 → emoji 映射表
+  const BLESSING_EMOJI_MAP = {
+    '爱|喜欢|心|恋': '❤️',
+    '快乐|开心|幸福|喜悦': '🎉',
+    '加油|努力|奋斗|坚持': '💪',
+    '成功|胜利|夺冠|第一': '🏆',
+    '财运|发财|暴富|金钱': '💰',
+    '太阳|阳光|温暖|光明': '☀️',
+    '星星|夜空|梦想|闪耀': '⭐',
+    '彩虹|希望|美好|未来': '🌈',
+    '生日|寿星|长大|成长': '🎂',
+    '圣诞|圣诞树|铃儿响': '🎄',
+    '新年|春节|龙年|吉祥': '🐉',
+    '礼物|惊喜|祝福|感恩': '🎁',
+    '美丽|自由|蝴蝶|优雅': '🦋',
+    '月亮|宁静|夜晚|浪漫': '🌙',
+    '热情|火辣|能量|激情': '🔥',
+    '和平|宁静|和谐|友好': '☮️',
+    '健康|平安|祝福|身体': '🏥',
+    '学习|知识|智慧|聪明': '📚',
+    '工作|事业|升职|加油': '💼',
+    '家庭|亲情|团聚|温馨': '🏠',
+    '友谊|朋友|陪伴|知己': '🤝',
+    '爱情|浪漫|情侣|结婚': '💍'
+  };
+
+  // AI emoji agent API配置(百炼平台)
+  const AI_EMOJI_CONFIG = {
+    endpoint: 'https://dashscope.aliyuncs.com/api/v1/apps/24111cfa5a494d08adbfb3f572487da9/completion',
+    apiKey: 'sk-457b30bfdc5e49ea82d77a74606367db',
+    timeout: 30000
+  };
+
   // 处理标题点击(开发者模式解锁)
   function handleTitleClick() {
     const now = Date.now();
@@ -26,7 +59,6 @@
       hint.textContent = '✨';
       hint.style.opacity = '1';
       showDevModeUnlockedToast();
-      saveGameDataToDB();
       saveGameDataToDB();
     }
   }
@@ -92,8 +124,33 @@
     return null;
   }
 
+  // AI emoji agent API调用(百炼平台)
+  async function getAIEmoji(blessing) {
+    if (!AI_EMOJI_CONFIG.endpoint) { return null; }
+    try {
+      const response = await Promise.race([
+        fetch(AI_EMOJI_CONFIG.endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + AI_EMOJI_CONFIG.apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ input: { prompt: blessing }, parameters: {} })
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), AI_EMOJI_CONFIG.timeout)
+        )
+      ]);
+      if (!response.ok) throw new Error('API请求失败');
+      const data = await response.json();
+      return data.output?.text || null;
+    } catch (error) {
+      console.error('AI emoji API调用失败:', error);
+      return null;
+    }
+  }
+
   // 显示庆祝动画
-  // 显示庆祝动画(全屏遮罩,点击关闭)
   function showCelebrationAnimation(emoji, blessing, onClose) {
     // 创建全屏遮罩
     const overlay = document.createElement('div');
@@ -317,7 +374,6 @@
       if (!devModeUnlocked) {
         usedCodes.push(codeHash);
         saveGameDataToDB();
-        saveGameDataToDB();
       }
       addSpecialFishToTank(specialFish.svg, specialFish.name);
       alert(`🎉 成功兑换特殊鱼：${specialFish.name}！`);
@@ -344,7 +400,6 @@
     if (!devModeUnlocked) {
       usedCodes.push(codeHash);
       saveGameDataToDB();
-    saveGameDataToDB();
     }
 
     // 显示礼物预览(使用缩短字段名 e/s/b)
@@ -375,7 +430,6 @@
     if (code === DEV_MODE_PASSWORD) {
       giftCount += DEV_REWARD_AMOUNT;
       saveGameDataToDB();
-    saveGameDataToDB();
 
       alert(`🎁 测试口令兑换成功！获得 ${DEV_REWARD_AMOUNT} 个礼物！\n剩余礼物：${giftCount} 个`);
 
@@ -467,7 +521,6 @@
 
     // 更新统计
     stats.giftsReceived++;
-    saveGameDataToDB();
     saveGameDataToDB();
     checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)
@@ -600,12 +653,18 @@
       y: y,
       dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
       dy: (Math.random() - 0.5) * 3,
-      feedCount: 0
+      feedCount: 0,
+      collected: false,
+      collectedAt: null,
+      sender: '',
+      blessing: '',
+      name: '',
+      description: '',
+      isSpecial: false
     });
 
     // 更新统计
-    stats.giftsReceived++;
-    saveGameDataToDB();
+    stats.giftsSent++;
     saveGameDataToDB();
     checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就
@@ -681,7 +740,6 @@
     // 保存统计
     stats.giftsSent++;
     saveGameDataToDB();
-    saveGameDataToDB();
   }
 
   // 生成礼物代码(已废弃,保留兼容性)
@@ -751,14 +809,16 @@
       dx: (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
       dy: (Math.random() - 0.5) * 3,
       feedCount: 0,
-      collected: false,
+      collected: true,
+      collectedAt: Date.now(),
+      sender: sender || '',
+      blessing: blessing || '',
       name: '',
       description: ''
     });
 
     // 更新统计
     stats.giftsReceived++;
-    saveGameDataToDB();
     saveGameDataToDB();
     checkAchievements(); // 检查普通成就
     checkSecretAchievements(); // 检查隐藏成就(鱼数量变化相关)

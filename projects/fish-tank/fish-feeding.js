@@ -87,7 +87,6 @@
 
     plants = plants.filter(p => p.id !== plantId);
     saveGameDataToDB();
-    saveGameDataToDB();
   }
 
   // 检查是否可以添加鱼
@@ -129,7 +128,6 @@
     checkAchievements(); // 检查成就
     if (!canAddFish()) {
       saveGameDataToDB();
-      saveGameDataToDB();
       return;
     }
 
@@ -164,7 +162,6 @@
     lastAddFishTime = Date.now();
     updateFishCount();
     checkAchievements(); // 检查成就
-    saveGameDataToDB();
     saveGameDataToDB();
   }
 
@@ -283,7 +280,6 @@
       fishData.collectedAt = Date.now();
       overlay.remove();
       saveGameDataToDB();
-      saveGameDataToDB();
       showToast('⭐ 收藏成功');
     });
   }
@@ -299,7 +295,6 @@
     fishData.description = desc;
     fishData.collectedAt = Date.now();
     saveGameDataToDB();
-    saveGameDataToDB();
     showToast('⭐ 收藏成功');
   }
 
@@ -311,7 +306,6 @@
     fishData.name = '';
     fishData.description = '';
     fishData.collectedAt = null;
-    saveGameDataToDB();
     saveGameDataToDB();
     showToast('☆ 已取消收藏');
   }
@@ -333,7 +327,6 @@
     const fishEl = document.getElementById(fishId);
     if (fishEl) fishEl.remove();
     fishes = fishes.filter(f => f.id !== fishId);
-    saveGameDataToDB();
     saveGameDataToDB();
     updateFishCount();
     checkSecretAchievements();
@@ -382,7 +375,6 @@
     updateFishCount();
     checkAchievements();
     saveGameDataToDB();
-    saveGameDataToDB();
   }
 
   // 摸鱼 - 点击鱼减少冷却时间
@@ -392,7 +384,6 @@
     if (!canAddFish()) {
       lastAddFishTime = Math.max(0, lastAddFishTime - 60000); // 减少1分钟
       updateAddFishButton();
-      saveGameDataToDB();
       saveGameDataToDB();
 
       // 显示摸鱼反馈(不改变鱼的永久大小)
@@ -667,7 +658,6 @@
           // 更新统计
           stats.successfulFeeds++;
           saveGameDataToDB();
-          saveGameDataToDB();
           checkAchievements();
 
           // 有概率触发在线事件
@@ -694,7 +684,6 @@
 
     if (!canFeedFish()) {
       saveGameDataToDB();
-      saveGameDataToDB();
       return;
     }
 
@@ -712,7 +701,6 @@
 
     // 检查是否有特殊鱼饵（先显示提示，等用户放置后再检查）
     // 这里简化处理：先进入普通投喂模式
-    saveGameDataToDB();
     saveGameDataToDB();
   }
 
@@ -836,7 +824,6 @@
     else if (baitType === 'restore') stats.restoreBaitUsed++;
 
     saveGameDataToDB();
-    saveGameDataToDB();
     stats.successfulFeeds++;
     checkAchievements();
   }
@@ -951,7 +938,6 @@
     updateFishCount();
     updateAddFishButton();
     updateFeedFishButton();
-    saveGameDataToDB();
     saveGameDataToDB();
 
     if (collectedFish.length > 0) {

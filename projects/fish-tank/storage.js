@@ -16,6 +16,7 @@
   const ADD_FISH_COOLDOWN = 30 * 60 * 1000; // 30分钟冷却时间
   let lastFeedFishTime = 0; // 上次喂鱼的时间
   const FEED_FISH_COOLDOWN = 15 * 60 * 1000; // 15分钟喂鱼冷却时间
+  let nextPlantGenerateTime = 0; // 下次生成水草时间
 
   // 手动投喂模式状态
   let isFeedingMode = false;
@@ -76,6 +77,11 @@
   let devLastUsageDate = ''; // 上次使用日期
   let devModeUnlocked = false; // 开发者模式是否解锁(刷新重置)
 
+  // 礼物面板状态
+  let currentGiftPanel = null;
+  let currentGiftEmoji = '';
+  let currentReceivedGift = null;
+
   // ==================== 离线事件系统状态 ====================
   let offlineEventLog = []; // 事件日志（最多保留 EVENT_LOG_MAX 条，倒序）
   let offlineStats = { totalTriggered: 0, totalRewards: 0, legendaryCount: 0 };
@@ -84,6 +90,7 @@
   let dailyEventDate = ''; // 记录日期，跨天重置
   let offlineHeartbeatTimer = null; // 兜底写时间戳的定时器
   const LAST_VISIT_KEY = 'fishTankLastVisitTime';
+  let lastVisitTime = null; // 上次访问时间戳
 
   // 特殊鱼饵状态
   let nextFeedMagicBait = false; // 下次喂鱼触发神奇鱼饵（2倍）
@@ -162,6 +169,34 @@
       transaction.objectStore('tanks').put(tankData);
       transaction.oncomplete = () => { console.log('游戏数据已保存到 IndexedDB'); resolve(); };
       transaction.onerror = () => { console.error('保存失败:', transaction.error); reject(transaction.error); };
+    });
+  }
+
+  // 保存所有鱼缸数据到 IndexedDB（导入存档时批量写入）
+  async function saveAllTanks() {
+    if (!db) return;
+    const transaction = db.transaction(['tanks'], 'readwrite');
+    const store = transaction.objectStore('tanks');
+    return new Promise((resolve, reject) => {
+      const clearRequest = store.clear();
+      clearRequest.onsuccess = () => {
+        tanks.forEach(tank => {
+          store.put({
+            id: tank.id,
+            name: tank.name,
+            fishes: tank.fishes || [],
+            plants: [],
+            lastAddFishTime: tank.lastAddFishTime || 0,
+            lastFeedFishTime: tank.lastFeedFishTime || 0,
+            nextPlantGenerateTime: tank.nextPlantGenerateTime || Date.now(),
+            createdAt: tank.createdAt || Date.now(),
+            lastFishId: tank.lastFishId || 0
+          });
+        });
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      };
+      clearRequest.onerror = () => reject(clearRequest.error);
     });
   }
 

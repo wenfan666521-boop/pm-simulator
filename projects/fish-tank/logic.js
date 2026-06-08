@@ -398,6 +398,97 @@
     document.getElementById('newTankName').select();
   }
 
+  // 切换鱼缸
+  async function switchTank(tankId, isNewTank = false) {
+    if (tankId === currentTankId) return;
+    await saveGameDataToDB();
+    const tankData = await loadTankData(tankId);
+    if (tankData) {
+      currentTankId = tankId;
+      currentTankName = tankData.name;
+      currentTankCreatedAt = tankData.createdAt;
+      fishes = tankData.fishes || [];
+      plants = [];
+      lastAddFishTime = tankData.lastAddFishTime || 0;
+      lastFeedFishTime = tankData.lastFeedFishTime || 0;
+      nextPlantGenerateTime = tankData.nextPlantGenerateTime || Date.now();
+      fishIdCounter = tankData.lastFishId || 0;
+      if (fishes.length > 0 && fishIdCounter === 0) {
+        const maxId = Math.max(...fishes.map(f => {
+          const match = String(f.id).match(/fish-(\d+)/);
+          return match ? parseInt(match[1]) + 1 : 0;
+        }));
+        fishIdCounter = Math.max(fishIdCounter, maxId);
+      }
+      renderFishesAndPlants();
+      updateTankTitle();
+      updateAddFishButton();
+      updateFeedFishButton();
+      if (isNewTank) {
+        resetTankBackground(false);
+      } else {
+        const bgUrl = await loadBackgroundFromDB();
+        setTankBackground(bgUrl, false);
+      }
+    }
+    document.getElementById('tankSelectorOverlay')?.remove();
+  }
+
+  // 重命名鱼缸
+  async function renameTank(tankId) {
+    const newName = document.getElementById('renameTankName').value.trim();
+    if (!newName) return;
+    const tank = tanks.find(t => t.id === tankId);
+    if (!tank) return;
+    tank.name = newName;
+    await saveTankData(tankId, tank);
+    if (tankId === currentTankId) {
+      currentTankName = newName;
+      updateTankTitle();
+    }
+    tanks = await loadAllTanks();
+    showTankSelector();
+  }
+
+  // 执行删除鱼缸
+  async function executeDeleteTank(tankId) {
+    document.getElementById('deleteTankOverlay')?.remove();
+    await deleteTank(tankId);
+    if (tankId === currentTankId) {
+      const remainingTanks = tanks.filter(t => t.id !== tankId);
+      if (remainingTanks.length > 0) {
+        await switchTank(remainingTanks[0].id);
+      }
+    }
+    tanks = await loadAllTanks();
+    updateTankTitle();
+    showTankSelector();
+  }
+
+  // 创建新鱼缸
+  async function createNewTank() {
+    const tankName = document.getElementById('newTankName').value.trim();
+    if (!tankName) return;
+    document.getElementById('createTankOverlay')?.remove();
+    const now = Date.now();
+    const tankId = 'tank_' + now;
+    const newTank = {
+      id: tankId,
+      name: tankName,
+      fishes: [],
+      plants: [],
+      lastAddFishTime: 0,
+      lastFeedFishTime: 0,
+      nextPlantGenerateTime: now + Math.random() * 20 * 1000,
+      createdAt: now,
+      lastFishId: 0
+    };
+    await saveTankData(tankId, newTank);
+    await switchTank(tankId, true);
+    tanks = await loadAllTanks();
+    updateTankTitle();
+  }
+
   // 显示背景设置面板
   function showBackgroundPanel() {
     const existing = document.getElementById('backgroundPanelOverlay');
