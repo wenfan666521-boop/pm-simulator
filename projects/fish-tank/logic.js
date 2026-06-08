@@ -443,6 +443,7 @@
       currentTankName = newName;
       updateTankTitle();
     }
+    document.getElementById('renameTankOverlay')?.remove();
     tanks = await loadAllTanks();
     showTankSelector();
   }
