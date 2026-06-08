@@ -29,20 +29,24 @@
         // 使用第一个鱼缸
         currentTankId = tanks[0].id;
       }
-      
-      // 加载当前鱼缸数据
-      const currentTankData = await loadTankData(currentTankId);
-      if (currentTankData) {
-        currentTankName = currentTankData.name;
-        currentTankCreatedAt = currentTankData.createdAt;
-        fishes = currentTankData.fishes || [];
+
+      // 先加载全局数据（得到正确的 currentTankId）
+      const dbData = await loadGameDataFromDB();
+      if (dbData) {
+        applyGameData(dbData, false); // 不覆盖鱼和植物
+      }
+
+      // 用 currentTankId 加载对应鱼缸的数据（此时 currentTankId 已正确）
+      const tankData = await loadTankData(currentTankId);
+      if (tankData) {
+        currentTankName = tankData.name;
+        currentTankCreatedAt = tankData.createdAt;
+        fishes = tankData.fishes || [];
         plants = []; // 水草不存档，动态生成
-        lastAddFishTime = currentTankData.lastAddFishTime || 0;
-        lastFeedFishTime = currentTankData.lastFeedFishTime || 0;
-        nextPlantGenerateTime = currentTankData.nextPlantGenerateTime || Date.now();
-        // ✅ 恢复该鱼缸的鱼ID计数器
-        fishIdCounter = currentTankData.lastFishId || 0;
-        // 如果有鱼但没存lastFishId，从现有鱼的ID里推算
+        lastAddFishTime = tankData.lastAddFishTime || 0;
+        lastFeedFishTime = tankData.lastFeedFishTime || 0;
+        nextPlantGenerateTime = tankData.nextPlantGenerateTime || Date.now();
+        fishIdCounter = tankData.lastFishId || 0;
         if (fishes.length > 0 && fishIdCounter === 0) {
           const maxId = Math.max(...fishes.map(f => {
             const match = String(f.id).match(/fish-(\d+)/);
@@ -50,16 +54,9 @@
           }));
           fishIdCounter = Math.max(fishIdCounter, maxId);
         }
-        // 重新渲染鱼和植物
         renderFishesAndPlants();
       }
-      
-      // 加载全局游戏数据（成就、统计等）
-      const dbData = await loadGameDataFromDB();
-      if (dbData) {
-        applyGameData(dbData, false); // 不覆盖鱼和植物数据
-      }
-      
+
       // 加载当前鱼缸背景
       const bgUrl = await loadBackgroundFromDB();
       if (bgUrl) setTankBackground(bgUrl, false);
