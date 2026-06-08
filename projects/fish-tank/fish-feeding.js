@@ -226,6 +226,7 @@
     const giftTag = isGift ? '<span style="margin-left:8px;font-size:12px;opacity:0.6;">🎁礼物鱼</span>' : '';
 
     const overlay = document.createElement('div');
+    overlay.id = 'fishCollectionMenuOverlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;';
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
 
@@ -330,6 +331,7 @@
     saveGameDataToDB();
     updateFishCount();
     checkSecretAchievements();
+    document.getElementById('fishCollectionMenuOverlay')?.remove();
     showToast('🗑️ 鱼已放生');
   }
 
