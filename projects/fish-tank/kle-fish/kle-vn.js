@@ -128,6 +128,16 @@
     // 点击文本框 → 推进
     textBox.addEventListener('click', onTextBoxClick);
 
+    // 点击任意空白区域 → 推进（排除按钮和选项区）
+    overlay.addEventListener('click', function (e) {
+      var tag = e.target.tagName.toUpperCase();
+      if (tag === 'BUTTON') return; // 关闭/自动播放按钮不触发推进
+      if (e.target === textBox || textBox.contains(e.target)) return; // 文本框内已由 textBox 处理
+      if (e.target === choiceArea || choiceArea.contains(e.target)) return; // 选项区不触发推进
+      // 空白区域点击 → 等同于点击文本框
+      onTextBoxClick();
+    });
+
     // 关闭按钮
     document.getElementById('kle-vn-close').addEventListener('click', function () {
       close();
