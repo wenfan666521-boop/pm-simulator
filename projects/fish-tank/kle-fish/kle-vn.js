@@ -335,6 +335,10 @@
       endDiv.style.transition = 'opacity 0.3s';
       setTimeout(function() {
         document.body.removeChild(endDiv);
+        // 清空文本框（这一天结束了）
+        textContent.textContent = '';
+        textContent.style.textAlign = '';
+        textContent.style.color = '';
       }, 300);
     });
 
