@@ -120,7 +120,7 @@
       '  <button class="kle-tab-btn" data-tab="items" style="flex:1;">🎒 道具</button>',
       '  <button class="kle-tab-btn" data-tab="tasks" style="flex:1;">✅ 任务</button>',
       '</div>',
-      '<div id="kleTabContent" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;"></div>'
+      '<div id="kleTabContent" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:300px;scrollbar-width:thin;scrollbar-color:rgba(102,126,234,0.3) transparent;"></div>'
     ].join('');
   }
 
@@ -237,7 +237,7 @@
 
   function buildChatHTML() {
     return [
-      '<div id="kleChatMessages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:4px;min-height:0;"></div>',
+      '<div id="kleChatMessages" style="padding:16px;display:flex;flex-direction:column;gap:4px;"></div>',
       '<div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;background:rgba(0,0,0,0.15);">',
       '  <input type="text" id="kleChatInput" placeholder="和克喵说点什么…" style="flex:1;padding:11px 16px;border:none;border-radius:22px;background:rgba(255,255,255,0.08);color:#fff;font-size:14px;outline:none;">',
       '  <button id="kleChatSendBtn" style="padding:11px 20px;border:none;border-radius:22px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:0.3px;white-space:nowrap;">发送</button>',
