@@ -482,13 +482,30 @@
 
   // 版本信息（每次发版更新）
   var versionInfo = {
-    commit: '7493f8e',
-    time: '2026-06-10 00:04',
-    desc: 'fix: script.json被JS包裹导致JSON.parse失败'
+    commit: '45f2319',
+    time: '2026-06-10 00:10',
+    desc: 'fix: script.json纯JSON格式更新 + wrapper剥除'
   };
   var vbar = document.getElementById('version-bar');
   vbar.textContent = '📦 ' + versionInfo.commit + ' · ' + versionInfo.time + ' · ' + versionInfo.desc;
   vbar.style.color = '#555';
+
+  // 显示关键模块加载状态
+  var statusDiv = document.createElement('div');
+  statusDiv.style.cssText = 'font-size:11px;color:#666;margin-bottom:12px;';
+  statusDiv.id = 'module-status';
+  vbar.parentNode.insertBefore(statusDiv, vbar.nextSibling);
+
+  function updateModuleStatus() {
+    var lines = [];
+    lines.push('ink.js: ' + (typeof inkjs !== 'undefined' ? '✅' : '❌'));
+    lines.push('kleStory: ' + (window.kleStory ? '✅' : '❌'));
+    lines.push('KLE_VN: ' + (window.KLE_VN ? '✅' : '❌'));
+    document.getElementById('module-status').textContent = lines.join(' · ');
+  }
+  updateModuleStatus();
+  // 延迟检查（脚本可能还没执行完）
+  setTimeout(updateModuleStatus, 1000);
 </script>
 
 </body>
