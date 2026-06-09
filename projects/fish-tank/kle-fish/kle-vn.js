@@ -209,11 +209,7 @@
       hideChoices();
       typeText(item.Text, function () {
         state.canClick = true;
-        // 自动继续下一个
-        state.autoTimer = setTimeout(function () {
-          state.canClick = false;
-          nextItem();
-        }, CFG.autoContinueDelay);
+        // 等待用户点击文本框推进到下一句（不再自动跳转）
       });
 
     } else if (item.Goto) {
