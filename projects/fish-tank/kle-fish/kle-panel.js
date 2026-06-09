@@ -74,8 +74,8 @@
       if (e.target === overlay) remove();
     });
 
-    // 默认打开道具栏
-    switchTab('items');
+    // 默认打开剧情Tab
+    switchTab('story');
   }
 
   function remove() {
