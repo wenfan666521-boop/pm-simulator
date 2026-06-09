@@ -262,14 +262,101 @@
       }
     }
 
-    // 无法继续也没有选项 → 结束或等待
-    showContinueHint();
+    // 无法继续也没有选项 → 章节结束
+    showChapterEnd();
+  }
+
+  // ==================== 章节结束 ====================
+  function showChapterEnd() {
+    hideContinueHint();
+    hideChoices();
+
+    // 自动存档
+    if (window.kleStory && window.kleStory.saveToStorage) {
+      window.kleStory.saveToStorage();
+    }
+
+    // 显示结束浮层
+    var endDiv = document.createElement('div');
+    endDiv.id = 'kle-vn-end';
+    endDiv.style.cssText = [
+      'position:fixed;inset:0;z-index:10001;',
+      'background:rgba(10,8,20,0.92);',
+      'display:flex;flex-direction:column;',
+      'align-items:center;justify-content:center;',
+      'font-family:"PingFang SC","Microsoft YaHei",sans-serif;',
+      'color:#e8e0d4;',
+    ].join('');
+
+    var dayLabel = 'DAY ' + state.day;
+    endDiv.innerHTML = [
+      '<div style="text-align:center;">',
+      '  <div style="font-size:13px;color:#b49cff;letter-spacing:3px;margin-bottom:12px;">' + dayLabel + ' · 完</div>',
+      '  <div style="font-size:15px;color:rgba(232,224,212,0.7);margin-bottom:40px;">今日故事告一段落</div>',
+      '  <div id="kle-vn-end-progress" style="font-size:12px;color:rgba(180,150,255,0.5);margin-bottom:32px;"></div>',
+      '  <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">',
+      '    <button id="kle-vn-end-continue" style="padding:12px 32px;border:none;border-radius:24px;background:rgba(180,150,255,0.2);color:#e8e0d4;font-size:14px;cursor:pointer;border:1px solid rgba(180,150,255,0.4);transition:all 0.2s;">继续阅读</button>',
+      '    <button id="kle-vn-end-close" style="padding:12px 32px;border:none;border-radius:24px;background:rgba(255,255,255,0.06);color:rgba(232,224,212,0.5);font-size:14px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);transition:all 0.2s;">稍后再说</button>',
+      '  </div>',
+      '</div>',
+    ].join('');
+
+    document.body.appendChild(endDiv);
+
+    // 显示存档进度
+    if (window.kleStory && window.kleStory.loadFromStorage) {
+      var saveData = window.kleStory.loadFromStorage();
+      if (saveData) {
+        var date = new Date(saveData.savedAt);
+        var timeStr = date.getMonth()+1 + '月' + date.getDate() + '日 ' + date.getHours() + ':' + String(date.getMinutes()).padStart(2,'0');
+        document.getElementById('kle-vn-end-progress').textContent = '已自动存档 · ' + timeStr;
+      }
+    }
+
+    // 悬停效果
+    var btnC = document.getElementById('kle-vn-end-continue');
+    var btnL = document.getElementById('kle-vn-end-close');
+    btnC.addEventListener('mouseenter', function() {
+      btnC.style.background = 'rgba(180,150,255,0.35)';
+    });
+    btnC.addEventListener('mouseleave', function() {
+      btnC.style.background = 'rgba(180,150,255,0.2)';
+    });
+    btnL.addEventListener('mouseenter', function() {
+      btnL.style.background = 'rgba(255,255,255,0.12)';
+    });
+    btnL.addEventListener('mouseleave', function() {
+      btnL.style.background = 'rgba(255,255,255,0.06)';
+    });
+
+    // 继续阅读 → 关闭结束画面（今日内容已结束）
+    btnC.addEventListener('click', function() {
+      endDiv.style.opacity = '0';
+      endDiv.style.transition = 'opacity 0.3s';
+      setTimeout(function() {
+        document.body.removeChild(endDiv);
+      }, 300);
+    });
+
+    // 稍后再说 → 直接关闭整个VN
+    btnL.addEventListener('click', function() {
+      close();
+      setTimeout(function() {
+        try { document.body.removeChild(endDiv); } catch(e) {}
+      }, 350);
+    });
   }
 
   // ==================== 点击推进 ====================
   function onTextBoxClick() {
     if (state.waitingForInput) return;
     if (state.showingChoices) return;
+
+    // 章节已结束，显示结束画面
+    if (!window.kleStory || (!window.kleStory.canContinue() && !window.kleStory.hasChoices())) {
+      showChapterEnd();
+      return;
+    }
 
     if (state.isTyping) {
       // 打字中 → 瞬完成 + 打断 callback + 推进
@@ -296,8 +383,10 @@
     // 继续下一段文本
     if (window.kleStory && window.kleStory.canContinue()) {
       processItem();
+    } else if (!window.kleStory || (!window.kleStory.canContinue() && !window.kleStory.hasChoices())) {
+      // 无法继续也没有选项 → 章节结束
+      showChapterEnd();
     } else {
-      // 无法继续，显示结束提示
       showContinueHint();
     }
   }
@@ -386,7 +475,17 @@
       overlay.style.opacity = '1';
     });
 
-    // 加载故事（首次）
+    // 检查存档
+    if (window.kleStory && window.kleStory.hasSave && window.kleStory.hasSave()) {
+      showLoadScreen();
+      return;
+    }
+
+    // 无存档 → 直接加载故事
+    loadStory();
+  }
+
+  function loadStory() {
     if (window.kleStory && window.kleStory.loadDay) {
       window.kleStory.loadDay(state.day).then(function () {
         processItem();
@@ -396,8 +495,89 @@
       });
       return;
     }
-
     processItem();
+  }
+
+  // ==================== 读档画面 ====================
+  function showLoadScreen() {
+    var saveData = window.kleStory && window.kleStory.loadFromStorage
+      ? window.kleStory.loadFromStorage()
+      : null;
+
+    var loadDiv = document.createElement('div');
+    loadDiv.id = 'kle-vn-load';
+    loadDiv.style.cssText = [
+      'position:fixed;inset:0;z-index:10000;',
+      'background:rgba(10,8,20,0.92);',
+      'display:flex;flex-direction:column;',
+      'align-items:center;justify-content:center;',
+      'font-family:"PingFang SC","Microsoft YaHei",sans-serif;',
+      'color:#e8e0d4;',
+    ].join('');
+
+    var saveInfo = '';
+    if (saveData && saveData.savedAt) {
+      var d = new Date(saveData.savedAt);
+      saveInfo = d.getMonth()+1 + '月' + d.getDate() + '日 ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+
+    loadDiv.innerHTML = [
+      '<div style="text-align:center;">',
+      '  <div style="font-size:13px;color:#b49cff;letter-spacing:3px;margin-bottom:16px;">小克鱼</div>',
+      '  <div id="kle-vn-load-info" style="font-size:12px;color:rgba(180,150,255,0.5);margin-bottom:32px;">' + (saveInfo ? '存档于 ' + saveInfo : '') + '</div>',
+      '  <div style="display:flex;flex-direction:column;gap:12px;min-width:240px;">',
+      '    <button id="kle-vn-load-btn" style="padding:14px 32px;border:none;border-radius:24px;background:rgba(180,150,255,0.2);color:#e8e0d4;font-size:14px;cursor:pointer;border:1px solid rgba(180,150,255,0.4);transition:all 0.2s;">继续阅读</button>',
+      '    <button id="kle-vn-new-btn" style="padding:14px 32px;border:none;border-radius:24px;background:rgba(255,255,255,0.06);color:rgba(232,224,212,0.5);font-size:14px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);transition:all 0.2s;">从头开始</button>',
+      '  </div>',
+      '  <div id="kle-vn-load-error" style="font-size:12px;color:rgba(255,120,120,0.7);margin-top:16px;display:none;"></div>',
+      '</div>',
+    ].join('');
+
+    document.body.appendChild(loadDiv);
+
+    var btnLoad = document.getElementById('kle-vn-load-btn');
+    var btnNew = document.getElementById('kle-vn-new-btn');
+
+    function enterHover(el, bg) {
+      el.addEventListener('mouseenter', function() { el.style.background = bg; });
+      el.addEventListener('mouseleave', function() { el.style.background = el === btnLoad ? 'rgba(180,150,255,0.2)' : 'rgba(255,255,255,0.06)'; });
+    }
+    enterHover(btnLoad, 'rgba(180,150,255,0.35)');
+    enterHover(btnNew, 'rgba(255,255,255,0.12)');
+
+    // 继续阅读 → 恢复存档
+    btnLoad.addEventListener('click', function() {
+      loadDiv.style.opacity = '0';
+      loadDiv.style.transition = 'opacity 0.3s';
+      setTimeout(function() {
+        document.body.removeChild(loadDiv);
+      }, 300);
+
+      if (window.kleStory && window.kleStory.restoreSave) {
+        window.kleStory.restoreSave(saveData).then(function() {
+          processItem();
+        }).catch(function(err) {
+          var errDiv = document.getElementById('kle-vn-load-error');
+          if (errDiv) {
+            errDiv.textContent = '读档失败：' + err;
+            errDiv.style.display = 'block';
+          }
+        });
+      }
+    });
+
+    // 从头开始 → 清除存档，重新加载
+    btnNew.addEventListener('click', function() {
+      if (window.kleStory && window.kleStory.clearSave) {
+        window.kleStory.clearSave();
+      }
+      loadDiv.style.opacity = '0';
+      loadDiv.style.transition = 'opacity 0.3s';
+      setTimeout(function() {
+        document.body.removeChild(loadDiv);
+        loadStory();
+      }, 300);
+    });
   }
 
   function close() {
@@ -406,6 +586,12 @@
     clearTimeout(state.autoTimer);
     state.autoPlay = false;
     state.waitingForInput = false;
+
+    // 关闭前自动存档（如果有正在进行的章节）
+    if (window.kleStory && window.kleStory.saveToStorage && window.kleStory.canContinue && window.kleStory.canContinue()) {
+      window.kleStory.saveToStorage();
+    }
+
     overlay.style.opacity = '0';
     setTimeout(function () {
       overlay.style.display = 'none';

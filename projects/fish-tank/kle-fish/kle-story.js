@@ -9,6 +9,9 @@
   // ==================== 状态 ====================
   var story = null;          // inkjs.Story 实例
   var storyJson = null;      // 原始 JSON（用于重置）
+  var state = {
+    currentDay: 1,
+  };
 
   // ==================== 加载故事 ====================
 
@@ -34,6 +37,7 @@
           var cleaned = jsonString.replace(/^\s*var\s+storyContent\s*=\s*/, '').replace(/;\s*$/, '');
           storyJson = cleaned;
           story = new inkjs.Story(cleaned);
+          state.currentDay = day;
           resolve({
             day: day,
             canContinue: story.canContinue
@@ -141,21 +145,81 @@
 
   // ==================== 状态保存/恢复 ====================
 
+  var SAVE_KEY = 'kle_fish_save';
+  var VARS_KEY = 'kle_story_vars';
+
   /**
-   * 保存当前进度（JSON 字符串）
+   * 保存当前进度
+   * @returns {Object} 存档对象
    */
   function saveState() {
     if (!story) return null;
-    return story.state.ToJson();
+    return {
+      storyState: story.state.ToJson(),
+      savedAt: Date.now(),
+      day: state.currentDay || 1,
+    };
   }
 
   /**
-   * 恢复进度
-   * @param {string} jsonStr 保存时生成的 JSON 字符串
+   * 保存存档到 localStorage
    */
-  function loadState(jsonStr) {
-    if (!story || !jsonStr) return;
-    story.state.LoadJson(jsonStr);
+  function saveToStorage() {
+    var data = saveState();
+    if (!data) return;
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    // 同时保存公共变量快照
+    localStorage.setItem(VARS_KEY, JSON.stringify(getAllVars()));
+  }
+
+  /**
+   * 从 localStorage 读取存档
+   * @returns {Object|null}
+   */
+  function loadFromStorage() {
+    try {
+      var raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * 检查是否有存档
+   * @returns {boolean}
+   */
+  function hasSave() {
+    return localStorage.getItem(SAVE_KEY) !== null;
+  }
+
+  /**
+   * 恢复存档
+   * @param {Object} saveData 存档对象（来自 loadFromStorage）
+   * @returns {Promise}
+   */
+  function restoreSave(saveData) {
+    if (!saveData || !saveData.storyState) return Promise.reject('无效存档');
+    return loadDay(saveData.day).then(function () {
+      story.state.LoadJson(saveData.storyState);
+      return saveData;
+    });
+  }
+
+  /**
+   * 清除存档
+   */
+  function clearSave() {
+    localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(VARS_KEY);
+  }
+
+  /**
+   * 强制设置当前 day（用于 loadDay 前）
+   */
+  function setCurrentDay(day) {
+    state.currentDay = day;
   }
 
   /**
@@ -179,7 +243,12 @@
     getAllVars: getAllVars,
     jumpTo: jumpTo,
     saveState: saveState,
-    loadState: loadState,
+    saveToStorage: saveToStorage,
+    loadFromStorage: loadFromStorage,
+    hasSave: hasSave,
+    restoreSave: restoreSave,
+    clearSave: clearSave,
+    setCurrentDay: setCurrentDay,
     reset: reset,
   };
 
