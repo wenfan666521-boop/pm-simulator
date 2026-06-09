@@ -12,8 +12,8 @@
     typeSpeed: 35,
     // 选项之间间距
     choiceGap: '10px',
-    // 打完一行后自动继续的停顿（毫秒）
-    autoContinueDelay: 600,
+    // 自动播放时的停顿（毫秒）
+    autoPlayDelay: 1500,
   };
 
   // ==================== 状态 ====================
@@ -28,6 +28,9 @@
     canClick: false,          // 文本走完了，可以点击推进
     showingChoices: false,
     autoTimer: null,
+    autoPlay: false,          // 自动播放开关
+    autoPlayTimer: null,       // 自动播放推进定时器
+    skipTypingCallback: false, // 打断打字时，阻止旧callback执行nextItem
   };
 
   // ==================== DOM 结构 ====================
@@ -52,7 +55,7 @@
       '<div id="kle-vn-topbar" style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;z-index:2;">',
       '  <button id="kle-vn-close" style="background:none;border:none;color:rgba(232,224,212,0.5);font-size:22px;cursor:pointer;padding:4px 8px;border-radius:8px;">✕</button>',
       '  <div id="kle-vn-daylabel" style="font-size:12px;color:rgba(232,224,212,0.4);letter-spacing:1px;"></div>',
-      '  <div style="width:40px;"></div>',
+      '  <button id="kle-vn-autoplay" style="background:none;border:none;color:rgba(180,150,255,0.4);font-size:12px;cursor:pointer;padding:4px 10px;border-radius:20px;border:1px solid rgba(180,150,255,0.2);transition:all 0.2s;">▶ 自动</button>',
       '</div>',
 
       // 角色展示区
@@ -129,6 +132,11 @@
     document.getElementById('kle-vn-close').addEventListener('click', function () {
       close();
     });
+
+    // 自动播放按钮
+    document.getElementById('kle-vn-autoplay').addEventListener('click', function () {
+      toggleAutoPlay();
+    });
   }
 
   // ==================== 打字机 ====================
@@ -143,6 +151,7 @@
     var i = 0;
     state.isTyping = true;
     state.fullText = text;
+    state.skipTypingCallback = false;
     textContent.textContent = '';
     clearInterval(typeTimer);
     typeTimer = setInterval(function () {
@@ -209,7 +218,12 @@
       hideChoices();
       typeText(item.Text, function () {
         state.canClick = true;
-        // 等待用户点击文本框推进到下一句（不再自动跳转）
+        // 打字完成，自动播放模式下自动推进下一句
+        if (state.autoPlay && !state.showingChoices) {
+          scheduleAutoAdvance();
+        }
+        // 被打断过（点击跳过）的打字，callback不触发nextItem
+        if (state.skipTypingCallback) return;
       });
 
     } else if (item.Goto) {
@@ -229,14 +243,22 @@
     if (state.showingChoices) return;
 
     if (state.isTyping) {
-      // 打字中 → 瞬完成
+      // 打字中 → 瞬完成 + 打断typing callback + 推进到下一句
+      state.skipTypingCallback = true;
       finishTyping();
       state.canClick = true;
+      state.canClick = false;
+      clearTimeout(state.autoTimer);
+      nextItem();
     } else if (state.canClick) {
       // 已完成 → 推进
       state.canClick = false;
       clearTimeout(state.autoTimer);
       nextItem();
+      // 自动播放模式下立即调度下一句
+      if (state.autoPlay && !state.showingChoices) {
+        scheduleAutoAdvance();
+      }
     }
   }
 
@@ -319,10 +341,54 @@
 
   function close() {
     if (!overlay) return;
+    clearTimeout(state.autoPlayTimer);
+    state.autoPlay = false;
     overlay.style.opacity = '0';
     setTimeout(function () {
       overlay.style.display = 'none';
     }, 300);
+  }
+
+  // ==================== 自动播放 ====================
+  function toggleAutoPlay() {
+    state.autoPlay = !state.autoPlay;
+    updateAutoPlayBtn();
+    // 如果开启且当前可以点击，立即触发一次自动推进
+    if (state.autoPlay && state.canClick && !state.showingChoices) {
+      scheduleAutoAdvance();
+    }
+  }
+
+  function updateAutoPlayBtn() {
+    var btn = document.getElementById('kle-vn-autoplay');
+    if (!btn) return;
+    if (state.autoPlay) {
+      btn.style.color = '#b49cff';
+      btn.style.borderColor = 'rgba(180,150,255,0.6)';
+      btn.style.background = 'rgba(180,150,255,0.1)';
+      btn.textContent = '⏸ 自动';
+    } else {
+      btn.style.color = 'rgba(180,150,255,0.4)';
+      btn.style.borderColor = 'rgba(180,150,255,0.2)';
+      btn.style.background = 'none';
+      btn.textContent = '▶ 自动';
+    }
+  }
+
+  function scheduleAutoAdvance() {
+    clearTimeout(state.autoPlayTimer);
+    if (!state.autoPlay) return;
+    state.autoPlayTimer = setTimeout(function () {
+      if (state.autoPlay && state.canClick && !state.showingChoices) {
+        clearTimeout(state.autoTimer);
+        state.canClick = false;
+        nextItem();
+        // 继续 schedule 下一句（如果还是自动播放模式）
+        if (state.autoPlay) {
+          scheduleAutoAdvance();
+        }
+      }
+    }, CFG.autoPlayDelay);
   }
 
   // ==================== 对外接口 ====================
