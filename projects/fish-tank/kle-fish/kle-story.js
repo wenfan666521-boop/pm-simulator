@@ -30,8 +30,10 @@
           return res.text();
         })
         .then(function (jsonString) {
-          storyJson = jsonString;
-          story = new inkjs.Story(jsonString);
+          // 去掉 var storyContent = wrapper（如果有）
+          var cleaned = jsonString.replace(/^\s*var\s+storyContent\s*=\s*/, '').replace(/;\s*$/, '');
+          storyJson = cleaned;
+          story = new inkjs.Story(cleaned);
           resolve({
             day: day,
             canContinue: story.canContinue
