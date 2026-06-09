@@ -223,14 +223,80 @@
     var container = document.getElementById('kleStoryContent');
     if (!container) return;
     var dayLabels = { 1: '初临', 2: '仪式准备', 3: '仪式与离场' };
-    container.innerHTML = [
-      '<div style="padding:20px 18px;background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(118,75,162,0.15));border-radius:16px;margin-bottom:16px;border:1px solid rgba(102,126,234,0.15);">',
-      '  <div style="font-size:11px;opacity:0.5;margin-bottom:6px;">DAY ' + currentDay + '</div>',
-      '  <div style="font-size:20px;font-weight:700;margin-bottom:6px;">' + dayLabels[currentDay] + '</div>',
-      '  <div style="font-size:12px;opacity:0.45;line-height:1.6;">对话树将在 ink 文件完成后接入此处</div>',
-      '</div>',
-      '<div style="text-align:center;padding:40px 0;opacity:0.3;font-size:13px;">📖 故事内容加载中…</div>'
-    ].join('');
+    var mockData = window.KLE_STORY_MOCK;
+    var dayKey = 'day' + currentDay;
+    var story = mockData && mockData[dayKey];
+    if (!story) {
+      container.innerHTML = [
+        '<div style="padding:20px 18px;background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(118,75,162,0.15));border-radius:16px;margin-bottom:16px;border:1px solid rgba(102,126,234,0.15);">',
+        '  <div style="font-size:11px;opacity:0.5;margin-bottom:6px;">DAY ' + currentDay + '</div>',
+        '  <div style="font-size:20px;font-weight:700;">' + dayLabels[currentDay] + '</div>',
+        '  <div style="font-size:12px;opacity:0.45;line-height:1.6;margin-top:8px;">对话树未找到</div>',
+        '</div>'
+      ].join('');
+      return;
+    }
+    var node = story.start;
+    var content = node && node.content || [];
+    var choices = [];
+    var textLines = [];
+    content.forEach(function(item) {
+      if (item.Text) {
+        textLines.push(item.Text);
+      } else if (item.Alternatives) {
+        item.Alternatives.forEach(function(alt, idx) {
+          choices.push({ text: alt.content[0], target: alt.path, index: idx });
+        });
+      }
+    });
+    var html = [
+      '<div style="padding:16px;display:flex;flex-direction:column;gap:8px;">',
+      '  <div style="padding:14px 16px;background:linear-gradient(135deg,rgba(102,126,234,0.2),rgba(118,75,162,0.2));border-radius:14px;margin-bottom:12px;border:1px solid rgba(102,126,234,0.15);">',
+      '    <div style="font-size:11px;opacity:0.5;margin-bottom:4px;">DAY ' + currentDay + '</div>',
+      '    <div style="font-size:18px;font-weight:700;">' + dayLabels[currentDay] + '</div>',
+      '  </div>'
+    ];
+    textLines.forEach(function(line) {
+      html.push('<div style="padding:10px 14px;background:rgba(102,126,234,0.1);border-radius:12px;font-size:14px;line-height:1.7;">' + line + '</div>');
+    });
+    if (choices.length > 0) {
+      html.push('<div style="margin-top:8px;">');
+      choices.forEach(function(c) {
+        html.push('<button onclick="window.kleStoryChoose(' + c.index + ',' + currentDay + ',' + JSON.stringify(c.text).replace(/"/g, '&quot;') + ')" style="display:block;width:100%;padding:12px 16px;margin-bottom:8px;border:none;border-radius:12px;background:rgba(255,255,255,0.06);color:#fff;font-size:13px;cursor:pointer;text-align:left;">▶ ' + c.text + '</button>');
+      });
+      html.push('</div>');
+    }
+    html.push('</div>');
+    container.innerHTML = html.join('');
+  }
+
+  // 供按钮 onclick 调用的选择函数
+  window.kleStoryChoose = function(choiceIndex, day, choiceText) {
+    // 追加玩家选择
+    var data = window.kleData.loadAccountData();
+    var dayKey = 'day' + day;
+    var story = (window.KLE_STORY_MOCK || {})[dayKey];
+    if (!story) return;
+    var node = story.start;
+    var content = node && node.content || [];
+    var targetNode = null;
+    for (var i = 0; i < content.length; i++) {
+      var item = content[i];
+      if (item.Alternatives) {
+        if (item.Alternatives[choiceIndex]) {
+          targetNode = story[item.Alternatives[choiceIndex].path];
+          break;
+        }
+      }
+    }
+    // 追加选择文本到面板
+    var container = document.getElementById('kleStoryContent');
+    if (container) {
+      var btn = container.querySelectorAll('button')[choiceIndex];
+      if (btn) btn.style.opacity = '0.4';
+      // 追加克喵下一段
+      renderStoryTab();
+    }
   }
 
   // ========== 自由对话 ==========
