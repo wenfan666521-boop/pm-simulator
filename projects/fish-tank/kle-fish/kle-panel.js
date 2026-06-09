@@ -211,10 +211,10 @@
     container.innerHTML = html;
   }
 
-  // ========== 故事对话 ==========
+  // ========== 故事对话（入口页） ==========
 
   function buildStoryHTML() {
-    return '<div id="kleStoryContent" style="padding:16px;"></div>';
+    return '<div id="kleStoryContent" style="padding:16px;overflow-y:auto;flex:1;"></div>';
   }
 
   function renderStoryTab() {
@@ -222,80 +222,62 @@
     var currentDay = data.currentDay || 1;
     var container = document.getElementById('kleStoryContent');
     if (!container) return;
+
     var dayLabels = { 1: '初临', 2: '仪式准备', 3: '仪式与离场' };
-    var mockData = window.KLE_STORY_MOCK;
-    var dayKey = 'day' + currentDay;
-    var story = mockData && mockData[dayKey];
-    if (!story) {
-      container.innerHTML = [
-        '<div style="padding:20px 18px;background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(118,75,162,0.15));border-radius:16px;margin-bottom:16px;border:1px solid rgba(102,126,234,0.15);">',
-        '  <div style="font-size:11px;opacity:0.5;margin-bottom:6px;">DAY ' + currentDay + '</div>',
-        '  <div style="font-size:20px;font-weight:700;">' + dayLabels[currentDay] + '</div>',
-        '  <div style="font-size:12px;opacity:0.45;line-height:1.6;margin-top:8px;">对话树未找到</div>',
-        '</div>'
-      ].join('');
-      return;
-    }
-    var node = story.start;
-    var content = node && node.content || [];
-    var choices = [];
-    var textLines = [];
-    content.forEach(function(item) {
-      if (item.Text) {
-        textLines.push(item.Text);
-      } else if (item.Alternatives) {
-        item.Alternatives.forEach(function(alt, idx) {
-          choices.push({ text: alt.content[0], target: alt.path, index: idx });
-        });
+    var totalTasks = { 1: 3, 2: 4, 3: 1 };
+    var completedTasks = 0;
+    if (data.tasks) {
+      var dayKeyTasks = 'day' + currentDay;
+      if (data.tasks[dayKeyTasks]) {
+        completedTasks = Object.values(data.tasks[dayKeyTasks]).filter(Boolean).length;
       }
-    });
+    }
+
+    var dots = '';
+    var total = totalTasks[currentDay] || 0;
+    for (var i = 0; i < total; i++) {
+      dots += '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + (i < completedTasks ? '#b49cff' : 'rgba(255,255,255,0.2)') + ';margin-right:5px;"></span>';
+    }
+
     var html = [
-      '<div style="padding:16px;display:flex;flex-direction:column;gap:8px;">',
-      '  <div style="padding:14px 16px;background:linear-gradient(135deg,rgba(102,126,234,0.2),rgba(118,75,162,0.2));border-radius:14px;margin-bottom:12px;border:1px solid rgba(102,126,234,0.15);">',
-      '    <div style="font-size:11px;opacity:0.5;margin-bottom:4px;">DAY ' + currentDay + '</div>',
-      '    <div style="font-size:18px;font-weight:700;">' + dayLabels[currentDay] + '</div>',
+      '<div style="display:flex;flex-direction:column;gap:14px;">',
+      '  <div style="padding:20px;background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(118,75,162,0.15));border-radius:18px;border:1px solid rgba(102,126,234,0.15);">',
+      '    <div style="font-size:11px;opacity:0.5;margin-bottom:6px;">DAY ' + currentDay + '</div>',
+      '    <div style="font-size:22px;font-weight:700;margin-bottom:12px;">' + (dayLabels[currentDay] || '') + '</div>',
+      '    <div style="margin-bottom:10px;">' + dots + '</div>',
+      '    <div style="font-size:12px;opacity:0.4;">' + completedTasks + ' / ' + total + ' 任务完成</div>',
       '  </div>'
     ];
-    textLines.forEach(function(line) {
-      html.push('<div style="padding:10px 14px;background:rgba(102,126,234,0.1);border-radius:12px;font-size:14px;line-height:1.7;">' + line + '</div>');
-    });
-    if (choices.length > 0) {
-      html.push('<div style="margin-top:8px;">');
-      choices.forEach(function(c) {
-        html.push('<button onclick="window.kleStoryChoose(' + c.index + ',' + currentDay + ',' + JSON.stringify(c.text).replace(/"/g, '&quot;') + ')" style="display:block;width:100%;padding:12px 16px;margin-bottom:8px;border:none;border-radius:12px;background:rgba(255,255,255,0.06);color:#fff;font-size:13px;cursor:pointer;text-align:left;">▶ ' + c.text + '</button>');
-      });
-      html.push('</div>');
-    }
-    html.push('</div>');
-    container.innerHTML = html.join('');
-  }
 
-  // 供按钮 onclick 调用的选择函数
-  window.kleStoryChoose = function(choiceIndex, day, choiceText) {
-    // 追加玩家选择
-    var data = window.kleData.loadAccountData();
-    var dayKey = 'day' + day;
-    var story = (window.KLE_STORY_MOCK || {})[dayKey];
-    if (!story) return;
-    var node = story.start;
-    var content = node && node.content || [];
-    var targetNode = null;
-    for (var i = 0; i < content.length; i++) {
-      var item = content[i];
-      if (item.Alternatives) {
-        if (item.Alternatives[choiceIndex]) {
-          targetNode = story[item.Alternatives[choiceIndex].path];
-          break;
-        }
+    html.push([
+      '<button id="kle-vn-launch-btn" style="width:100%;padding:15px 20px;border:none;border-radius:16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:15px;font-weight:600;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 20px rgba(102,126,234,0.35);">▶ 继续剧情</button>',
+      '<button id="kle-vn-restart-btn" style="width:100%;padding:12px;border:none;border-radius:14px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.45);font-size:13px;cursor:pointer;margin-top:8px;">↩ 从头开始</button>',
+    ].join(''));
+
+    // 回顾区
+    var reviewDays = [];
+    for (var d = 1; d <= 3; d++) {
+      if ((window.KLE_STORY_MOCK || {})['day' + d]) {
+        var isCompleted = data.completed && data.completed['day' + d];
+        var isCurrent = d === currentDay;
+        reviewDays.push('<button onclick="window.KLE_VN && window.KLE_VN.open(' + d + ')" style="padding:8px 14px;border-radius:20px;border:1px solid ' + (isCurrent ? 'rgba(180,150,255,0.5)' : 'rgba(255,255,255,0.1)') + ';background:' + (isCurrent ? 'rgba(180,150,255,0.1)' : 'transparent') + ';color:' + (isCurrent ? '#b49cff' : 'rgba(255,255,255,0.4)') + ';font-size:12px;cursor:pointer;">' + (dayLabels[d] || 'DAY' + d) + (isCompleted ? ' ✓' : '') + '</button>');
       }
     }
-    // 追加选择文本到面板
-    var container = document.getElementById('kleStoryContent');
-    if (container) {
-      var btn = container.querySelectorAll('button')[choiceIndex];
-      if (btn) btn.style.opacity = '0.4';
-      // 追加克喵下一段
-      renderStoryTab();
+    if (reviewDays.length > 0) {
+      html.push('<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' + reviewDays.join('') + '</div>');
+    }
+
+    html.push('</div>');
+    container.innerHTML = html.join('');
+
+    document.getElementById('kle-vn-launch-btn').addEventListener('click', function () {
+      if (window.KLE_VN) window.KLE_VN.open(currentDay);
+    });
+    var restartBtn = document.getElementById('kle-vn-restart-btn');
+    if (restartBtn) {
+      restartBtn.addEventListener('click', function () {
+        if (window.KLE_VN) window.KLE_VN.open(currentDay);
+      });
     }
   }
 
@@ -340,14 +322,12 @@
     var messagesEl = document.getElementById('kleChatMessagesInner');
     if (!messagesEl) return;
 
-    // 用户气泡
     var userDiv = document.createElement('div');
     userDiv.className = 'kle-chat-row user';
     userDiv.innerHTML = '<div class="kle-bubble kle-bubble-user">' + escapeHtml(text) + '</div>';
     messagesEl.appendChild(userDiv);
     messagesEl.scrollTop = messagesEl.scrollHeight;
 
-    // AI 回复
     window.kleAI.chat(text).then(function (reply) {
       var aiDiv = document.createElement('div');
       aiDiv.className = 'kle-chat-row ai';

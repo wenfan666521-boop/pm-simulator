@@ -113,6 +113,7 @@
 <div class="test-section">
   <button class="btn" onclick="test_openPanel()">打开小克鱼面板</button>
   <button class="btn danger" onclick="test_closePanel()">关闭面板</button>
+  <button class="btn warning" onclick="test_openVN()">直接启动剧情（全屏VN）</button>
   <button class="btn" onclick="test_simulateDayTasks()">模拟完成当天任务</button>
   <div class="log" id="log-panel"></div>
 </div>
@@ -148,6 +149,7 @@
 <script src="kle-fish/kle-ai.js"></script>?v=20260609181226
 <script src="kle-fish/kle-ink/story-mock.js"></script>
 <script src="kle-fish/kle-story.js"></script>
+<script src="kle-fish/kle-vn.js"></script>
 <script src="kle-fish/kle-panel.js"></script>?v=20260609181226
 <script src="kle-fish/kle-system.js"></script>?v=20260609181226
 
@@ -338,6 +340,14 @@
   function test_closePanel() {
     window.klePanel.remove();
     log('log-panel', '面板已关闭', 'info');
+  }
+
+  function test_openVN() {
+    if (window.KLE_VN) {
+      window.KLE_VN.open(1);
+    } else {
+      log('log-panel', 'KLE_VN还未加载', 'error');
+    }
   }
 
   function test_simulateDayTasks() {
