@@ -19,8 +19,10 @@
    */
   function loadDay(day) {
     return new Promise(function (resolve, reject) {
-      // 根据当前环境确定路径
-      var jsonPath = 'kle-fish/ink/script.json';
+      // 根据 devMode 确定路径
+      var jsonPath = window.KLE_CONFIG && window.KLE_CONFIG.devMode
+        ? 'kle-fish/ink/script.json'
+        : 'kle-fish/ink/script.json';
 
       fetch(jsonPath)
         .then(function (res) {

@@ -371,31 +371,23 @@
     // 构建 DOM
     if (!overlay) buildDOM();
 
-    // 加载故事（首次）
-    if (window.kleStory) {
-      if (!window.kleStory.loadDay) {
-        // 旧版 mock story，可能未初始化
-        window.kleStory.loadDay(state.day).then(function () {
-          document.getElementById('kle-vn-daylabel').textContent = 'DAY ' + state.day + ' · 初临';
-          overlay.style.display = 'flex';
-          requestAnimationFrame(function () {
-            overlay.style.opacity = '1';
-          });
-          processItem();
-        }).catch(function (err) {
-          console.error('加载故事失败:', err);
-        });
-        return;
-      }
-    }
-
-    // 显示面板
     var dayLabels = { 1: '初临', 2: '仪式准备', 3: '仪式与离场' };
     document.getElementById('kle-vn-daylabel').textContent = 'DAY ' + state.day + ' · ' + (dayLabels[state.day] || '');
     overlay.style.display = 'flex';
     requestAnimationFrame(function () {
       overlay.style.opacity = '1';
     });
+
+    // 加载故事（首次）
+    if (window.kleStory && window.kleStory.loadDay) {
+      window.kleStory.loadDay(state.day).then(function () {
+        processItem();
+      }).catch(function (err) {
+        console.error('加载故事失败:', err);
+        textContent.textContent = '加载故事失败，请刷新重试';
+      });
+      return;
+    }
 
     processItem();
   }
