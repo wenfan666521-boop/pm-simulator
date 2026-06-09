@@ -64,7 +64,7 @@
       '</div>',
 
       // 对话框
-      '<div id="kle-vn-textbox" style="width:100%;max-width:680px;margin:0 16px;padding-bottom:20px;flex-shrink:0;">',
+      '<div id="kle-vn-textbox" style="width:100%;max-width:680px;margin:60px 16px 20px;flex-shrink:0;">',
       '  <div id="kle-vn-char-name" style="font-size:12px;font-weight:700;color:#b49cff;letter-spacing:2px;margin-bottom:8px;padding-left:4px;"></div>',
       '  <div id="kle-vn-text-content" style="',
       '    background:rgba(255,255,255,0.05);',
