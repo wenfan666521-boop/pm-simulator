@@ -355,7 +355,7 @@
 
   // ==================== 继续提示 ====================
   function showContinueHint() {
-    continueHint.style.display = 'block';
+    // 已禁用，不再显示
   }
 
   function hideContinueHint() {
