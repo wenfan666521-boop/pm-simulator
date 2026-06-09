@@ -53,7 +53,12 @@
    * @param {Object} fishData { id, type, x, y, receivedAt, generatedBy, ancestors }
    */
   function saveKleFish(fishData) {
-    return getDB().then(db => {
+    return loadKleFish().then(existing => {
+      if (existing) {
+        return Promise.reject(new Error('ALREADY_HAS_KLE_FISH'));
+      }
+      return getDB();
+    }).then(db => {
       return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_KLE_FISH, 'readwrite');
         const store = tx.objectStore(STORE_KLE_FISH);

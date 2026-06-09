@@ -205,7 +205,13 @@
     };
     window.kleData.saveKleFish(fishData).then(() => {
       log('log-data', '写入成功: ' + JSON.stringify(fishData), 'success');
-    }).catch(e => log('log-data', '写入失败: ' + e, 'error'));
+    }).catch(e => {
+      if (e.message === 'ALREADY_HAS_KLE_FISH') {
+        log('log-data', '写入被拦截：已有小克鱼实例！每个用户只能有一条小克鱼', 'error');
+      } else {
+        log('log-data', '写入失败: ' + e, 'error');
+      }
+    });
   }
 
   function test_loadKleFish() {
