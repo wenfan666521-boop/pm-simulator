@@ -8,7 +8,7 @@
 
   const DB_NAME = 'fishTankDB';
   const STORE_KLE_FISH = KLE_CONFIG.devMode ? 'kleFish_dev' : 'kleFish';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;  // 递增以触发现有数据库的 onupgradeneeded
 
   //当前的 DB 实例
   let _db = null;
