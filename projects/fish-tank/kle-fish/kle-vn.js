@@ -31,6 +31,7 @@
     skipTypingCallback: false, // 打断打字时，阻止旧callback执行nextItem
     waitingForInput: false,   // 等待前端输入框（如名字）
     currentText: '',          // 当前显示的完整文本
+    nameInputCallback: null,  // 名字输入完成后的回调
   };
 
   // ==================== DOM 结构 ====================
@@ -209,8 +210,9 @@
   }
 
   // ==================== 名字输入 ====================
-  function showNameInput() {
+  function showNameInput(onDone) {
     state.waitingForInput = true;
+    state.nameInputCallback = onDone || null;
     var inputDiv = document.getElementById('kle-vn-name-input');
     var inputField = document.getElementById('kle-vn-name-field');
     inputDiv.style.display = 'flex';
@@ -223,14 +225,12 @@
     inputDiv.style.display = 'none';
     state.waitingForInput = false;
 
-    // 写入 ink 变量
-    if (window.kleStory) {
-      window.kleStory.setVar('player_name', name);
-    }
+    var callback = state.nameInputCallback;
+    state.nameInputCallback = null;
 
-    // 继续故事
-    state.canClick = false;
-    processItem();
+    if (callback) {
+      callback(name);
+    }
   }
 
   // ==================== 核心：驱动 ink story ====================
@@ -320,7 +320,19 @@
           choiceArea.innerHTML = '';
           state.showingChoices = false;
 
-          // 让 ink 处理选项（不显示玩家选择文字）
+          // 检查是否是名字输入触发器
+          if (choice.text === '输入名字') {
+            showNameInput(function(name) {
+              if (window.kleStory) {
+                window.kleStory.setVar('player_name', name);
+                window.kleStory.choose(index);
+              }
+              setTimeout(function() { processItem(); }, 100);
+            });
+            return;
+          }
+
+          // 普通选项：让 ink 处理
           if (window.kleStory) {
             window.kleStory.choose(index);
           }
