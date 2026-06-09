@@ -64,9 +64,9 @@
    */
   function exchangeSeedCode(code, currentUserId) {
     const normalizedCode = code.trim().toUpperCase();
-    const seedCode = KLE_CONFIG.devMode ? KLE_CONFIG.SEED_CODE_DEV : KLE_CONFIG.SEED_CODE;
-
-    if (normalizedCode !== seedCode) {
+    const isDevCode = normalizedCode === KLE_CONFIG.SEED_CODE_DEV;
+    const isProdCode = normalizedCode === KLE_CONFIG.SEED_CODE;
+    if (!isDevCode && !isProdCode) {
       return { success: false, error: 'INVALID_CODE', fishData: null };
     }
 

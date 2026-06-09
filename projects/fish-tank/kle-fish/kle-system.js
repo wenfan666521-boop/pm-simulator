@@ -78,9 +78,10 @@
       return result;
     }
 
-    // 再检查种子码
-    const seedCode = KLE_CONFIG.devMode ? KLE_CONFIG.SEED_CODE_DEV : KLE_CONFIG.SEED_CODE;
-    if (code.trim().toUpperCase() === seedCode) {
+    // 再检查种子码（同时支持 dev 和正式码）
+    const normalizedCode = code.trim().toUpperCase();
+    const isSeedCode = normalizedCode === KLE_CONFIG.SEED_CODE_DEV || normalizedCode === KLE_CONFIG.SEED_CODE;
+    if (isSeedCode) {
       const result = window.kleShare.exchangeSeedCode(code, userId);
       if (result.success) {
         await window.kleData.saveKleFish(result.fishData);
