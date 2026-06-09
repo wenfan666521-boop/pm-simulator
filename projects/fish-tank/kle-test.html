@@ -344,9 +344,18 @@
   }
 
   function test_openVN() {
+    var statusEl = document.getElementById('vn-status');
+    function setStatus(msg, color) {
+      if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || '#aaa'; }
+      console.log('[VN]', msg);
+    }
+    setStatus('🔵 点击了 test_openVN');
     if (window.KLE_VN) {
+      setStatus('🟢 KLE_VN存在，开始open(1)...');
       window.KLE_VN.open(1);
+      setStatus('🟡 open()已调用，等待overlay显示...');
     } else {
+      setStatus('🔴 KLE_VN未加载', '#ff6b6b');
       log('log-panel', 'KLE_VN还未加载', 'error');
     }
   }
@@ -482,9 +491,9 @@
 
   // 版本信息（每次发版更新）
   var versionInfo = {
-    commit: '45f2319',
-    time: '2026-06-10 00:10',
-    desc: 'fix: script.json纯JSON格式更新 + wrapper剥除'
+    commit: 'a3c91f5',
+    time: '2026-06-10 00:20',
+    desc: 'fix: 选择选项后不再显示玩家选择文字，直接跳转'
   };
   var vbar = document.getElementById('version-bar');
   vbar.textContent = '📦 ' + versionInfo.commit + ' · ' + versionInfo.time + ' · ' + versionInfo.desc;
@@ -506,6 +515,13 @@
   updateModuleStatus();
   // 延迟检查（脚本可能还没执行完）
   setTimeout(updateModuleStatus, 1000);
+
+  // VN状态提示（用于手机端调试）
+  var vnStatus = document.createElement('div');
+  vnStatus.id = 'vn-status';
+  vnStatus.style.cssText = 'font-size:12px;color:#aaa;margin:8px 0;padding:8px;background:rgba(0,0,0,0.3);border-radius:8px;min-height:20px;';
+  var panelSection = document.querySelector('.test-section');
+  if (panelSection) panelSection.parentNode.insertBefore(vnStatus, document.querySelector('#log-panel'));
 </script>
 
 </body>

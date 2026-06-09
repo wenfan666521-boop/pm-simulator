@@ -320,11 +320,7 @@
           choiceArea.innerHTML = '';
           state.showingChoices = false;
 
-          // 写入玩家选择
-          nameLabel.textContent = '你';
-          typeText(choice.text, function () {});
-
-          // 让 ink 处理选项
+          // 让 ink 处理选项（不显示玩家选择文字）
           if (window.kleStory) {
             window.kleStory.choose(index);
           }
