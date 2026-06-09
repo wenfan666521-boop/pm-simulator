@@ -309,10 +309,10 @@
     clearTimeout(state.autoTimer);
 
     var dayLabels = { 1: '初临', 2: '仪式准备', 3: '仪式与离场' };
-    document.getElementById('kle-vn-daylabel').textContent = 'DAY ' + state.day + ' · ' + (dayLabels[state.day] || '');
 
     if (!overlay) buildDOM();
 
+    document.getElementById('kle-vn-daylabel').textContent = 'DAY ' + state.day + ' · ' + (dayLabels[state.day] || '');
     overlay.style.display = 'flex';
     requestAnimationFrame(function () {
       overlay.style.opacity = '1';
