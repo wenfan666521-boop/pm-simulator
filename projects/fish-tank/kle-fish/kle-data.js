@@ -7,7 +7,7 @@
   'use strict';
 
   const DB_NAME = 'fishTankDB';
-  const STORE_KLE_FISH = 'kleFish';
+  const STORE_KLE_FISH = KLE_CONFIG.devMode ? 'kleFish_dev' : 'kleFish';
   const DB_VERSION = 1;
 
   //当前的 DB 实例
