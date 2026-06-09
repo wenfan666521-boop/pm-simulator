@@ -40,6 +40,7 @@
 <body>
 
 <h1>🐱 小克鱼模块 · 测试页 v2</h1>
+<div id="version-bar" style="font-size:11px;color:#666;margin-bottom:12px;">加载中...</div>
 
 <!-- 环境切换 -->
 <div class="test-section">
@@ -478,6 +479,16 @@
 
   // 初始刷新
   refreshAccountStatus();
+
+  // 版本信息（每次发版更新）
+  var versionInfo = {
+    commit: 'caf5dbd',
+    time: '2026-06-10 00:00',
+    desc: 'fix: open() loadDay bug'
+  };
+  var vbar = document.getElementById('version-bar');
+  vbar.textContent = '📦 ' + versionInfo.commit + ' · ' + versionInfo.time + ' · ' + versionInfo.desc;
+  vbar.style.color = '#555';
 </script>
 
 </body>
