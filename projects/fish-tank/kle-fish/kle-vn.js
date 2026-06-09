@@ -1,6 +1,7 @@
 /**
  * 小克鱼 · 视觉小说引擎 (kle-vn.js)
  * 全屏覆盖层，打字机效果，点击推进/选项
+ * 数据来源：kle-story.js (inkjs 驱动)
  */
 
 (function () {
@@ -19,9 +20,6 @@
   // ==================== 状态 ====================
   var state = {
     day: 1,
-    currentPath: 'start',
-    currentNodeIndex: 0, // 当前节点内的 content 索引
-    currentItemIndex: 0,       // 当前 content 数组内的 item 索引
     isTyping: false,
     typedText: '',
     fullText: '',
@@ -31,6 +29,8 @@
     autoPlay: false,          // 自动播放开关
     autoPlayTimer: null,       // 自动播放推进定时器
     skipTypingCallback: false, // 打断打字时，阻止旧callback执行nextItem
+    waitingForInput: false,   // 等待前端输入框（如名字）
+    currentText: '',          // 当前显示的完整文本
   };
 
   // ==================== DOM 结构 ====================
@@ -83,7 +83,16 @@
       '<div id="kle-vn-choices" style="width:100%;max-width:640px;flex-shrink:0;margin:0 16px 24px;display:none;flex-direction:column;gap:10px;"></div>',
 
       // 继续提示
-      '<div id="kle-vn-hint" style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(180,150,255,0.5);font-size:12px;animation:pulse1.2s ease-in-out infinite;">▼ 点击继续</div>',
+      '<div id="kle-vn-hint" style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(180,150,255,0.5);font-size:12px;animation:pulse 1.2s ease-in-out infinite;">▼ 点击继续</div>',
+
+      // 名字输入浮层（默认隐藏）
+      '<div id="kle-vn-name-input" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,8,20,0.9);z-index:10000;align-items:center;justify-content:center;flex-direction:column;">',
+      '  <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(180,150,255,0.3);border-radius:16px;padding:32px;max-width:400px;width:90%;text-align:center;">',
+      '    <div style="font-size:14px;color:#b49cff;margin-bottom:16px;">请输入你的名字</div>',
+      '    <input id="kle-vn-name-field" type="text" placeholder="你的名字" style="width:100%;padding:12px 16px;border:none;border-radius:10px;background:rgba(255,255,255,0.1);color:#e8e0d4;font-size:15px;outline:none;text-align:center;margin-bottom:16px;">',
+      '    <button id="kle-vn-name-submit" style="padding:10px 32px;border:none;border-radius:20px;background:rgba(180,150,255,0.3);color:#e8e0d4;font-size:14px;cursor:pointer;">确认</button>',
+      '  </div>',
+      '</div>',
     ].join('');
 
     // 添加动画样式
@@ -132,8 +141,10 @@
     overlay.addEventListener('click', function (e) {
       var tag = e.target.tagName.toUpperCase();
       if (tag === 'BUTTON') return; // 关闭/自动播放按钮不触发推进
+      if (tag === 'INPUT') return;  // 输入框不触发推进
       if (e.target === textBox || textBox.contains(e.target)) return; // 文本框内已由 textBox 处理
       if (e.target === choiceArea || choiceArea.contains(e.target)) return; // 选项区不触发推进
+      if (state.waitingForInput) return; // 等待输入时不触发推进
       // 空白区域点击 → 等同于点击文本框
       onTextBoxClick();
     });
@@ -146,6 +157,21 @@
     // 自动播放按钮
     document.getElementById('kle-vn-autoplay').addEventListener('click', function () {
       toggleAutoPlay();
+    });
+
+    // 名字输入确认
+    document.getElementById('kle-vn-name-submit').addEventListener('click', function () {
+      var input = document.getElementById('kle-vn-name-field');
+      var name = input.value.trim();
+      if (name) {
+        submitName(name);
+      }
+    });
+    document.getElementById('kle-vn-name-field').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        var name = e.target.value.trim();
+        if (name) submitName(name);
+      }
     });
   }
 
@@ -182,78 +208,71 @@
     textContent.textContent = state.fullText;
   }
 
-  // ==================== 核心读取器 ====================
-  function getStory() {
-    var dayKey = 'day' + state.day;
-    return (window.KLE_STORY_MOCK || {})[dayKey];
+  // ==================== 名字输入 ====================
+  function showNameInput() {
+    state.waitingForInput = true;
+    var inputDiv = document.getElementById('kle-vn-name-input');
+    var inputField = document.getElementById('kle-vn-name-field');
+    inputDiv.style.display = 'flex';
+    inputField.value = '';
+    inputField.focus();
   }
 
-  function getNode(path) {
-    var story = getStory();
-    return story && story[path];
-  }
+  function submitName(name) {
+    var inputDiv = document.getElementById('kle-vn-name-input');
+    inputDiv.style.display = 'none';
+    state.waitingForInput = false;
 
-  function getCurrentItem() {
-    var node = getNode(state.currentPath);
-    if (!node) return null;
-    var content = node.content || [];
-    return content[state.currentItemIndex] || null;
-  }
-
-  // ==================== 流程推进 ====================
-  function nextItem() {
-    var node = getNode(state.currentPath);
-    if (!node) return;
-    var content = node.content || [];
-    state.currentItemIndex++;
-    if (state.currentItemIndex >= content.length) {
-      // 节点走完，无选项 → 等待点击继续（实际上从 start 重新走）
-      showContinueHint();
-      return;
+    // 写入 ink 变量
+    if (window.kleStory) {
+      window.kleStory.setVar('player_name', name);
     }
+
+    // 继续故事
+    state.canClick = false;
     processItem();
   }
 
+  // ==================== 核心：驱动 ink story ====================
   function processItem() {
-    var item = getCurrentItem();
-    if (!item) {
-      showContinueHint();
+    hideContinueHint();
+    hideChoices();
+
+    // 检查是否需要显示选项
+    if (window.kleStory && window.kleStory.hasChoices()) {
+      showChoices(window.kleStory.getChoices());
       return;
     }
 
-    if (item.Text) {
-      // 显示文本
-      nameLabel.textContent = CFG.charName;
-      hideContinueHint();
-      hideChoices();
-      typeText(item.Text, function () {
-        state.canClick = true;
-        // 打字完成，自动播放模式下自动推进下一句
-        if (state.autoPlay && !state.showingChoices) {
-          scheduleAutoAdvance();
-        }
-        // 被打断过（点击跳过）的打字，callback不触发nextItem
-        if (state.skipTypingCallback) return;
-      });
-
-    } else if (item.Goto) {
-      // 自动跳转
-      state.currentPath = item.Goto.path;
-      state.currentItemIndex = 0;
-      processItem();
-
-    } else if (item.Alternatives) {
-      // 显示选项
-      state.showingChoices = true;
-      showChoices(item.Alternatives);
+    // 获取下一段文本
+    if (window.kleStory && window.kleStory.canContinue()) {
+      var text = window.kleStory.getNextText();
+      if (text) {
+        nameLabel.textContent = CFG.charName;
+        typeText(text, function () {
+          state.canClick = true;
+          // 自动播放模式下，打字完成后自动推进
+          if (state.autoPlay) {
+            scheduleAutoAdvance();
+          }
+          // 打断过打字的不触发
+          if (state.skipTypingCallback) return;
+        });
+        return;
+      }
     }
+
+    // 无法继续也没有选项 → 结束或等待
+    showContinueHint();
   }
 
+  // ==================== 点击推进 ====================
   function onTextBoxClick() {
+    if (state.waitingForInput) return;
     if (state.showingChoices) return;
 
     if (state.isTyping) {
-      // 打字中 → 瞬完成 + 打断typing callback + 推进到下一句
+      // 打字中 → 瞬完成 + 打断 callback + 推进
       state.skipTypingCallback = true;
       finishTyping();
       state.canClick = true;
@@ -265,35 +284,55 @@
       state.canClick = false;
       clearTimeout(state.autoTimer);
       nextItem();
-      // 自动播放模式下立即调度下一句
-      if (state.autoPlay && !state.showingChoices) {
-        scheduleAutoAdvance();
-      }
+    }
+  }
+
+  function nextItem() {
+    // 检查选项
+    if (window.kleStory && window.kleStory.hasChoices()) {
+      showChoices(window.kleStory.getChoices());
+      return;
+    }
+    // 继续下一段文本
+    if (window.kleStory && window.kleStory.canContinue()) {
+      processItem();
+    } else {
+      // 无法继续，显示结束提示
+      showContinueHint();
     }
   }
 
   // ==================== 选项 ====================
-  function showChoices(alternatives) {
+  function showChoices(choices) {
+    state.showingChoices = true;
     choiceArea.innerHTML = '';
     choiceArea.style.display = 'flex';
     continueHint.style.display = 'none';
 
-    alternatives.forEach(function (alt, idx) {
+    choices.forEach(function (choice, idx) {
       var btn = document.createElement('button');
       btn.className = 'kle-vn-choice-btn';
-      btn.textContent = alt.content[0];
-      btn.addEventListener('click', (function (i) {
+      btn.textContent = choice.text;
+      btn.addEventListener('click', (function (index) {
         return function () {
-          //记录玩家选择
-          appendPlayerChoice(alt.content[0]);
           // 隐藏选项
           choiceArea.style.display = 'none';
           choiceArea.innerHTML = '';
           state.showingChoices = false;
-          // 跳转
-          state.currentPath = alt.path;
-          state.currentItemIndex = 0;
-          processItem();
+
+          // 写入玩家选择
+          nameLabel.textContent = '你';
+          typeText(choice.text, function () {});
+
+          // 让 ink 处理选项
+          if (window.kleStory) {
+            window.kleStory.choose(index);
+          }
+
+          // 继续故事
+          setTimeout(function () {
+            processItem();
+          }, 100);
         };
       })(idx));
       choiceArea.appendChild(btn);
@@ -315,31 +354,43 @@
     continueHint.style.display = 'none';
   }
 
-  // ==================== 玩家对话气泡 ====================
-  // （可扩展：玩家输入名字等场景用）
-  function appendPlayerChoice(text) {
-    // 在选项区上方显示玩家已选的内容
-    // 目前简单处理：显示在文本框里
-    nameLabel.textContent = '你';
-    typeText(text, function () {});
-  }
-
-  // ==================== 对话框显示历史记录 ====================
-  // （可扩展：面板标签页展示历史）
   // ==================== 开启 / 关闭 ====================
   function open(day) {
     if (day) state.day = day;
-    state.currentPath = 'start';
-    state.currentItemIndex = 0;
+
+    // 重置状态
     state.isTyping = false;
     state.canClick = false;
     state.showingChoices = false;
+    state.waitingForInput = false;
+    state.skipTypingCallback = false;
+    state.autoPlay = false;
     clearTimeout(state.autoTimer);
+    clearTimeout(state.autoPlayTimer);
 
-    var dayLabels = { 1: '初临', 2: '仪式准备', 3: '仪式与离场' };
-
+    // 构建 DOM
     if (!overlay) buildDOM();
 
+    // 加载故事（首次）
+    if (window.kleStory) {
+      if (!window.kleStory.loadDay) {
+        // 旧版 mock story，可能未初始化
+        window.kleStory.loadDay(state.day).then(function () {
+          document.getElementById('kle-vn-daylabel').textContent = 'DAY ' + state.day + ' · 初临';
+          overlay.style.display = 'flex';
+          requestAnimationFrame(function () {
+            overlay.style.opacity = '1';
+          });
+          processItem();
+        }).catch(function (err) {
+          console.error('加载故事失败:', err);
+        });
+        return;
+      }
+    }
+
+    // 显示面板
+    var dayLabels = { 1: '初临', 2: '仪式准备', 3: '仪式与离场' };
     document.getElementById('kle-vn-daylabel').textContent = 'DAY ' + state.day + ' · ' + (dayLabels[state.day] || '');
     overlay.style.display = 'flex';
     requestAnimationFrame(function () {
@@ -352,7 +403,9 @@
   function close() {
     if (!overlay) return;
     clearTimeout(state.autoPlayTimer);
+    clearTimeout(state.autoTimer);
     state.autoPlay = false;
+    state.waitingForInput = false;
     overlay.style.opacity = '0';
     setTimeout(function () {
       overlay.style.display = 'none';
@@ -363,7 +416,6 @@
   function toggleAutoPlay() {
     state.autoPlay = !state.autoPlay;
     updateAutoPlayBtn();
-    // 如果开启且当前可以点击，立即触发一次自动推进
     if (state.autoPlay && state.canClick && !state.showingChoices) {
       scheduleAutoAdvance();
     }
@@ -389,11 +441,10 @@
     clearTimeout(state.autoPlayTimer);
     if (!state.autoPlay) return;
     state.autoPlayTimer = setTimeout(function () {
-      if (state.autoPlay && state.canClick && !state.showingChoices) {
+      if (state.autoPlay && state.canClick && !state.showingChoices && !state.waitingForInput) {
         clearTimeout(state.autoTimer);
         state.canClick = false;
         nextItem();
-        // 继续 schedule 下一句（如果还是自动播放模式）
         if (state.autoPlay) {
           scheduleAutoAdvance();
         }
