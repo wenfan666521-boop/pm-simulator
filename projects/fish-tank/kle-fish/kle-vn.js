@@ -61,7 +61,7 @@
       '</div>',
 
       // 对话框
-      '<div id="kle-vn-textbox" style="width:100%;max-width:680px;margin:0 16px20px;flex-shrink:0;">',
+      '<div id="kle-vn-textbox" style="width:100%;max-width:680px;margin:0 16px;padding-bottom:20px;flex-shrink:0;">',
       '  <div id="kle-vn-char-name" style="font-size:12px;font-weight:700;color:#b49cff;letter-spacing:2px;margin-bottom:8px;padding-left:4px;"></div>',
       '  <div id="kle-vn-text-content" style="',
       '    background:rgba(255,255,255,0.05);',
@@ -96,7 +96,7 @@
       '  background:rgba(255,255,255,0.07);',
       '  color:#e8e0d4;font-size:14px;text-align:left;cursor:pointer;',
       '  border:1px solid rgba(180,150,255,0.15);',
-      '  transition:background 0.2s,border-color 0.2s,transform0.1s;',
+      '  transition:background 0.2s,border-color 0.2s,transform 0.1s;',
       '  font-family:inherit;',
       '}',
       '.kle-vn-choice-btn:hover {',
