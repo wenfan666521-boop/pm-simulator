@@ -310,17 +310,24 @@
       'color:#e8e0d4;',
     ].join('');
 
-    var buttonsHtml = [
-      '<button id="kle-vn-end-continue" style="padding:12px 32px;border:none;border-radius:24px;background:rgba(180,150,255,0.2);color:#e8e0d4;font-size:14px;cursor:pointer;border:1px solid rgba(180,150,255,0.4);transition:all 0.2s;">继续阅读</button>',
-      '<button id="kle-vn-end-close" style="padding:12px 32px;border:none;border-radius:24px;background:rgba(255,255,255,0.06);color:rgba(232,224,212,0.5);font-size:14px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);transition:all 0.2s;">稍后再说</button>',
-    ].join('');
-
-    var subText = nextChapterId ? '下一节已解锁' : '本篇故事完结';
+    var buttonsHtml = '';
+    if (nextChapterId) {
+      // 有下一节 → 显示进入下一节按钮
+      buttonsHtml = [
+        '<button id="kle-vn-end-next" style="padding:12px 32px;border:none;border-radius:24px;background:rgba(180,150,255,0.25);color:#e8e0d4;font-size:14px;cursor:pointer;border:1px solid rgba(180,150,255,0.5);transition:all 0.2s;">进入下一节</button>',
+        '<button id="kle-vn-end-close" style="padding:12px 32px;border:none;border-radius:24px;background:rgba(255,255,255,0.06);color:rgba(232,224,212,0.5);font-size:14px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);transition:all 0.2s;">稍后再说</button>',
+      ].join('');
+    } else {
+      // 没有下一节 → 显示结束按钮
+      buttonsHtml = [
+        '<button id="kle-vn-end-close" style="padding:12px 32px;border:none;border-radius:24px;background:rgba(180,150,255,0.15);color:rgba(232,224,212,0.6);font-size:14px;cursor:pointer;border:1px solid rgba(180,150,255,0.3);transition:all 0.2s;">本篇结束</button>',
+      ].join('');
+    }
 
     endDiv.innerHTML = [
       '<div style="text-align:center;">',
       '  <div style="font-size:13px;color:#b49cff;letter-spacing:3px;margin-bottom:12px;">' + chapterLabel + ' · 完</div>',
-      '  <div style="font-size:15px;color:rgba(232,224,212,0.7);margin-bottom:40px;">' + subText + '</div>',
+      '  <div style="font-size:15px;color:rgba(232,224,212,0.7);margin-bottom:40px;">' + (nextChapterId ? '下一节已解锁' : '本篇故事完结') + '</div>',
       '  <div id="kle-vn-end-progress" style="font-size:12px;color:rgba(180,150,255,0.5);margin-bottom:32px;"></div>',
       '  <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">',
       buttonsHtml,
@@ -341,18 +348,18 @@
       }
     }
 
-    // 继续阅读
-    var btnContinue = document.getElementById('kle-vn-end-continue');
-    if (btnContinue) {
-      btnContinue.addEventListener('mouseenter', function() { btnContinue.style.background = 'rgba(180,150,255,0.35)'; });
-      btnContinue.addEventListener('mouseleave', function() { btnContinue.style.background = 'rgba(180,150,255,0.2)'; });
-      btnContinue.addEventListener('click', function() {
+    // 进入下一节
+    var btnNext = document.getElementById('kle-vn-end-next');
+    if (btnNext) {
+      btnNext.addEventListener('mouseenter', function() { btnNext.style.background = 'rgba(180,150,255,0.4)'; });
+      btnNext.addEventListener('mouseleave', function() { btnNext.style.background = 'rgba(180,150,255,0.25)'; });
+      btnNext.addEventListener('click', function() {
         endDiv.style.opacity = '0';
         endDiv.style.transition = 'opacity 0.3s';
         setTimeout(function() {
           document.body.removeChild(endDiv);
         }, 300);
-        // 有下一节 → 加载下一章；没有 → 什么都不做（内容已结束）
+        // 加载下一章
         if (window.kleStory && nextChapterId) {
           state.day = parseInt(nextChapterId.split('-')[1]) || state.day;
           window.kleStory.loadChapter(nextChapterId).then(function() {
@@ -364,11 +371,11 @@
       });
     }
 
-    // 稍后再说 → 关闭整个VN
+    // 关闭按钮
     var btnClose = document.getElementById('kle-vn-end-close');
     if (btnClose) {
       btnClose.addEventListener('mouseenter', function() { btnClose.style.background = 'rgba(255,255,255,0.12)'; });
-      btnClose.addEventListener('mouseleave', function() { btnClose.style.background = 'rgba(255,255,255,0.06)'; });
+      btnClose.addEventListener('mouseleave', function() { btnClose.style.background = btnNext ? 'rgba(255,255,255,0.06)' : 'rgba(180,150,255,0.15)'; });
       btnClose.addEventListener('click', function() {
         close();
         setTimeout(function() {
