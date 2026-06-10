@@ -104,18 +104,18 @@
    * @returns {Promise}
    */
   function loadDay(day) {
-    // 找到该 day 下第一个未解锁的章节
+    // 找到该 day 下第一个已解锁的章节
     var unlocked = getUnlockedChapters();
     for (var i = 0; i < CHAPTER_LIST.length; i++) {
       var cid = CHAPTER_LIST[i];
-      if (cid.indexOf('day' + day + '-') === 0 && unlocked.indexOf(cid) === -1) {
+      if (cid.indexOf('day' + day + '-') === 0 && unlocked.indexOf(cid) !== -1) {
         return loadChapter(cid);
       }
     }
-    // 都解锁了，加载该 day 第一个章节
+    // 都未解锁 → 加载该 day 第一个章节（即使未解锁）
     var firstOfDay = CHAPTER_LIST.filter(function (c) { return c.indexOf('day' + day + '-') === 0; })[0];
     if (firstOfDay) return loadChapter(firstOfDay);
-    // 兜底：加载第一章
+    // 兜底
     return loadChapter('day1-1');
   }
 
