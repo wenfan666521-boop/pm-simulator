@@ -76,12 +76,12 @@
   function loadChapter(chapterId) {
     return new Promise(function (resolve, reject) {
       var jsonPath = window.KLE_CONFIG && window.KLE_CONFIG.devMode
-        ? 'kle-fish/ink/chapter_' + chapterId + '.json'
-        : 'kle-fish/ink/chapter_' + chapterId + '.json';
+        ? 'kle-fish/ink/script.json'
+        : 'kle-fish/ink/script.json';
 
       fetch(jsonPath)
         .then(function (res) {
-          if (!res.ok) throw new Error('加载章节失败: ' + jsonPath);
+          if (!res.ok) throw new Error('加载故事失败: ' + jsonPath);
           return res.text();
         })
         .then(function (jsonString) {
@@ -89,13 +89,8 @@
           storyJson = cleaned;
           story = new inkjs.Story(cleaned);
           state.currentChapter = chapterId;
-
-          // 注入 chapter_id 变量
           story.variablesState['chapter_id'] = chapterId;
-
-          // 恢复公共变量（如果有）
           restorePublicVars();
-
           resolve({
             chapterId: chapterId,
             canContinue: story.canContinue
