@@ -305,45 +305,45 @@
         var isCurrent = cid === currentChapterId;
 
         if (!isUnlocked) {
-          // 未解锁状态 - 灰色边框和字体
+          // 未解锁状态 - 浅灰边框+浅灰字体
           var grayBg = 'rgba(255,255,255,0.03)';
           var grayBorder = 'rgba(255,255,255,0.1)';
           var grayText = 'rgba(232,224,212,0.4)';
           html += [
-            '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:' + grayBg + ';border:1px solid ' + grayBorder + ';opacity:0.7;">',
+            '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:' + grayBg + ';border:1px solid ' + grayBorder + ';">',
             '  <span style="font-size:12px;">🔒</span>',
             '  <span style="font-size:13px;color:' + grayText + ';">' + name + '</span>',
             '  <span style="font-size:11px;opacity:0.4;color:' + grayText + ';margin-left:auto;">未解锁</span>',
             '</div>'
           ].join('');
         } else if (isCompleted) {
-          // 已完成状态 - 灰色边框和字体
-          var grayBg = isCurrent ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)';
-          var grayBorder = isCurrent ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.1)';
-          var grayText = 'rgba(232,224,212,0.45)';
+          // 已完成状态 - 深灰边框+深灰字体
+          var darkGrayBg = isCurrent ? 'rgba(180,180,180,0.1)' : 'rgba(180,180,180,0.06)';
+          var darkGrayBorder = isCurrent ? 'rgba(180,180,180,0.25)' : 'rgba(180,180,180,0.15)';
+          var darkGrayText = 'rgba(180,180,180,0.7)';
           html += [
             '<div onclick="window.KLE_VN && window.KLE_VN.openChapter(\'' + cid + '\')" style="',
             '  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;',
-            '  background:' + grayBg + ';border:1px solid ' + grayBorder + ';',
+            '  background:' + darkGrayBg + ';border:1px solid ' + darkGrayBorder + ';',
             '  cursor:pointer;transition:all 0.2s;">',
             '  <span style="font-size:12px;">✅</span>',
-            '  <span style="font-size:13px;color:' + grayText + ';flex:1;">' + name + '</span>',
-            '  <span style="font-size:11px;opacity:0.5;color:' + grayText + ';">' + (isCurrent ? '进行中' : '已完成') + '</span>',
+            '  <span style="font-size:13px;color:' + darkGrayText + ';flex:1;">' + name + '</span>',
+            '  <span style="font-size:11px;opacity:0.5;color:' + darkGrayText + ';">' + (isCurrent ? '进行中' : '已完成') + '</span>',
             '</div>'
           ].join('');
         } else {
-          // 进行中状态
-          var bgColor = isCurrent ? 'rgba(180,150,255,0.18)' : 'rgba(180,150,255,0.08)';
-          var borderColor = isCurrent ? 'rgba(180,150,255,0.55)' : 'rgba(180,150,255,0.18)';
-          var textColor = isCurrent ? '#b49cff' : '#c4b0f5';
+          // 进行中状态 - 绿色边框+绿色字体+▶
+          var greenBg = isCurrent ? 'rgba(52,199,89,0.15)' : 'rgba(52,199,89,0.08)';
+          var greenBorder = isCurrent ? 'rgba(52,199,89,0.5)' : 'rgba(52,199,89,0.25)';
+          var greenText = isCurrent ? '#34c759' : '#4cd964';
           html += [
             '<div onclick="window.KLE_VN && window.KLE_VN.openChapter(\'' + cid + '\')" style="',
             '  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;',
-            '  background:' + bgColor + ';border:1px solid ' + borderColor + ';',
+            '  background:' + greenBg + ';border:1px solid ' + greenBorder + ';',
             '  cursor:pointer;transition:all 0.2s;">',
-            '  <span style="font-size:12px;">🔓</span>',
-            '  <span style="font-size:13px;color:' + textColor + ';flex:1;">' + name + '</span>',
-            '  <span style="font-size:11px;opacity:0.5;color:' + textColor + ';">' + (isCurrent ? '进行中' : '') + '</span>',
+            '  <span style="font-size:12px;">▶</span>',
+            '  <span style="font-size:13px;color:' + greenText + ';flex:1;">' + name + '</span>',
+            '  <span style="font-size:11px;opacity:0.5;color:' + greenText + ';">' + (isCurrent ? '进行中' : '') + '</span>',
             '</div>'
           ].join('');
         }
