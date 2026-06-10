@@ -679,6 +679,27 @@
   // ==================== 对外接口 ====================
   window.KLE_VN = {
     open: open,
+    openChapter: function (chapterId) {
+      // 根据章节 ID 推断 day
+      var day = 1;
+      if (chapterId) {
+        var match = chapterId.match(/^day(\d)/);
+        if (match) day = parseInt(match[1]);
+      }
+      state.day = day;
+      if (!overlay) buildDOM();
+      overlay.style.display = 'flex';
+      requestAnimationFrame(function () { overlay.style.opacity = '1'; });
+
+      if (window.kleStory && window.kleStory.loadChapter) {
+        window.kleStory.loadChapter(chapterId).then(function () {
+          processItem();
+        }).catch(function (err) {
+          console.error('加载章节失败:', err);
+          textContent.textContent = '加载失败，请刷新重试';
+        });
+      }
+    },
     close: close,
   };
 })();

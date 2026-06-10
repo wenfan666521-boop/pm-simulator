@@ -212,73 +212,148 @@
   }
 
   // ========== 故事对话（入口页） ==========
+  // 章节结构（与 kle-story.js 同步）
+  var CHAPTER_LIST = [
+    'day1-1', 'day1-2', 'day1-3',
+    'day2-1', 'day2-2',
+    'day3-1', 'day3-2',
+  ];
+  var CHAPTER_NAMES = {
+    'day1-1': '初临·始', 'day1-2': '初临·寻', 'day1-3': '初临·别',
+    'day2-1': '仪式·晓', 'day2-2': '仪式·寻',
+    'day3-1': '离场·晨', 'day3-2': '离场·终',
+  };
+  var DAY_MAP = {
+    'day1-1': 1, 'day1-2': 1, 'day1-3': 1,
+    'day2-1': 2, 'day2-2': 2,
+    'day3-1': 3, 'day3-2': 3,
+  };
 
   function buildStoryHTML() {
     return '<div id="kleStoryContent" style="padding:16px;overflow-y:auto;flex:1;"></div>';
   }
 
   function renderStoryTab() {
-    var data = window.kleData.loadAccountData();
-    var currentDay = data.currentDay || 1;
     var container = document.getElementById('kleStoryContent');
     if (!container) return;
 
-    var dayLabels = { 1: '初临', 2: '仪式准备', 3: '仪式与离场' };
-    var totalTasks = { 1: 3, 2: 4, 3: 1 };
-    var completedTasks = 0;
-    if (data.tasks) {
-      var dayKeyTasks = 'day' + currentDay;
-      if (data.tasks[dayKeyTasks]) {
-        completedTasks = Object.values(data.tasks[dayKeyTasks]).filter(Boolean).length;
-      }
+    // 获取解锁状态
+    var unlocked = [];
+    var completed = [];
+    if (window.kleStory && window.kleStory.getUnlockedChapters) {
+      unlocked = window.kleStory.getUnlockedChapters();
     }
-
-    var dots = '';
-    var total = totalTasks[currentDay] || 0;
-    for (var i = 0; i < total; i++) {
-      dots += '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + (i < completedTasks ? '#b49cff' : 'rgba(255,255,255,0.2)') + ';margin-right:5px;"></span>';
+    // 从存档读取已完成章节
+    var saveData = null;
+    if (window.kleStory && window.kleStory.loadFromStorage) {
+      saveData = window.kleStory.loadFromStorage();
     }
+    var currentChapterId = saveData && saveData.chapterId;
 
-    var html = [
-      '<div style="display:flex;flex-direction:column;gap:14px;">',
-      '  <div style="padding:20px;background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(118,75,162,0.15));border-radius:18px;border:1px solid rgba(102,126,234,0.15);">',
-      '    <div style="font-size:11px;opacity:0.5;margin-bottom:6px;">DAY ' + currentDay + '</div>',
-      '    <div style="font-size:22px;font-weight:700;margin-bottom:12px;">' + (dayLabels[currentDay] || '') + '</div>',
-      '    <div style="margin-bottom:10px;">' + dots + '</div>',
-      '    <div style="font-size:12px;opacity:0.4;">' + completedTasks + ' / ' + total + ' 任务完成</div>',
-      '  </div>'
-    ];
-
-    html.push([
-      '<button id="kle-vn-launch-btn" style="width:100%;padding:15px 20px;border:none;border-radius:16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:15px;font-weight:600;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 20px rgba(102,126,234,0.35);">▶ 继续剧情</button>',
-      '<button id="kle-vn-restart-btn" style="width:100%;padding:12px;border:none;border-radius:14px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.45);font-size:13px;cursor:pointer;margin-top:8px;">↩ 从头开始</button>',
-    ].join(''));
-
-    // 回顾区
-    var reviewDays = [];
-    for (var d = 1; d <= 3; d++) {
-      if ((window.KLE_STORY_MOCK || {})['day' + d]) {
-        var isCompleted = data.completed && data.completed['day' + d];
-        var isCurrent = d === currentDay;
-        reviewDays.push('<button onclick="window.KLE_VN && window.KLE_VN.open(' + d + ')" style="padding:8px 14px;border-radius:20px;border:1px solid ' + (isCurrent ? 'rgba(180,150,255,0.5)' : 'rgba(255,255,255,0.1)') + ';background:' + (isCurrent ? 'rgba(180,150,255,0.1)' : 'transparent') + ';color:' + (isCurrent ? '#b49cff' : 'rgba(255,255,255,0.4)') + ';font-size:12px;cursor:pointer;">' + (dayLabels[d] || 'DAY' + d) + (isCompleted ? ' ✓' : '') + '</button>');
-      }
-    }
-    if (reviewDays.length > 0) {
-      html.push('<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' + reviewDays.join('') + '</div>');
-    }
-
-    html.push('</div>');
-    container.innerHTML = html.join('');
-
-    document.getElementById('kle-vn-launch-btn').addEventListener('click', function () {
-      if (window.KLE_VN) window.KLE_VN.open(currentDay);
+    // 按 DAY 分组
+    var dayGroups = { 1: [], 2: [], 3: [] };
+    CHAPTER_LIST.forEach(function (cid) {
+      var day = DAY_MAP[cid];
+      if (day) dayGroups[day].push(cid);
     });
-    var restartBtn = document.getElementById('kle-vn-restart-btn');
-    if (restartBtn) {
-      restartBtn.addEventListener('click', function () {
-        if (window.KLE_VN) window.KLE_VN.open(currentDay);
+
+    var dayLabels = { 1: '初临', 2: '仪式准备', 3: '仪式与离场' };
+    var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+
+    [1, 2, 3].forEach(function (dayNum) {
+      var chapters = dayGroups[dayNum];
+      if (!chapters.length) return;
+
+      var isExpanded = (dayNum === 1); // 默认展开 DAY1
+      var dayCompleteCount = 0;
+      chapters.forEach(function (cid) {
+        // 已完成的判断：chapterId 在存档中，且是这一组最后一章且有下一章解锁
+        if (unlocked.indexOf(getNextChapterId(cid)) !== -1) dayCompleteCount++;
       });
-    }
+      var allUnlocked = chapters.every(function (cid) { return unlocked.indexOf(cid) !== -1; });
+
+      // DAY 标题栏（可点击展开/折叠）
+      html += [
+        '<div class="kle-chapter-day" data-day="' + dayNum + '" style="',
+        '  background:rgba(102,126,234,0.12);',
+        '  border-radius:12px;',
+        '  border:1px solid rgba(102,126,234,0.18);',
+        '  overflow:hidden;',
+        '  cursor:pointer;',
+        '  transition:border-color 0.2s;',
+        '">',
+        '  <div class="kle-chapter-day-header" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;">',
+        '    <div style="display:flex;align-items:center;gap:10px;">',
+        '      <span style="font-size:15px;">📂</span>',
+        '      <div>',
+        '        <div style="font-size:13px;font-weight:600;color:#e8e0d4;">DAY ' + dayNum + ' · ' + (dayLabels[dayNum] || '') + '</div>',
+        '        <div style="font-size:11px;opacity:0.45;margin-top:2px;">' + dayCompleteCount + ' / ' + chapters.length + ' 完成</div>',
+        '      </div>',
+        '    </div>',
+        '    <div style="display:flex;align-items:center;gap:8px;">',
+        '      ' + (allUnlocked ? '<span style="font-size:11px;opacity:0.4;color:#b49cff;">已解锁</span>' : ''),
+        '      <span class="kle-chevron" style="font-size:12px;opacity:0.5;transition:transform 0.2s;transform:rotate(' + (isExpanded ? '0deg' : '-90deg') + ');">▾</span>',
+        '    </div>',
+        '  </div>',
+        '  <div class="kle-chapter-day-body" style="padding:0 14px 12px;display:' + (isExpanded ? 'flex' : 'none') + ';flex-direction:column;gap:6px;">'
+      ].join('');
+
+      chapters.forEach(function (cid) {
+        var name = CHAPTER_NAMES[cid] || cid;
+        var isUnlocked = unlocked.indexOf(cid) !== -1;
+        var isCurrent = cid === currentChapterId;
+        var isDone = unlocked.indexOf(getNextChapterId(cid)) !== -1; // 下一章已解锁 = 本章已完成
+
+        if (!isUnlocked) {
+          // 锁定状态
+          html += [
+            '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.03);opacity:0.4;">',
+            '  <span style="font-size:12px;">🔒</span>',
+            '  <span style="font-size:13px;color:rgba(232,224,212,0.4);">' + name + '</span>',
+            '</div>'
+          ].join('');
+        } else {
+          // 已解锁，可点击
+          var bgColor = isCurrent ? 'rgba(180,150,255,0.15)' : 'rgba(255,255,255,0.06)';
+          var borderColor = isCurrent ? 'rgba(180,150,255,0.5)' : 'rgba(255,255,255,0.08)';
+          var textColor = isCurrent ? '#b49cff' : '#e8e0d4';
+          html += [
+            '<div onclick="window.KLE_VN && window.KLE_VN.openChapter(\'' + cid + '\')" style="',
+            '  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;',
+            '  background:' + bgColor + ';border:1px solid ' + borderColor + ';',
+            '  cursor:pointer;transition:all 0.2s;">',
+            '  <span style="font-size:12px;">' + (isDone ? '✅' : '🔓') + '</span>',
+            '  <span style="font-size:13px;color:' + textColor + ';flex:1;">' + name + '</span>',
+            '  <span style="font-size:11px;opacity:0.4;color:' + textColor + ';">' + (isCurrent ? '进行中' : (isDone ? '已完成' : '')) + '</span>',
+            '</div>'
+          ].join('');
+        }
+      });
+
+      html += '</div></div>';
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    // 绑定折叠/展开事件
+    container.querySelectorAll('.kle-chapter-day-header').forEach(function (header) {
+      header.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var dayDiv = header.closest('.kle-chapter-day');
+        var body = dayDiv.querySelector('.kle-chapter-day-body');
+        var chevron = dayDiv.querySelector('.kle-chevron');
+        var isOpen = body.style.display !== 'none';
+        body.style.display = isOpen ? 'none' : 'flex';
+        chevron.style.transform = 'rotate(' + (isOpen ? '-90deg' : '0deg') + ')';
+      });
+    });
+  }
+
+  function getNextChapterId(cid) {
+    var idx = CHAPTER_LIST.indexOf(cid);
+    if (idx === -1 || idx >= CHAPTER_LIST.length - 1) return null;
+    return CHAPTER_LIST[idx + 1];
   }
 
   // ========== 自由对话 ==========
