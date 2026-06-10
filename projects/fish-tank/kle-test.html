@@ -543,7 +543,12 @@
   vnStatus.id = 'vn-status';
   vnStatus.style.cssText = 'font-size:12px;color:#aaa;margin:8px 0;padding:8px;background:rgba(0,0,0,0.3);border-radius:8px;min-height:20px;';
   var panelSection = document.querySelector('.test-section');
-  if (panelSection) panelSection.parentNode.insertBefore(vnStatus, document.querySelector('#log-panel'));
+  var logPanel = document.getElementById('log-panel');
+  if (panelSection && logPanel && panelSection.parentNode === logPanel.parentNode) {
+    panelSection.parentNode.insertBefore(vnStatus, logPanel);
+  } else if (panelSection) {
+    panelSection.appendChild(vnStatus);
+  }
 </script>
 
 </body>

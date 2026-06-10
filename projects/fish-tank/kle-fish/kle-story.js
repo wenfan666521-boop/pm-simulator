@@ -87,7 +87,12 @@
           storyJson = cleaned;
           story = new inkjs.Story(cleaned);
           state.currentChapter = chapterId;
-          story.variablesState['chapter_id'] = chapterId;
+          try {
+            story.variablesState['chapter_id'] = chapterId;
+          } catch(e) {
+            // 如果故事里没声明 chapter_id 变量，跳过
+            console.warn('[kle-story] chapter_id 未在故事中声明，跳过注入');
+          }
           restorePublicVars();
           resolve({
             chapterId: chapterId,
