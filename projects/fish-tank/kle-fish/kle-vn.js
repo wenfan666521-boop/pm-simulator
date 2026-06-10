@@ -495,6 +495,11 @@
 
   // ==================== 开启 / 关闭 ====================
   function open(day) {
+    // 关闭小克鱼面板
+    if (window.klePanel && window.klePanel.remove) {
+      window.klePanel.remove();
+    }
+
     if (day) state.day = day;
 
     // 重置状态
@@ -684,6 +689,10 @@
   window.KLE_VN = {
     open: open,
     openChapter: function (chapterId) {
+      // 关闭小克鱼面板
+      if (window.klePanel && window.klePanel.remove) {
+        window.klePanel.remove();
+      }
       // 根据章节 ID 推断 day
       var day = 1;
       if (chapterId) {
