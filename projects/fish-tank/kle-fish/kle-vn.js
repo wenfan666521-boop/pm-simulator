@@ -282,6 +282,10 @@
     var nextChapterName = null;
     if (window.kleStory) {
       currentChapterId = window.kleStory.getCurrentChapterId();
+      // 标记当前章节已完成
+      if (currentChapterId) {
+        window.kleStory.markChapterCompleted(currentChapterId);
+      }
       nextChapterId = window.kleStory.getNextChapter(currentChapterId);
       if (nextChapterId) {
         nextChapterName = window.kleStory.getChapterName(nextChapterId);

@@ -29,6 +29,7 @@
 
   // ==================== 章节解锁 ====================
   var UNLOCKED_KEY = 'kle_chapters_unlocked';
+  var COMPLETED_KEY = 'kle_chapters_completed';
 
   function getUnlockedChapters() {
     try {
@@ -44,11 +45,45 @@
     localStorage.setItem(UNLOCKED_KEY, JSON.stringify(list));
   }
 
+  function getCompletedChapters() {
+    try {
+      var raw = localStorage.getItem(COMPLETED_KEY);
+      if (!raw) return [];
+      return JSON.parse(raw);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveCompletedChapters(list) {
+    localStorage.setItem(COMPLETED_KEY, JSON.stringify(list));
+  }
+
+  function markChapterCompleted(id) {
+    var list = getCompletedChapters();
+    if (list.indexOf(id) === -1) {
+      list.push(id);
+      saveCompletedChapters(list);
+    }
+  }
+
   function isChapterUnlocked(id) {
-    return getUnlockedChapters().indexOf(id) !== -1;
+    // day1-1 默认解锁
+    if (id === 'day1-1') return true;
+    // 其他章节：必须上一章已完成才算解锁
+    var prevChapter = getPrevChapter(id);
+    if (!prevChapter) return false;
+    return getCompletedChapters().indexOf(prevChapter) !== -1;
+  }
+
+  function getPrevChapter(cid) {
+    var idx = CHAPTER_LIST.indexOf(cid);
+    if (idx <= 0) return null;
+    return CHAPTER_LIST[idx - 1];
   }
 
   function unlockChapter(id) {
+    // 解锁逻辑由 isChapterUnlocked 的完成条件控制，这里只做预解锁记录（兼容旧逻辑）
     var list = getUnlockedChapters();
     if (list.indexOf(id) === -1) {
       list.push(id);
@@ -311,6 +346,9 @@
     getNextChapter: getNextChapter,
     getChapterName: getChapterName,
     CHAPTER_LIST: CHAPTER_LIST,
+    // 章节完成
+    getCompletedChapters: getCompletedChapters,
+    markChapterCompleted: markChapterCompleted,
   };
 
 })();

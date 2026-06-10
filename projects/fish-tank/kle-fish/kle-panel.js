@@ -237,13 +237,14 @@
     var container = document.getElementById('kleStoryContent');
     if (!container) return;
 
-    // 获取解锁状态
+    // 获取解锁状态和已完成状态
     var unlocked = [];
     var completed = [];
-    if (window.kleStory && window.kleStory.getUnlockedChapters) {
-      unlocked = window.kleStory.getUnlockedChapters();
+    if (window.kleStory) {
+      if (window.kleStory.getUnlockedChapters) unlocked = window.kleStory.getUnlockedChapters();
+      if (window.kleStory.getCompletedChapters) completed = window.kleStory.getCompletedChapters();
     }
-    // 从存档读取已完成章节
+    // 从存档读取当前章节
     var saveData = null;
     if (window.kleStory && window.kleStory.loadFromStorage) {
       saveData = window.kleStory.loadFromStorage();
@@ -267,10 +268,9 @@
       var isExpanded = (dayNum === 1); // 默认展开 DAY1
       var dayCompleteCount = 0;
       chapters.forEach(function (cid) {
-        // 已完成的判断：chapterId 在存档中，且是这一组最后一章且有下一章解锁
-        if (unlocked.indexOf(getNextChapterId(cid)) !== -1) dayCompleteCount++;
+        if (completed.indexOf(cid) !== -1) dayCompleteCount++;
       });
-      var allUnlocked = chapters.every(function (cid) { return unlocked.indexOf(cid) !== -1; });
+      var allCompleted = chapters.every(function (cid) { return completed.indexOf(cid) !== -1; });
 
       // DAY 标题栏（可点击展开/折叠）
       html += [
@@ -291,7 +291,7 @@
         '      </div>',
         '    </div>',
         '    <div style="display:flex;align-items:center;gap:8px;">',
-        '      ' + (allUnlocked ? '<span style="font-size:11px;opacity:0.4;color:#b49cff;">已解锁</span>' : ''),
+        '      ' + (allCompleted ? '<span style="font-size:11px;opacity:0.5;color:#34c759;">已完成</span>' : ''),
         '      <span class="kle-chevron" style="font-size:12px;opacity:0.5;transition:transform 0.2s;transform:rotate(' + (isExpanded ? '0deg' : '-90deg') + ');">▾</span>',
         '    </div>',
         '  </div>',
@@ -300,31 +300,47 @@
 
       chapters.forEach(function (cid) {
         var name = CHAPTER_NAMES[cid] || cid;
-        var isUnlocked = unlocked.indexOf(cid) !== -1;
+        var isUnlocked = window.kleStory && window.kleStory.isChapterUnlocked ? window.kleStory.isChapterUnlocked(cid) : false;
+        var isCompleted = completed.indexOf(cid) !== -1;
         var isCurrent = cid === currentChapterId;
-        var isDone = unlocked.indexOf(getNextChapterId(cid)) !== -1; // 下一章已解锁 = 本章已完成
 
         if (!isUnlocked) {
-          // 锁定状态
+          // 未解锁状态
           html += [
-            '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.03);opacity:0.4;">',
+            '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.03);opacity:0.35;">',
             '  <span style="font-size:12px;">🔒</span>',
-            '  <span style="font-size:13px;color:rgba(232,224,212,0.4);">' + name + '</span>',
+            '  <span style="font-size:13px;color:rgba(232,224,212,0.35);">' + name + '</span>',
+            '  <span style="font-size:11px;opacity:0.35;color:rgba(232,224,212,0.3);margin-left:auto;">未解锁</span>',
             '</div>'
           ].join('');
-        } else {
-          // 已解锁，可点击
-          var bgColor = isCurrent ? 'rgba(180,150,255,0.15)' : 'rgba(255,255,255,0.06)';
-          var borderColor = isCurrent ? 'rgba(180,150,255,0.5)' : 'rgba(255,255,255,0.08)';
-          var textColor = isCurrent ? '#b49cff' : '#e8e0d4';
+        } else if (isCompleted) {
+          // 已完成状态
+          var bgColor = isCurrent ? 'rgba(52,199,89,0.12)' : 'rgba(52,199,89,0.08)';
+          var borderColor = isCurrent ? 'rgba(52,199,89,0.45)' : 'rgba(52,199,89,0.2)';
+          var textColor = '#34c759';
           html += [
             '<div onclick="window.KLE_VN && window.KLE_VN.openChapter(\'' + cid + '\')" style="',
             '  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;',
             '  background:' + bgColor + ';border:1px solid ' + borderColor + ';',
             '  cursor:pointer;transition:all 0.2s;">',
-            '  <span style="font-size:12px;">' + (isDone ? '✅' : '🔓') + '</span>',
+            '  <span style="font-size:12px;">✅</span>',
             '  <span style="font-size:13px;color:' + textColor + ';flex:1;">' + name + '</span>',
-            '  <span style="font-size:11px;opacity:0.4;color:' + textColor + ';">' + (isCurrent ? '进行中' : (isDone ? '已完成' : '')) + '</span>',
+            '  <span style="font-size:11px;opacity:0.6;color:' + textColor + ';">' + (isCurrent ? '进行中' : '已完成') + '</span>',
+            '</div>'
+          ].join('');
+        } else {
+          // 进行中状态
+          var bgColor = isCurrent ? 'rgba(180,150,255,0.18)' : 'rgba(180,150,255,0.08)';
+          var borderColor = isCurrent ? 'rgba(180,150,255,0.55)' : 'rgba(180,150,255,0.18)';
+          var textColor = isCurrent ? '#b49cff' : '#c4b0f5';
+          html += [
+            '<div onclick="window.KLE_VN && window.KLE_VN.openChapter(\'' + cid + '\')" style="',
+            '  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;',
+            '  background:' + bgColor + ';border:1px solid ' + borderColor + ';',
+            '  cursor:pointer;transition:all 0.2s;">',
+            '  <span style="font-size:12px;">🔓</span>',
+            '  <span style="font-size:13px;color:' + textColor + ';flex:1;">' + name + '</span>',
+            '  <span style="font-size:11px;opacity:0.5;color:' + textColor + ';">' + (isCurrent ? '进行中' : '') + '</span>',
             '</div>'
           ].join('');
         }
