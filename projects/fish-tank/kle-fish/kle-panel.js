@@ -305,27 +305,30 @@
         var isCurrent = cid === currentChapterId;
 
         if (!isUnlocked) {
-          // 未解锁状态
+          // 未解锁状态 - 灰色边框和字体
+          var grayBg = 'rgba(255,255,255,0.03)';
+          var grayBorder = 'rgba(255,255,255,0.1)';
+          var grayText = 'rgba(232,224,212,0.4)';
           html += [
-            '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.03);opacity:0.35;">',
+            '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:' + grayBg + ';border:1px solid ' + grayBorder + ';opacity:0.7;">',
             '  <span style="font-size:12px;">🔒</span>',
-            '  <span style="font-size:13px;color:rgba(232,224,212,0.35);">' + name + '</span>',
-            '  <span style="font-size:11px;opacity:0.35;color:rgba(232,224,212,0.3);margin-left:auto;">未解锁</span>',
+            '  <span style="font-size:13px;color:' + grayText + ';">' + name + '</span>',
+            '  <span style="font-size:11px;opacity:0.4;color:' + grayText + ';margin-left:auto;">未解锁</span>',
             '</div>'
           ].join('');
         } else if (isCompleted) {
-          // 已完成状态
-          var bgColor = isCurrent ? 'rgba(52,199,89,0.12)' : 'rgba(52,199,89,0.08)';
-          var borderColor = isCurrent ? 'rgba(52,199,89,0.45)' : 'rgba(52,199,89,0.2)';
-          var textColor = '#34c759';
+          // 已完成状态 - 灰色边框和字体
+          var grayBg = isCurrent ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)';
+          var grayBorder = isCurrent ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.1)';
+          var grayText = 'rgba(232,224,212,0.45)';
           html += [
             '<div onclick="window.KLE_VN && window.KLE_VN.openChapter(\'' + cid + '\')" style="',
             '  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;',
-            '  background:' + bgColor + ';border:1px solid ' + borderColor + ';',
+            '  background:' + grayBg + ';border:1px solid ' + grayBorder + ';',
             '  cursor:pointer;transition:all 0.2s;">',
             '  <span style="font-size:12px;">✅</span>',
-            '  <span style="font-size:13px;color:' + textColor + ';flex:1;">' + name + '</span>',
-            '  <span style="font-size:11px;opacity:0.6;color:' + textColor + ';">' + (isCurrent ? '进行中' : '已完成') + '</span>',
+            '  <span style="font-size:13px;color:' + grayText + ';flex:1;">' + name + '</span>',
+            '  <span style="font-size:11px;opacity:0.5;color:' + grayText + ';">' + (isCurrent ? '进行中' : '已完成') + '</span>',
             '</div>'
           ].join('');
         } else {
