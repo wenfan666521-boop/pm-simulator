@@ -115,6 +115,10 @@
   <button class="btn" onclick="test_openPanel()">打开小克鱼面板</button>
   <button class="btn danger" onclick="test_closePanel()">关闭面板</button>
   <button class="btn warning" onclick="test_openVN()">直接启动剧情（全屏VN）</button>
+  <div class="input-row" style="margin-top:8px;">
+    <input type="text" id="chapterIdInput" placeholder="章节ID如 day1-1" style="max-width:120px">
+    <button class="btn success" onclick="test_openChapter()">按章节ID打开</button>
+  </div>
   <button class="btn" onclick="test_simulateDayTasks()">模拟完成当天任务</button>
   <div class="log" id="log-panel"></div>
 </div>
@@ -153,6 +157,7 @@
 <script src="kle-fish/kle-vn.js"></script>
 <script src="kle-fish/kle-panel.js"></script>?v=20260609181226
 <script src="kle-fish/kle-system.js"></script>?v=20260609181226
+<script src="items-system.js"></script>
 
 <script>
   // ========== 工具函数 ==========
@@ -360,6 +365,23 @@
     }
   }
 
+  function test_openChapter() {
+    var cid = document.getElementById('chapterIdInput').value.trim() || 'day1-1';
+    var statusEl = document.getElementById('vn-status');
+    function setStatus(msg, color) {
+      if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || '#aaa'; }
+      console.log('[VN]', msg);
+    }
+    setStatus('🔵 准备加载章节: ' + cid);
+    if (window.KLE_VN && window.KLE_VN.openChapter) {
+      window.KLE_VN.openChapter(cid);
+      setStatus('🟢 已调用 openChapter(' + cid + ')');
+    } else {
+      setStatus('🔴 openChapter不可用', '#ff6b6b');
+      log('log-panel', 'KLE_VN.openChapter 不可用', 'error');
+    }
+  }
+
   function test_simulateDayTasks() {
     clearLog('log-panel');
     const data = window.kleData.loadAccountData();
@@ -491,9 +513,9 @@
 
   // 版本信息（每次发版更新）
   var versionInfo = {
-    commit: 'a8cdaf8',
-    time: '2026-06-10 00:45',
-    desc: 'fix: 移除点击继续提示（对话结束时不再显示）'
+    commit: '637bdcf',
+    time: '2026-06-10 15:26',
+    desc: 'feat: 接入三个章节JSON + 章节解锁系统'
   };
   var vbar = document.getElementById('version-bar');
   vbar.textContent = '📦 ' + versionInfo.commit + ' · ' + versionInfo.time + ' · ' + versionInfo.desc;
