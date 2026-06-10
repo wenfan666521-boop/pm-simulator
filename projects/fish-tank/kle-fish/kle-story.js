@@ -1,45 +1,103 @@
-/**
- * 小克鱼模块 - 故事引擎 (kle-story.js)
- * 基于 inkjs 运行时，对接 kle-vn.js 视觉层
- */
-
 (function () {
   'use strict';
 
+  // ==================== 常量 ====================
+  // 章节列表（顺序很重要，用于找下一章）
+  var CHAPTER_LIST = [
+    'day1-1', 'day1-2', 'day1-3',
+    'day2-1', 'day2-2',
+    'day3-1', 'day3-2',
+  ];
+
+  var CHAPTER_NAMES = {
+    'day1-1': '初临·始',
+    'day1-2': '初临·寻',
+    'day1-3': '初临·别',
+    'day2-1': '仪式·晓',
+    'day2-2': '仪式·寻',
+    'day3-1': '离场·晨',
+    'day3-2': '离场·终',
+  };
+
   // ==================== 状态 ====================
-  var story = null;          // inkjs.Story 实例
-  var storyJson = null;      // 原始 JSON（用于重置）
+  var story = null;
+  var storyJson = null;
   var state = {
+    currentChapter: null,   // 当前章节 ID，如 "day1-1"
     currentDay: 1,
   };
+
+  // ==================== 章节解锁 ====================
+  var UNLOCKED_KEY = 'kle_chapters_unlocked';
+
+  function getUnlockedChapters() {
+    try {
+      var raw = localStorage.getItem(UNLOCKED_KEY);
+      if (!raw) return ['day1-1']; // 默认解锁第一章
+      return JSON.parse(raw);
+    } catch (e) {
+      return ['day1-1'];
+    }
+  }
+
+  function saveUnlockedChapters(list) {
+    localStorage.setItem(UNLOCKED_KEY, JSON.stringify(list));
+  }
+
+  function isChapterUnlocked(id) {
+    return getUnlockedChapters().indexOf(id) !== -1;
+  }
+
+  function unlockChapter(id) {
+    var list = getUnlockedChapters();
+    if (list.indexOf(id) === -1) {
+      list.push(id);
+      saveUnlockedChapters(list);
+    }
+  }
+
+  function getNextChapter(currentId) {
+    var idx = CHAPTER_LIST.indexOf(currentId);
+    if (idx === -1 || idx >= CHAPTER_LIST.length - 1) return null;
+    return CHAPTER_LIST[idx + 1];
+  }
+
+  function getChapterName(id) {
+    return CHAPTER_NAMES[id] || id;
+  }
 
   // ==================== 加载故事 ====================
 
   /**
-   * 加载指定日期的 ink 故事
-   * @param {number} day 1/2/3
+   * 加载指定章节
+   * @param {string} chapterId 如 "day1-1"
    * @returns {Promise}
    */
-  function loadDay(day) {
+  function loadChapter(chapterId) {
     return new Promise(function (resolve, reject) {
-      // 根据 devMode 确定路径
       var jsonPath = window.KLE_CONFIG && window.KLE_CONFIG.devMode
-        ? 'kle-fish/ink/script.json'
-        : 'kle-fish/ink/script.json';
+        ? 'kle-fish/ink/chapter_' + chapterId + '.json'
+        : 'kle-fish/ink/chapter_' + chapterId + '.json';
 
       fetch(jsonPath)
         .then(function (res) {
-          if (!res.ok) throw new Error('加载故事失败: ' + jsonPath);
+          if (!res.ok) throw new Error('加载章节失败: ' + jsonPath);
           return res.text();
         })
         .then(function (jsonString) {
-          // 去掉 var storyContent = wrapper（如果有）
           var cleaned = jsonString.replace(/^\s*var\s+storyContent\s*=\s*/, '').replace(/;\s*$/, '');
           storyJson = cleaned;
           story = new inkjs.Story(cleaned);
-          state.currentDay = day;
+          state.currentChapter = chapterId;
+
+          // 注入 chapter_id 变量
+          story.variablesState['chapter_id'] = chapterId;
+
+          // 恢复公共变量（如果有）
+          restorePublicVars();
+
           resolve({
-            day: day,
+            chapterId: chapterId,
             canContinue: story.canContinue
           });
         })
@@ -47,28 +105,69 @@
     });
   }
 
+  /**
+   * 兼容旧接口：loadDay(day) 按 day 找第一个未解锁章节加载
+   * @param {number} day
+   * @returns {Promise}
+   */
+  function loadDay(day) {
+    // 找到该 day 下第一个未解锁的章节
+    var unlocked = getUnlockedChapters();
+    for (var i = 0; i < CHAPTER_LIST.length; i++) {
+      var cid = CHAPTER_LIST[i];
+      if (cid.indexOf('day' + day + '-') === 0 && unlocked.indexOf(cid) === -1) {
+        return loadChapter(cid);
+      }
+    }
+    // 都解锁了，加载该 day 第一个章节
+    var firstOfDay = CHAPTER_LIST.filter(function (c) { return c.indexOf('day' + day + '-') === 0; })[0];
+    if (firstOfDay) return loadChapter(firstOfDay);
+    // 兜底：加载第一章
+    return loadChapter('day1-1');
+  }
+
+  // ==================== 公共变量 ====================
+  var VARS_KEY = 'kle_story_vars';
+
+  function savePublicVars() {
+    if (!story) return;
+    var vars = getAllVars();
+    // 只保留公共变量（以 var_ 开头或已知的全局变量名）
+    var publicVars = {};
+    var known = ['player_name', 'rapport_klei', 'has_pendulum', 'has_copper_bell',
+      'has_tarot_spread', 'has_old_map', 'quest_accepted', 'chapter_id',
+      'day1_completed', 'day2_completed', 'day3_completed'];
+    known.forEach(function (k) {
+      if (vars[k] !== undefined) publicVars[k] = vars[k];
+    });
+    localStorage.setItem(VARS_KEY, JSON.stringify(publicVars));
+  }
+
+  function restorePublicVars() {
+    if (!story) return;
+    try {
+      var raw = localStorage.getItem(VARS_KEY);
+      if (!raw) return;
+      var pubVars = JSON.parse(raw);
+      for (var k in pubVars) {
+        if (pubVars.hasOwnProperty(k)) {
+          story.variablesState[k] = pubVars[k];
+        }
+      }
+    } catch (e) {}
+  }
+
   // ==================== 核心读取 ====================
 
-  /**
-   * 获取下一段文本
-   * @returns {string|null} 文本内容，无则返回 null
-   */
   function getNextText() {
     if (!story || !story.canContinue) return null;
     return story.Continue();
   }
 
-  /**
-   * 检查能否继续（还有文本未读完）
-   */
   function canContinue() {
     return story && story.canContinue;
   }
 
-  /**
-   * 获取当前选项列表
-   * @returns {Array} [{text: string, index: number}]
-   */
   function getChoices() {
     if (!story) return [];
     return story.currentChoices.map(function (choice, i) {
@@ -79,17 +178,10 @@
     });
   }
 
-  /**
-   * 是否有选项等待玩家选择
-   */
   function hasChoices() {
     return story && story.currentChoices && story.currentChoices.length > 0;
   }
 
-  /**
-   * 玩家选择选项
-   * @param {number} index 选项索引
-   */
   function choose(index) {
     if (!story) return;
     story.ChooseChoiceIndex(index);
@@ -97,36 +189,23 @@
 
   // ==================== 变量读写 ====================
 
-  /**
-   * 设置故事变量
-   * @param {string} name 变量名
-   * @param {*} value 值
-   */
   function setVar(name, value) {
     if (!story) return;
     story.variablesState[name] = value;
   }
 
-  /**
-   * 读取故事变量
-   * @param {string} name 变量名
-   * @returns {*}
-   */
   function getVar(name) {
     if (!story) return undefined;
     return story.variablesState[name];
   }
 
-  /**
-   * 获取所有变量（调试用）
-   */
   function getAllVars() {
     if (!story) return {};
     var vars = {};
-    var state = story.variablesState;
-    for (var key in state) {
-      if (state.hasOwnProperty(key)) {
-        vars[key] = state[key];
+    var vs = story.variablesState;
+    for (var key in vs) {
+      if (vs.hasOwnProperty(key)) {
+        vars[key] = vs[key];
       }
     }
     return vars;
@@ -134,10 +213,6 @@
 
   // ==================== 跳转 ====================
 
-  /**
-   * 跳转到指定节点（用于读档后定位）
-   * @param {string} path 节点路径，如 "day1_start"
-   */
   function jumpTo(path) {
     if (!story) return;
     story.ChoosePathString(path);
@@ -146,36 +221,23 @@
   // ==================== 状态保存/恢复 ====================
 
   var SAVE_KEY = 'kle_fish_save';
-  var VARS_KEY = 'kle_story_vars';
 
-  /**
-   * 保存当前进度
-   * @returns {Object} 存档对象
-   */
   function saveState() {
     if (!story) return null;
     return {
       storyState: story.state.ToJson(),
       savedAt: Date.now(),
-      day: state.currentDay || 1,
+      chapterId: state.currentChapter,
     };
   }
 
-  /**
-   * 保存存档到 localStorage
-   */
   function saveToStorage() {
     var data = saveState();
     if (!data) return;
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-    // 同时保存公共变量快照
-    localStorage.setItem(VARS_KEY, JSON.stringify(getAllVars()));
+    savePublicVars();
   }
 
-  /**
-   * 从 localStorage 读取存档
-   * @returns {Object|null}
-   */
   function loadFromStorage() {
     try {
       var raw = localStorage.getItem(SAVE_KEY);
@@ -186,62 +248,56 @@
     }
   }
 
-  /**
-   * 检查是否有存档
-   * @returns {boolean}
-   */
   function hasSave() {
     return localStorage.getItem(SAVE_KEY) !== null;
   }
 
-  /**
-   * 恢复存档
-   * @param {Object} saveData 存档对象（来自 loadFromStorage）
-   * @returns {Promise}
-   */
   function restoreSave(saveData) {
     if (!saveData || !saveData.storyState) return Promise.reject('无效存档');
-    return loadDay(saveData.day).then(function () {
+    var cid = saveData.chapterId || 'day1-1';
+    return loadChapter(cid).then(function () {
       story.state.LoadJson(saveData.storyState);
       return saveData;
     });
   }
 
-  /**
-   * 清除存档
-   */
   function clearSave() {
     localStorage.removeItem(SAVE_KEY);
     localStorage.removeItem(VARS_KEY);
   }
 
-  /**
-   * 强制设置当前 day（用于 loadDay 前）
-   */
   function setCurrentDay(day) {
     state.currentDay = day;
   }
 
-  /**
-   * 重置故事（从头开始）
-   */
   function reset() {
     if (!storyJson) return;
     story = new inkjs.Story(storyJson);
   }
 
+  function getCurrentChapterId() {
+    return state.currentChapter;
+  }
+
   // ==================== 对外接口 ====================
   window.kleStory = {
+    // 章节加载
+    loadChapter: loadChapter,
     loadDay: loadDay,
+    getCurrentChapterId: getCurrentChapterId,
+    // 读取
     getNextText: getNextText,
     canContinue: canContinue,
     getChoices: getChoices,
     hasChoices: hasChoices,
     choose: choose,
+    // 变量
     setVar: setVar,
     getVar: getVar,
     getAllVars: getAllVars,
+    // 跳转
     jumpTo: jumpTo,
+    // 存档
     saveState: saveState,
     saveToStorage: saveToStorage,
     loadFromStorage: loadFromStorage,
@@ -250,6 +306,13 @@
     clearSave: clearSave,
     setCurrentDay: setCurrentDay,
     reset: reset,
+    // 章节解锁
+    getUnlockedChapters: getUnlockedChapters,
+    isChapterUnlocked: isChapterUnlocked,
+    unlockChapter: unlockChapter,
+    getNextChapter: getNextChapter,
+    getChapterName: getChapterName,
+    CHAPTER_LIST: CHAPTER_LIST,
   };
 
 })();
