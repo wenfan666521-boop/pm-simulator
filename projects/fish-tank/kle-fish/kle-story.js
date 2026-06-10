@@ -75,9 +75,7 @@
    */
   function loadChapter(chapterId) {
     return new Promise(function (resolve, reject) {
-      var jsonPath = window.KLE_CONFIG && window.KLE_CONFIG.devMode
-        ? 'kle-fish/ink/script.json'
-        : 'kle-fish/ink/script.json';
+      var jsonPath = 'kle-fish/ink/chapter_' + chapterId + '.json';
 
       fetch(jsonPath)
         .then(function (res) {
