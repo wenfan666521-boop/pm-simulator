@@ -400,7 +400,7 @@
         }, 150);
         
         // 有概率触发在线事件（摸鱼小惊喜）
-        if (Math.random() < 0.10) triggerOnlineEvent('petting');
+        if (Math.random() < 0.01) triggerOnlineEvent('petting');
       }
     }
   }
@@ -663,7 +663,7 @@
           checkAchievements();
 
           // 有概率触发在线事件
-          if (Math.random() < 0.15) triggerOnlineEvent('feeding');
+          if (Math.random() < 0.05) triggerOnlineEvent('feeding');
 
           // 退出投喂模式
           setTimeout(() => exitFeedingMode(), 350);
