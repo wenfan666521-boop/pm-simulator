@@ -271,25 +271,31 @@
     hideContinueHint();
     hideChoices();
 
-    // 自动存档
-    if (window.kleStory && window.kleStory.saveToStorage) {
-      window.kleStory.saveToStorage();
-    }
-
     // 获取当前章节和下一章
     var currentChapterId = null;
     var nextChapterId = null;
     var nextChapterName = null;
+    var wasAlreadyCompleted = false;
     if (window.kleStory) {
       currentChapterId = window.kleStory.getCurrentChapterId();
-      // 标记当前章节已完成
+      // 检查是否已完成过（已完成过的章节重玩，数值不覆盖）
       if (currentChapterId) {
+        wasAlreadyCompleted = window.kleStory.getCompletedChapters().indexOf(currentChapterId) !== -1;
         window.kleStory.markChapterCompleted(currentChapterId);
       }
       nextChapterId = window.kleStory.getNextChapter(currentChapterId);
       if (nextChapterId) {
         nextChapterName = window.kleStory.getChapterName(nextChapterId);
         window.kleStory.unlockChapter(nextChapterId);
+      }
+    }
+
+    // 存档：已完成章节重玩只保存阅读进度，未完成章节首次完成才更新公共变量
+    if (window.kleStory) {
+      if (wasAlreadyCompleted) {
+        window.kleStory.saveStateOnly();
+      } else {
+        window.kleStory.saveToStorage();
       }
     }
 

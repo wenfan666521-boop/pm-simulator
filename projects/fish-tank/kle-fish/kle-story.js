@@ -264,11 +264,19 @@
     };
   }
 
+
   function saveToStorage() {
     var data = saveState();
     if (!data) return;
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     savePublicVars();
+  }
+
+  // 只保存当前阅读进度，不更新公共变量（用于已完成章节的重玩）
+  function saveStateOnly() {
+    var data = saveState();
+    if (!data) return;
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }
 
   function loadFromStorage() {
@@ -333,6 +341,7 @@
     // 存档
     saveState: saveState,
     saveToStorage: saveToStorage,
+    saveStateOnly: saveStateOnly,
     loadFromStorage: loadFromStorage,
     hasSave: hasSave,
     restoreSave: restoreSave,
