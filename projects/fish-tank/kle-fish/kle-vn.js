@@ -515,6 +515,11 @@
     // 构建 DOM
     if (!overlay) buildDOM();
 
+    // 清空旧内容，防止重新打开时看到残留文字
+    if (textContent) textContent.textContent = '';
+    if (choiceArea) { choiceArea.innerHTML = ''; choiceArea.style.display = 'none'; }
+    hideContinueHint();
+
     var dayLabels = { 1: '初临', 2: '仪式准备', 3: '仪式与离场' };
     document.getElementById('kle-vn-daylabel').textContent = 'DAY ' + state.day + ' · ' + (dayLabels[state.day] || '');
     overlay.style.display = 'flex';
@@ -634,10 +639,10 @@
     state.autoPlay = false;
     state.waitingForInput = false;
 
-    // 关闭前自动存档（如果有正在进行的章节）
-    if (window.kleStory && window.kleStory.saveToStorage && window.kleStory.canContinue && window.kleStory.canContinue()) {
-      window.kleStory.saveToStorage();
-    }
+    // 清空文本框，防止重新打开时看到旧内容
+    if (textContent) textContent.textContent = '';
+    if (choiceArea) { choiceArea.innerHTML = ''; choiceArea.style.display = 'none'; }
+    hideContinueHint();
 
     overlay.style.opacity = '0';
     setTimeout(function () {
