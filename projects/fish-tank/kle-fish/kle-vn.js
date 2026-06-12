@@ -706,6 +706,10 @@
       }
       state.day = day;
       if (!overlay) buildDOM();
+      // 清空旧内容，防止重新打开时看到残留文字
+      if (textContent) textContent.textContent = '';
+      if (choiceArea) { choiceArea.innerHTML = ''; choiceArea.style.display = 'none'; }
+      hideContinueHint();
       overlay.style.display = 'flex';
       requestAnimationFrame(function () { overlay.style.opacity = '1'; });
 
